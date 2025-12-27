@@ -14,10 +14,16 @@ FROM rust:1.75-slim-bookworm AS backend-builder
 
 WORKDIR /app
 
+# Enable SQLx offline mode
+ENV SQLX_OFFLINE=true
+
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy SQLx offline data first
+COPY backend/.sqlx ./.sqlx
 
 COPY backend/Cargo.toml backend/Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs
