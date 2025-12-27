@@ -79,9 +79,19 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::from_env()?;
 
     tracing::info!("Connecting to database...");
+    
+    // Heroku Postgres requires SSL - append sslmode if not present
+    let database_url = if config.database_url.contains("sslmode") {
+        config.database_url.clone()
+    } else if config.database_url.contains('?') {
+        format!("{}&sslmode=require", config.database_url)
+    } else {
+        format!("{}?sslmode=require", config.database_url)
+    };
+    
     let pool = PgPoolOptions::new()
         .max_connections(10)
-        .connect(&config.database_url)
+        .connect(&database_url)
         .await?;
 
     tracing::info!("Running migrations...");
