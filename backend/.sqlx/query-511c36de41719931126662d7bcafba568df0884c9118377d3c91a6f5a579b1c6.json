@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                sp.id as participant_id,\n                COALESCE(SUM(bp.amount_paid), 0) - COALESCE(SUM(bs.amount_owed), 0) as \"balance!\"\n            FROM session_participants sp\n            LEFT JOIN bill_payers bp ON sp.id = bp.participant_id\n            LEFT JOIN bill_splits bs ON sp.id = bs.participant_id\n            WHERE sp.session_id = $1\n            GROUP BY sp.id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "participant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "balance!",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "511c36de41719931126662d7bcafba568df0884c9118377d3c91a6f5a579b1c6"
+}

@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH participant_payments AS (\n                SELECT \n                    sp.id as participant_id,\n                    sp.session_id,\n                    COALESCE(SUM(bp.amount_paid), 0) as total_paid\n                FROM session_participants sp\n                LEFT JOIN bill_payers bp ON bp.participant_id = sp.id\n                GROUP BY sp.id, sp.session_id\n            ),\n            participant_splits AS (\n                SELECT \n                    sp.id as participant_id,\n                    sp.session_id,\n                    COALESCE(SUM(bs.amount_owed), 0) as total_owed\n                FROM session_participants sp\n                LEFT JOIN bill_splits bs ON bs.participant_id = sp.id\n                GROUP BY sp.id, sp.session_id\n            )\n            SELECT \n                s.id as session_id,\n                s.name as session_name,\n                s.session_date as \"session_date!\",\n                sp.id as participant_id,\n                COALESCE(u.full_name, sp.guest_name, 'Unknown') as \"participant_name!\",\n                COALESCE(pp.total_paid, 0) as \"total_paid!\",\n                COALESCE(ps.total_owed, 0) as \"total_owed!\"\n            FROM sessions s\n            JOIN session_participants sp ON sp.session_id = s.id\n            LEFT JOIN users u ON sp.user_id = u.id\n            LEFT JOIN participant_payments pp ON pp.participant_id = sp.id\n            LEFT JOIN participant_splits ps ON ps.participant_id = sp.id\n            WHERE s.id IN (\n                SELECT DISTINCT session_id FROM session_participants WHERE user_id = $1\n            )\n            ORDER BY s.created_at DESC, sp.id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "session_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "session_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "session_date!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 3,
+        "name": "participant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "participant_name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "total_paid!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "total_owed!",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "583ec06d1488e8994547eac88137e7e8900c29ee19d4f207728755ce1157a15f"
+}

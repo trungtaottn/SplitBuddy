@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                            INSERT INTO bill_splits (id, bill_id, participant_id, amount_owed)\n                            VALUES ($1, $2, $3, $4)\n                            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4f7b3b95523ecbf713d1d9c65d3d4d28bc3b6ed6a2be04b314dfde69c6beda64"
+}

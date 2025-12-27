@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO session_participants (id, session_id, user_id, role, joined_at)\n            VALUES ($1, $2, $3, 'owner', NOW())\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d05045b1989064157fce96fb0899c9cda68b45a4c06cf63e377657955bef106a"
+}

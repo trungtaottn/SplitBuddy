@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                d.id,\n                d.session_id,\n                d.debtor_id,\n                d.creditor_id,\n                d.amount,\n                d.status as \"status: DebtStatus\",\n                d.created_at,\n                d.settled_at\n            FROM debts d\n            JOIN session_participants sp ON d.debtor_id = sp.id\n            WHERE d.id = $1 AND sp.user_id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "session_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "debtor_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "creditor_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "status: DebtStatus",
+        "type_info": {
+          "Custom": {
+            "name": "debt_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "settlement_requested",
+                "settled"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "settled_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "e217fab29c6e8c87b063e636a82224f5742b9447dc38336533b7a105e6a806bc"
+}

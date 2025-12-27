@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                sp.id,\n                sp.user_id,\n                sp.guest_name,\n                COALESCE(u.full_name, sp.guest_name, 'Unknown') as \"display_name!\",\n                sp.role as \"role: ParticipantRole\",\n                sp.joined_at\n            FROM session_participants sp\n            LEFT JOIN users u ON sp.user_id = u.id\n            WHERE sp.session_id = $1\n            ORDER BY sp.joined_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "guest_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "display_name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "role: ParticipantRole",
+        "type_info": {
+          "Custom": {
+            "name": "participant_role",
+            "kind": {
+              "Enum": [
+                "owner",
+                "member"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "joined_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "fef10e49ecda4a1a9e2fe4ac1ad6fbde3a7d80f697f9b21f05d1b5a9be076079"
+}

@@ -1,0 +1,69 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                d.id,\n                d.session_id,\n                s.name as session_name,\n                d.creditor_id as counterpart_id,\n                COALESCE(u.full_name, sp_creditor.guest_name, 'Unknown') as \"counterpart_name!\",\n                d.amount,\n                d.status as \"status: DebtStatus\"\n            FROM debts d\n            JOIN sessions s ON d.session_id = s.id\n            JOIN session_participants sp_debtor ON d.debtor_id = sp_debtor.id\n            JOIN session_participants sp_creditor ON d.creditor_id = sp_creditor.id\n            LEFT JOIN users u ON sp_creditor.user_id = u.id\n            WHERE sp_debtor.user_id = $1 AND d.status != 'settled'\n            ORDER BY d.amount DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "session_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "session_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "counterpart_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "counterpart_name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "status: DebtStatus",
+        "type_info": {
+          "Custom": {
+            "name": "debt_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "settlement_requested",
+                "settled"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "5d966b51fd317888c136302fa5c08921e4157c7ba9cdbf036783a74ff621446b"
+}
