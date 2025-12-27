@@ -4,6 +4,7 @@ use axum::Router;
 use sqlx::postgres::PgPoolOptions;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
+use tower_http::services::{ServeDir, ServeFile};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -99,10 +100,15 @@ async fn main() -> anyhow::Result<()> {
         .allow_methods(Any)
         .allow_headers(Any);
 
+    // Serve static files (frontend) - fallback to index.html for SPA routing
+    let static_service = ServeDir::new("static")
+        .not_found_service(ServeFile::new("static/index.html"));
+
     let app = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .nest("/api", api::routes())
         .with_state(app_state)
+        .fallback_service(static_service)
         .layer(cors)
         .layer(TraceLayer::new_for_http());
 
