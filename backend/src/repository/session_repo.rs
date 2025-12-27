@@ -1,0 +1,739 @@
+use rust_decimal::Decimal;
+use sqlx::PgPool;
+use uuid::Uuid;
+
+use crate::api::sessions::{
+    BillResponse, ParticipantResponse, PayerInput, SessionDetailResponse, SessionResponse,
+    SplitDetailInput,
+};
+use crate::domain::session::{ParticipantRole, SessionStatus};
+use crate::error::AppError;
+
+pub struct SessionRepository {
+    pool: PgPool,
+}
+
+impl SessionRepository {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn find_by_user(&self, user_id: Uuid) -> Result<Vec<SessionResponse>, AppError> {
+        #[derive(sqlx::FromRow)]
+        struct SessionRow {
+            id: Uuid,
+            name: String,
+            location: Option<String>,
+            status: String,
+            created_by: Uuid,
+            created_at: chrono::DateTime<chrono::Utc>,
+            session_date: chrono::NaiveDate,
+            participant_count: i64,
+            total_amount: Decimal,
+        }
+
+        let rows: Vec<SessionRow> = sqlx::query_as(
+            r#"
+            SELECT 
+                s.id,
+                s.name,
+                s.location,
+                s.status::text,
+                s.created_by,
+                s.created_at,
+                s.session_date,
+                (SELECT COUNT(*) FROM session_participants WHERE session_id = s.id)::bigint as participant_count,
+                (SELECT COALESCE(SUM(amount), 0) FROM bills WHERE session_id = s.id) as total_amount
+            FROM sessions s
+            WHERE s.id IN (
+                SELECT session_id FROM session_participants WHERE user_id = $1
+            )
+            ORDER BY s.session_date DESC, s.created_at DESC
+            "#
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let sessions = rows.into_iter().map(|row| {
+            SessionResponse {
+                id: row.id,
+                name: row.name,
+                location: row.location,
+                status: match row.status.as_str() {
+                    "active" => SessionStatus::Active,
+                    _ => SessionStatus::Closed,
+                },
+                created_by: row.created_by,
+                created_at: row.created_at,
+                session_date: row.session_date,
+                participant_count: row.participant_count,
+                total_amount: row.total_amount,
+            }
+        }).collect();
+
+        Ok(sessions)
+    }
+
+    pub async fn create(
+        &self,
+        name: &str,
+        location: Option<&str>,
+        created_by: Uuid,
+    ) -> Result<SessionResponse, AppError> {
+        let mut tx = self.pool.begin().await?;
+
+        let session_id = Uuid::new_v4();
+        let session_date = chrono::Utc::now().date_naive();
+
+        sqlx::query(
+            r#"
+            INSERT INTO sessions (id, name, location, status, created_by, session_date, created_at, updated_at)
+            VALUES ($1, $2, $3, 'active', $4, $5, NOW(), NOW())
+            "#
+        )
+        .bind(session_id)
+        .bind(name)
+        .bind(location)
+        .bind(created_by)
+        .bind(session_date)
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query!(
+            r#"
+            INSERT INTO session_participants (id, session_id, user_id, role, joined_at)
+            VALUES ($1, $2, $3, 'owner', NOW())
+            "#,
+            Uuid::new_v4(),
+            session_id,
+            created_by
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+
+        Ok(SessionResponse {
+            id: session_id,
+            name: name.to_string(),
+            location: location.map(String::from),
+            status: SessionStatus::Active,
+            created_by,
+            created_at: chrono::Utc::now(),
+            session_date,
+            participant_count: 1,
+            total_amount: Decimal::ZERO,
+        })
+    }
+
+    pub async fn create_with_participants(
+        &self,
+        name: &str,
+        location: Option<&str>,
+        session_date: Option<chrono::NaiveDate>,
+        created_by: Uuid,
+        group_id: Option<Uuid>,
+        participant_ids: Option<&[Uuid]>,
+        guest_names: Option<&[String]>,
+    ) -> Result<SessionResponse, AppError> {
+        let mut tx = self.pool.begin().await?;
+
+        let session_id = Uuid::new_v4();
+        let date = session_date.unwrap_or_else(|| chrono::Utc::now().date_naive());
+
+        sqlx::query(
+            r#"
+            INSERT INTO sessions (id, name, location, status, created_by, group_id, session_date, created_at, updated_at)
+            VALUES ($1, $2, $3, 'active', $4, $5, $6, NOW(), NOW())
+            "#
+        )
+        .bind(session_id)
+        .bind(name)
+        .bind(location)
+        .bind(created_by)
+        .bind(group_id)
+        .bind(date)
+        .execute(&mut *tx)
+        .await?;
+
+        // Add creator as owner
+        sqlx::query!(
+            r#"
+            INSERT INTO session_participants (id, session_id, user_id, role, joined_at)
+            VALUES ($1, $2, $3, 'owner', NOW())
+            "#,
+            Uuid::new_v4(),
+            session_id,
+            created_by
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        // Add selected participants as members
+        let mut participant_count = 1i64;
+        if let Some(ids) = participant_ids {
+            for user_id in ids {
+                if *user_id != created_by {
+                    sqlx::query!(
+                        r#"
+                        INSERT INTO session_participants (id, session_id, user_id, role, joined_at)
+                        VALUES ($1, $2, $3, 'member', NOW())
+                        ON CONFLICT DO NOTHING
+                        "#,
+                        Uuid::new_v4(),
+                        session_id,
+                        user_id
+                    )
+                    .execute(&mut *tx)
+                    .await?;
+                    participant_count += 1;
+                }
+            }
+        }
+
+        // Add guests (participants without user accounts)
+        if let Some(guests) = guest_names {
+            for guest_name in guests {
+                if !guest_name.trim().is_empty() {
+                    sqlx::query!(
+                        r#"
+                        INSERT INTO session_participants (id, session_id, user_id, guest_name, role, joined_at)
+                        VALUES ($1, $2, NULL, $3, 'member', NOW())
+                        "#,
+                        Uuid::new_v4(),
+                        session_id,
+                        guest_name.trim()
+                    )
+                    .execute(&mut *tx)
+                    .await?;
+                    participant_count += 1;
+                }
+            }
+        }
+
+        tx.commit().await?;
+
+        Ok(SessionResponse {
+            id: session_id,
+            name: name.to_string(),
+            location: location.map(String::from),
+            status: SessionStatus::Active,
+            created_by,
+            created_at: chrono::Utc::now(),
+            session_date: date,
+            participant_count,
+            total_amount: Decimal::ZERO,
+        })
+    }
+
+    pub async fn find_by_id_with_details(
+        &self,
+        session_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<SessionDetailResponse>, AppError> {
+        self.verify_participant(session_id, user_id).await?;
+
+        #[derive(sqlx::FromRow)]
+        struct SessionDetailRow {
+            id: Uuid,
+            name: String,
+            location: Option<String>,
+            status: String,
+            created_by: Uuid,
+            created_at: chrono::DateTime<chrono::Utc>,
+            session_date: chrono::NaiveDate,
+            total_amount: Decimal,
+        }
+
+        let session: Option<SessionDetailRow> = sqlx::query_as(
+            r#"
+            SELECT 
+                s.id,
+                s.name,
+                s.location,
+                s.status::text,
+                s.created_by,
+                s.created_at,
+                s.session_date,
+                COALESCE(SUM(b.amount), 0) as total_amount
+            FROM sessions s
+            LEFT JOIN bills b ON s.id = b.session_id
+            WHERE s.id = $1
+            GROUP BY s.id
+            "#
+        )
+        .bind(session_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let session = match session {
+            Some(s) => s,
+            None => return Ok(None),
+        };
+
+        let participants = sqlx::query!(
+            r#"
+            SELECT 
+                sp.id,
+                sp.user_id,
+                sp.guest_name,
+                COALESCE(u.full_name, sp.guest_name, 'Unknown') as "display_name!",
+                sp.role as "role: ParticipantRole",
+                sp.joined_at
+            FROM session_participants sp
+            LEFT JOIN users u ON sp.user_id = u.id
+            WHERE sp.session_id = $1
+            ORDER BY sp.joined_at
+            "#,
+            session_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(Some(SessionDetailResponse {
+            id: session.id,
+            name: session.name,
+            location: session.location,
+            status: match session.status.as_str() {
+                "active" => SessionStatus::Active,
+                _ => SessionStatus::Closed,
+            },
+            created_by: session.created_by,
+            created_at: session.created_at,
+            session_date: session.session_date,
+            total_amount: session.total_amount,
+            participants: participants
+                .into_iter()
+                .map(|p| ParticipantResponse {
+                    id: p.id,
+                    user_id: p.user_id,
+                    guest_name: p.guest_name,
+                    display_name: p.display_name,
+                    role: p.role,
+                    joined_at: p.joined_at,
+                })
+                .collect(),
+        }))
+    }
+
+    pub async fn verify_owner(&self, session_id: Uuid, user_id: Uuid) -> Result<(), AppError> {
+        let is_owner = sqlx::query_scalar!(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM session_participants 
+                WHERE session_id = $1 AND user_id = $2 AND role = 'owner'
+            ) as "exists!"
+            "#,
+            session_id,
+            user_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        if !is_owner {
+            return Err(AppError::Forbidden {
+                message: "Only session owner can perform this action".to_string(),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub async fn verify_participant(&self, session_id: Uuid, user_id: Uuid) -> Result<(), AppError> {
+        let is_participant = sqlx::query_scalar!(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM session_participants 
+                WHERE session_id = $1 AND user_id = $2
+            ) as "exists!"
+            "#,
+            session_id,
+            user_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        if !is_participant {
+            return Err(AppError::Forbidden {
+                message: "You are not a participant of this session".to_string(),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub async fn add_participant(
+        &self,
+        session_id: Uuid,
+        user_id: Option<Uuid>,
+        guest_name: Option<String>,
+    ) -> Result<ParticipantResponse, AppError> {
+        let participant_id = Uuid::new_v4();
+        let display_name = if let Some(uid) = user_id {
+            let user = sqlx::query_scalar!(
+                r#"SELECT full_name FROM users WHERE id = $1"#,
+                uid
+            )
+            .fetch_optional(&self.pool)
+            .await?
+            .ok_or(AppError::UserNotFound { user_id: uid })?;
+            user
+        } else {
+            guest_name.clone().unwrap_or_else(|| "Guest".to_string())
+        };
+
+        sqlx::query!(
+            r#"
+            INSERT INTO session_participants (id, session_id, user_id, guest_name, role, joined_at)
+            VALUES ($1, $2, $3, $4, 'member', NOW())
+            "#,
+            participant_id,
+            session_id,
+            user_id,
+            guest_name
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(ParticipantResponse {
+            id: participant_id,
+            user_id,
+            guest_name,
+            display_name,
+            role: ParticipantRole::Member,
+            joined_at: chrono::Utc::now(),
+        })
+    }
+
+    pub async fn find_bills_by_session(
+        &self,
+        session_id: Uuid,
+    ) -> Result<Vec<BillResponse>, AppError> {
+        let bills = sqlx::query_as!(
+            BillResponse,
+            r#"
+            SELECT 
+                id,
+                session_id,
+                description,
+                amount,
+                split_strategy,
+                created_by,
+                created_at
+            FROM bills
+            WHERE session_id = $1
+            ORDER BY created_at DESC
+            "#,
+            session_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(bills)
+    }
+
+    pub async fn create_bill(
+        &self,
+        session_id: Uuid,
+        description: &str,
+        amount: Decimal,
+        split_strategy: &str,
+        created_by: Uuid,
+        payers: &[PayerInput],
+        split_details: Option<&[SplitDetailInput]>,
+    ) -> Result<BillResponse, AppError> {
+        let mut tx = self.pool.begin().await?;
+
+        let bill_id = Uuid::new_v4();
+
+        sqlx::query!(
+            r#"
+            INSERT INTO bills (id, session_id, description, amount, split_strategy, created_by, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            "#,
+            bill_id,
+            session_id,
+            description,
+            amount,
+            split_strategy,
+            created_by
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        for payer in payers {
+            sqlx::query!(
+                r#"
+                INSERT INTO bill_payers (id, bill_id, participant_id, amount_paid)
+                VALUES ($1, $2, $3, $4)
+                "#,
+                Uuid::new_v4(),
+                bill_id,
+                payer.participant_id,
+                payer.amount
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        if split_strategy.to_uppercase() == "CUSTOM" {
+            if let Some(details) = split_details {
+                for detail in details {
+                    sqlx::query!(
+                        r#"
+                        INSERT INTO bill_splits (id, bill_id, participant_id, amount_owed)
+                        VALUES ($1, $2, $3, $4)
+                        "#,
+                        Uuid::new_v4(),
+                        bill_id,
+                        detail.participant_id,
+                        detail.amount
+                    )
+                    .execute(&mut *tx)
+                    .await?;
+                }
+            }
+        } else {
+            // For EQUAL split, use split_details if provided (selected participants only)
+            // Otherwise fall back to all participants
+            if let Some(details) = split_details {
+                if !details.is_empty() {
+                    for detail in details {
+                        sqlx::query!(
+                            r#"
+                            INSERT INTO bill_splits (id, bill_id, participant_id, amount_owed)
+                            VALUES ($1, $2, $3, $4)
+                            "#,
+                            Uuid::new_v4(),
+                            bill_id,
+                            detail.participant_id,
+                            detail.amount
+                        )
+                        .execute(&mut *tx)
+                        .await?;
+                    }
+                } else {
+                    // Empty split_details, split among all participants
+                    Self::split_among_all_participants(&mut tx, bill_id, session_id, amount).await?;
+                }
+            } else {
+                // No split_details provided, split among all participants
+                Self::split_among_all_participants(&mut tx, bill_id, session_id, amount).await?;
+            }
+        }
+
+        Self::recalculate_debts(&mut tx, session_id).await?;
+
+        tx.commit().await?;
+
+        Ok(BillResponse {
+            id: bill_id,
+            session_id,
+            description: description.to_string(),
+            amount,
+            split_strategy: split_strategy.to_string(),
+            created_by,
+            created_at: chrono::Utc::now(),
+        })
+    }
+
+    async fn split_among_all_participants(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        bill_id: Uuid,
+        session_id: Uuid,
+        amount: Decimal,
+    ) -> Result<(), AppError> {
+        let participants = sqlx::query_scalar!(
+            r#"SELECT id FROM session_participants WHERE session_id = $1"#,
+            session_id
+        )
+        .fetch_all(&mut **tx)
+        .await?;
+
+        let participant_count = participants.len();
+        if participant_count > 0 {
+            let split_amount = amount / Decimal::from(participant_count);
+
+            for participant_id in participants {
+                sqlx::query!(
+                    r#"
+                    INSERT INTO bill_splits (id, bill_id, participant_id, amount_owed)
+                    VALUES ($1, $2, $3, $4)
+                    "#,
+                    Uuid::new_v4(),
+                    bill_id,
+                    participant_id,
+                    split_amount
+                )
+                .execute(&mut **tx)
+                .await?;
+            }
+        }
+        Ok(())
+    }
+
+    async fn recalculate_debts(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        session_id: Uuid,
+    ) -> Result<(), AppError> {
+        sqlx::query!(
+            r#"DELETE FROM debts WHERE session_id = $1 AND status = 'pending'"#,
+            session_id
+        )
+        .execute(&mut **tx)
+        .await?;
+
+        let balances = sqlx::query!(
+            r#"
+            SELECT 
+                sp.id as participant_id,
+                COALESCE(SUM(bp.amount_paid), 0) - COALESCE(SUM(bs.amount_owed), 0) as "balance!"
+            FROM session_participants sp
+            LEFT JOIN bill_payers bp ON sp.id = bp.participant_id
+            LEFT JOIN bill_splits bs ON sp.id = bs.participant_id
+            WHERE sp.session_id = $1
+            GROUP BY sp.id
+            "#,
+            session_id
+        )
+        .fetch_all(&mut **tx)
+        .await?;
+
+        let mut creditors: Vec<_> = balances
+            .iter()
+            .filter(|b| b.balance > Decimal::ZERO)
+            .collect();
+        let mut debtors: Vec<_> = balances
+            .iter()
+            .filter(|b| b.balance < Decimal::ZERO)
+            .collect();
+
+        creditors.sort_by(|a, b| b.balance.cmp(&a.balance));
+        debtors.sort_by(|a, b| a.balance.cmp(&b.balance));
+
+        let mut c_idx = 0;
+        let mut d_idx = 0;
+        let mut creditor_remaining: Vec<Decimal> = creditors.iter().map(|c| c.balance).collect();
+        let mut debtor_remaining: Vec<Decimal> = debtors.iter().map(|d| d.balance.abs()).collect();
+
+        while c_idx < creditors.len() && d_idx < debtors.len() {
+            let transfer = creditor_remaining[c_idx].min(debtor_remaining[d_idx]);
+
+            if transfer > Decimal::ZERO {
+                sqlx::query!(
+                    r#"
+                    INSERT INTO debts (id, session_id, debtor_id, creditor_id, amount, status, created_at)
+                    VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
+                    "#,
+                    Uuid::new_v4(),
+                    session_id,
+                    debtors[d_idx].participant_id,
+                    creditors[c_idx].participant_id,
+                    transfer
+                )
+                .execute(&mut **tx)
+                .await?;
+
+                creditor_remaining[c_idx] -= transfer;
+                debtor_remaining[d_idx] -= transfer;
+            }
+
+            if creditor_remaining[c_idx] == Decimal::ZERO {
+                c_idx += 1;
+            }
+            if debtor_remaining[d_idx] == Decimal::ZERO {
+                d_idx += 1;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn update_bill(
+        &self,
+        bill_id: Uuid,
+        session_id: Uuid,
+        description: Option<&str>,
+        amount: Option<Decimal>,
+        split_strategy: Option<&str>,
+        payers: Option<&[PayerInput]>,
+        split_details: Option<&[SplitDetailInput]>,
+    ) -> Result<BillResponse, AppError> {
+        let mut tx = self.pool.begin().await?;
+
+        // Update bill basic info
+        let updated_bill: BillResponse = sqlx::query_as(
+            r#"
+            UPDATE bills
+            SET 
+                description = COALESCE($1, description),
+                amount = COALESCE($2, amount),
+                split_strategy = COALESCE($3, split_strategy)
+            WHERE id = $4
+            RETURNING id, session_id, description, amount, split_strategy, created_by, created_at
+            "#
+        )
+        .bind(description)
+        .bind(amount)
+        .bind(split_strategy)
+        .bind(bill_id)
+        .fetch_one(&mut *tx)
+        .await?;
+
+        // Update payers if provided
+        if let Some(payer_list) = payers {
+            // Delete existing payers
+            sqlx::query!("DELETE FROM bill_payers WHERE bill_id = $1", bill_id)
+                .execute(&mut *tx)
+                .await?;
+
+            // Insert new payers
+            for payer in payer_list {
+                sqlx::query!(
+                    r#"
+                    INSERT INTO bill_payers (id, bill_id, participant_id, amount_paid)
+                    VALUES ($1, $2, $3, $4)
+                    "#,
+                    Uuid::new_v4(),
+                    bill_id,
+                    payer.participant_id,
+                    payer.amount
+                )
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+
+        // Update splits if provided
+        if let Some(split_list) = split_details {
+            // Delete existing splits
+            sqlx::query!("DELETE FROM bill_splits WHERE bill_id = $1", bill_id)
+                .execute(&mut *tx)
+                .await?;
+
+            // Insert new splits
+            for split in split_list {
+                sqlx::query!(
+                    r#"
+                    INSERT INTO bill_splits (id, bill_id, participant_id, amount_owed)
+                    VALUES ($1, $2, $3, $4)
+                    "#,
+                    Uuid::new_v4(),
+                    bill_id,
+                    split.participant_id,
+                    split.amount
+                )
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+
+        // Recalculate debts
+        Self::recalculate_debts(&mut tx, session_id).await?;
+
+        tx.commit().await?;
+
+        Ok(updated_bill)
+    }
+}
