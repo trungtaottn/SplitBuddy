@@ -191,8 +191,8 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
             {greeting.action && (
               <div className="flex justify-center">
                 <Button onClick={handleAction} className="gap-2 bg-orange-500 hover:bg-orange-600">
-                  {greeting.action === 'create_session' && '🍻 Tạo cuộc nhậu ngay!'}
-                  {greeting.action === 'view_debts' && '📊 Xem công nợ'}
+                  {greeting.action === 'create_session' && 'Nhậu ngay đê! Chờ chi nữa...'}
+                  {greeting.action === 'view_debts' && 'Xem công nợ'}
                 </Button>
               </div>
             )}

@@ -188,19 +188,21 @@ const getTodayKey = () => new Date().toISOString().split('T')[0]
 const getMoodKey = (userId?: string) => `splitbuddy-mood-${userId || 'guest'}`
 const getMoodDateKey = (userId?: string) => `splitbuddy-mood-date-${userId || 'guest'}`
 
-export function MoodProvider({ children }: { children: ReactNode }) {
-  // Get current user ID from localStorage (set by AuthContext)
-  const getCurrentUserId = () => {
-    try {
-      const authData = localStorage.getItem('splitbuddy-auth')
-      if (authData) {
-        const parsed = JSON.parse(authData)
-        return parsed?.user?.id
-      }
-    } catch { /* ignore */ }
-    return undefined
-  }
+// Get current user ID from localStorage
+const getCurrentUserId = (): string | undefined => {
+  try {
+    const userData = localStorage.getItem('user')
+    if (userData) {
+      const parsed = JSON.parse(userData)
+      return parsed?.id
+    }
+  } catch { /* ignore */ }
+  return undefined
+}
 
+export function MoodProvider({ children }: { children: ReactNode }) {
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(getCurrentUserId)
+  
   const [mood, setMoodState] = useState<MoodType>(() => {
     const userId = getCurrentUserId()
     const savedMood = localStorage.getItem(getMoodKey(userId))
@@ -220,19 +222,22 @@ export function MoodProvider({ children }: { children: ReactNode }) {
 
   // Persist mood to localStorage with user ID and date
   useEffect(() => {
-    const userId = getCurrentUserId()
-    localStorage.setItem(getMoodKey(userId), mood)
-    localStorage.setItem(getMoodDateKey(userId), getTodayKey())
-  }, [mood])
+    if (mood !== 'neutral') {
+      localStorage.setItem(getMoodKey(currentUserId), mood)
+      localStorage.setItem(getMoodDateKey(currentUserId), getTodayKey())
+    }
+  }, [mood, currentUserId])
   
-  // Listen for auth changes (login/logout)
+  // Poll for user changes (handles same-tab login/logout)
   useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'splitbuddy-auth') {
-        // User changed - reset mood to check for new user's mood
-        const userId = getCurrentUserId()
-        const savedMood = localStorage.getItem(getMoodKey(userId))
-        const savedDate = localStorage.getItem(getMoodDateKey(userId))
+    const checkUserChange = () => {
+      const newUserId = getCurrentUserId()
+      if (newUserId !== currentUserId) {
+        setCurrentUserId(newUserId)
+        
+        // Load mood for new user
+        const savedMood = localStorage.getItem(getMoodKey(newUserId))
+        const savedDate = localStorage.getItem(getMoodDateKey(newUserId))
         const today = getTodayKey()
         
         if (savedDate === today && savedMood) {
@@ -244,9 +249,11 @@ export function MoodProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
-  }, [])
+    // Check immediately and then every 500ms
+    checkUserChange()
+    const interval = setInterval(checkUserChange, 500)
+    return () => clearInterval(interval)
+  }, [currentUserId])
 
   // Apply mood theme to document
   useEffect(() => {

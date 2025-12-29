@@ -12,6 +12,7 @@ pub mod games;
 pub mod groups;
 pub mod response;
 pub mod sessions;
+pub mod uploads;
 pub mod users;
 
 #[derive(Clone)]
@@ -30,4 +31,5 @@ pub fn routes() -> Router<AppState> {
         .nest("/debts", debts::routes())
         .nest("/ai", ai::routes())
         .nest("/games", games::routes())
+        .nest("/uploads", uploads::routes())
 }

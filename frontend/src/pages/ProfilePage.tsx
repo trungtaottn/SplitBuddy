@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { useAuth } from '@/contexts/AuthContext'
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/toaster'
-import { User, Lock, Camera, Save, Eye, EyeOff } from 'lucide-react'
+import { User, Lock, Camera, Save, Eye, EyeOff, Loader2 } from 'lucide-react'
 import type { ApiResponse } from '@/types/api'
 
 interface UserProfile {
@@ -21,10 +21,12 @@ interface UserProfile {
 export default function ProfilePage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   // Profile form state
   const [fullName, setFullName] = useState(user?.full_name || '')
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '')
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   
   // Password form state
   const [currentPassword, setCurrentPassword] = useState('')
@@ -73,6 +75,53 @@ export default function ProfilePage() {
       toast.error('Mật khẩu hiện tại không đúng')
     },
   })
+
+  // Upload avatar mutation
+  const uploadAvatar = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await api.post<ApiResponse<{ url: string }>>('/uploads/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return res.data.data
+    },
+    onSuccess: (data) => {
+      setAvatarUrl(data.url)
+      setAvatarPreview(null)
+      // Auto-save profile with new avatar
+      updateProfile.mutate({ avatar_url: data.url })
+    },
+    onError: () => {
+      toast.error('Không thể upload ảnh')
+      setAvatarPreview(null)
+    },
+  })
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Vui lòng chọn file ảnh')
+      return
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Ảnh phải nhỏ hơn 5MB')
+      return
+    }
+
+    // Show preview
+    const reader = new FileReader()
+    reader.onload = () => setAvatarPreview(reader.result as string)
+    reader.readAsDataURL(file)
+
+    // Upload
+    uploadAvatar.mutate(file)
+  }
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault()
@@ -127,9 +176,9 @@ export default function ProfilePage() {
             {/* Avatar */}
             <div className="flex items-center gap-4">
               <div className="relative">
-                {avatarUrl ? (
+                {(avatarPreview || avatarUrl) ? (
                   <img
-                    src={avatarUrl}
+                    src={avatarPreview || avatarUrl}
                     alt="Avatar"
                     className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
                   />
@@ -139,19 +188,25 @@ export default function ProfilePage() {
                   </div>
                 )}
                 <label className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center cursor-pointer hover:bg-gray-50 border">
-                  <Camera className="h-4 w-4 text-gray-600" />
-                  <input type="hidden" />
+                  {uploadAvatar.isPending ? (
+                    <Loader2 className="h-4 w-4 text-gray-600 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4 text-gray-600" />
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    disabled={uploadAvatar.isPending}
+                  />
                 </label>
               </div>
               <div className="flex-1">
-                <Label htmlFor="avatar_url">URL ảnh đại diện</Label>
-                <Input
-                  id="avatar_url"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  placeholder="https://example.com/avatar.jpg"
-                  className="mt-1"
-                />
+                <p className="text-sm font-medium mb-1">Ảnh đại diện</p>
+                <p className="text-xs text-gray-500">Click vào icon camera để upload ảnh</p>
+                <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF tối đa 5MB</p>
               </div>
             </div>
 

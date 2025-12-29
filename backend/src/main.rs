@@ -116,13 +116,20 @@ async fn main() -> anyhow::Result<()> {
         .allow_methods(Any)
         .allow_headers(Any);
 
+    // Create uploads directory if it doesn't exist
+    tokio::fs::create_dir_all("uploads/avatars").await.ok();
+
     // Serve static files (frontend) - fallback to index.html for SPA routing
     let static_service = ServeDir::new("static")
         .not_found_service(ServeFile::new("static/index.html"));
+    
+    // Serve uploaded files
+    let uploads_service = ServeDir::new("uploads");
 
     let app = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .nest("/api", api::routes())
+        .nest_service("/uploads", uploads_service)
         .with_state(app_state)
         .fallback_service(static_service)
         .layer(cors)
