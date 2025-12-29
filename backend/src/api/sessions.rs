@@ -1,6 +1,6 @@
 use axum::{
     extract::{Path, State},
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use rust_decimal::Decimal;
@@ -20,7 +20,7 @@ pub fn routes() -> Router<AppState> {
         .route("/:id", get(get_session))
         .route("/:id/participants", post(add_participant))
         .route("/:id/bills", get(list_bills).post(create_bill))
-        .route("/:id/bills/:bill_id", put(update_bill))
+        .route("/:id/bills/:bill_id", put(update_bill).delete(delete_bill))
 }
 
 #[derive(Serialize)]
@@ -394,4 +394,37 @@ async fn update_bill(
     ).await?;
 
     Ok(ok(updated_bill))
+}
+
+async fn delete_bill(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(params): Path<BillPathParams>,
+) -> Result<Json<ApiResponse<()>>, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is participant
+    repo.verify_participant(params.id, auth_user.user_id).await?;
+
+    // Check if bill exists and user is the creator
+    let bill_creator: Option<(Uuid,)> = sqlx::query_as(
+        "SELECT created_by FROM bills WHERE id = $1 AND session_id = $2"
+    )
+    .bind(params.bill_id)
+    .bind(params.id)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    let (creator_id,) = bill_creator.ok_or(AppError::BillNotFound { bill_id: params.bill_id })?;
+
+    if creator_id != auth_user.user_id {
+        return Err(AppError::Forbidden {
+            message: "Chỉ người tạo hóa đơn mới có thể xóa".to_string(),
+        });
+    }
+
+    // Delete bill and recalculate debts
+    repo.delete_bill(params.bill_id, params.id).await?;
+
+    Ok(ok(()))
 }

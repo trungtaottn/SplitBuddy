@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Plus, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2 } from 'lucide-react'
 import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
@@ -107,6 +107,26 @@ export default function SessionDetailPage() {
     onError: (error: any) => {
       const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
       toast.error(message)
+    },
+  })
+
+  const [deletingBillId, setDeletingBillId] = useState<string | null>(null)
+
+  const deleteBill = useMutation({
+    mutationFn: async (billId: string) => {
+      await api.delete(`/sessions/${id}/bills/${billId}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions', id, 'bills'] })
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
+      setDeletingBillId(null)
+      toast.success('Đã xóa hoá đơn!')
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      toast.error(message)
+      setDeletingBillId(null)
     },
   })
 
@@ -436,6 +456,34 @@ export default function SessionDetailPage() {
                             >
                               ✏️
                             </Button>
+                            {deletingBillId === bill.id ? (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => deleteBill.mutate(bill.id)}
+                                  disabled={deleteBill.isPending}
+                                >
+                                  {deleteBill.isPending ? '...' : 'Xóa'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setDeletingBillId(null)}
+                                >
+                                  Hủy
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setDeletingBillId(bill.id)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                         

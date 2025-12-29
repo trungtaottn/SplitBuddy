@@ -736,4 +736,34 @@ impl SessionRepository {
 
         Ok(updated_bill)
     }
+
+    pub async fn delete_bill(
+        &self,
+        bill_id: Uuid,
+        session_id: Uuid,
+    ) -> Result<(), AppError> {
+        let mut tx = self.pool.begin().await?;
+
+        // Delete bill payers
+        sqlx::query!("DELETE FROM bill_payers WHERE bill_id = $1", bill_id)
+            .execute(&mut *tx)
+            .await?;
+
+        // Delete bill splits
+        sqlx::query!("DELETE FROM bill_splits WHERE bill_id = $1", bill_id)
+            .execute(&mut *tx)
+            .await?;
+
+        // Delete the bill itself
+        sqlx::query!("DELETE FROM bills WHERE id = $1", bill_id)
+            .execute(&mut *tx)
+            .await?;
+
+        // Recalculate debts for the session
+        Self::recalculate_debts(&mut tx, session_id).await?;
+
+        tx.commit().await?;
+
+        Ok(())
+    }
 }
