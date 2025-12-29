@@ -204,7 +204,7 @@ Nếu người dùng vui -> gợi ý tạo cuộc nhậu ăn mừng."#, first_na
 
     let (suggestion, action) = if mood.is_some() {
         (
-            Some("Tạo cuộc nhậu ngay nào! 🍻".to_string()),
+            Some("Rủ nhậu liềnnnnnn".to_string()),
             Some("create_session".to_string()),
         )
     } else {

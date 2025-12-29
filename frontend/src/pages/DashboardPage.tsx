@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, MapPin, TrendingDown, TrendingUp, Calendar, Beer, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, TrendingDown, TrendingUp, Beer, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
 import AiGreeting from '@/components/AiGreeting'
 import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
+import { SessionCard } from '@/components/SessionCard'
+import { EmptyState } from '@/components/EmptyState'
+import { SessionListSkeleton } from '@/components/ui/skeleton'
 import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupDetail, PaginatedResponse } from '@/types/api'
 
 export default function DashboardPage() {
@@ -224,70 +227,49 @@ export default function DashboardPage() {
       </div>
 
       {sessionsLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-6 w-3/4 rounded bg-gray-200" />
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="h-4 w-1/2 rounded bg-gray-200" />
-                  <div className="h-4 w-1/3 rounded bg-gray-200" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <SessionListSkeleton count={3} />
       ) : sessions?.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">Chưa có cuộc nhậu nào</p>
-            <Button onClick={() => setShowCreateModal(true)} className="mt-4 gap-2">
-              <Plus className="h-4 w-4" />
-              Tạo cuộc nhậu đầu tiên
-            </Button>
-          </CardContent>
-        </Card>
+        debouncedSearch ? (
+          <EmptyState
+            type="search"
+            searchTerm={debouncedSearch}
+            action={{
+              label: 'Xóa tìm kiếm',
+              onClick: () => setSearchTerm(''),
+            }}
+          />
+        ) : (
+          <EmptyState
+            type="sessions"
+            action={{
+              label: 'Tạo buổi nhậu đầu tiên',
+              onClick: () => setShowCreateModal(true),
+            }}
+            secondaryAction={{
+              label: 'Tạo nhóm bạn nhậu',
+              onClick: () => navigate('/groups'),
+            }}
+          />
+        )
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sessions?.map((session) => (
             <FunTooltip key={session.id} messages={FUN_MESSAGES.sessionCard}>
-              <Link to={`/sessions/${session.id}`} className="block">
-                <Card className="cursor-pointer border shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 group overflow-hidden relative">
-                  {/* Animated background on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-orange-500/0 via-pink-500/0 to-purple-500/0 group-hover:from-orange-500/5 group-hover:via-pink-500/5 group-hover:to-purple-500/5 transition-all duration-500" />
-                  
-                  <CardHeader className="p-4 pb-2 relative">
-                    <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                      <Beer className="h-5 w-5 text-orange-500 group-hover:animate-wiggle" />
-                      <span className="truncate">{session.name}</span>
-                    </CardTitle>
-                  </CardHeader>
-                  
-                  <CardContent className="p-4 pt-0 space-y-2 relative">
-                    <div className="flex items-center gap-2 text-base text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      {new Date(session.session_date).toLocaleDateString('vi-VN')}
-                    </div>
-                    {session.location && (
-                      <div className="flex items-center gap-2 text-base text-muted-foreground">
-                        <MapPin className="h-4 w-4" />
-                        <span className="truncate">{session.location}</span>
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                      <span className="text-base text-muted-foreground">
-                        {session.participant_count} người
-                      </span>
-                      <span className="text-lg font-bold text-orange-500">
-                        {formatCurrency(session.total_amount)}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+              <SessionCard
+                id={session.id}
+                name={session.name}
+                location={session.location}
+                date={session.session_date}
+                status={session.status === 'closed' ? 'settled' : 'active'}
+                total_amount={Number(session.total_amount) || 0}
+                participants={[
+                  // Mock participants for now - API should return this
+                  ...Array.from({ length: Math.min(session.participant_count || 1, 5) }).map((_, i) => ({
+                    id: `p${i}`,
+                    name: `Người ${i + 1}`,
+                  })),
+                ]}
+              />
             </FunTooltip>
           ))}
         </div>

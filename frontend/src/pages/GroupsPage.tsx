@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, Plus, UserPlus, Trash2, BarChart3 } from 'lucide-react'
+import { Users, Plus, UserPlus, Trash2, BarChart3, Beer } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
 import type { Group, GroupDetail, ApiResponse, CreateGroupDto, AddMemberDto, GroupMember } from '@/types/api'
 import { useAuth } from '@/contexts/AuthContext'
@@ -88,6 +88,32 @@ export default function GroupsPage() {
     },
   })
 
+  // Quick create session from group
+  const quickCreateSession = useMutation({
+    mutationFn: async (groupId: string) => {
+      const today = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+      const res = await api.post<ApiResponse<{ id: string }>>('/sessions', {
+        name: `Nhậu ${today}`,
+        group_id: groupId,
+        session_date: new Date().toISOString().split('T')[0],
+      })
+      return res.data.data
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      toast.success('Tạo buổi nhậu thành công! 🍺')
+      navigate(`/sessions/${data.id}`)
+    },
+    onError: () => {
+      toast.error('Có lỗi xảy ra khi tạo buổi nhậu')
+    },
+  })
+
+  const handleQuickCreateSession = (e: React.MouseEvent, groupId: string) => {
+    e.stopPropagation()
+    quickCreateSession.mutate(groupId)
+  }
+
   const handleCreateGroup = (e: React.FormEvent) => {
     e.preventDefault()
     createGroup.mutate({
@@ -166,18 +192,28 @@ export default function GroupsPage() {
                   <span className="rounded-full bg-primary/10 px-2 py-1 text-sm text-primary">
                     {group.member_count} thành viên
                   </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      navigate(`/groups/${group.id}/debts`)
-                    }}
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                    Công nợ
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="gap-1 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+                      onClick={(e) => handleQuickCreateSession(e, group.id)}
+                      disabled={quickCreateSession.isPending}
+                    >
+                      <Beer className="h-4 w-4" />
+                      {quickCreateSession.isPending ? '...' : 'Nhậu ngay!'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigate(`/groups/${group.id}/debts`)
+                      }}
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

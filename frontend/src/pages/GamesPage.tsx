@@ -387,7 +387,7 @@ export default function GamesPage() {
       {/* Game Result Overlay */}
       {gamePhase === 'revealed' && (gameContent || diceResult) && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
-          <Card className="max-w-lg w-full mx-4 border-2 border-orange-300 shadow-2xl animate-in zoom-in-95">
+          <Card className="max-w-lg w-full mx-4 border-2 border-orange-300 shadow-2xl animate-reveal-pop [animation-fill-mode:both]">
             <CardHeader className="pb-2">
               <CardTitle className="text-center flex items-center justify-center gap-2">
                 {currentGame === 'truth_or_dare' && (
@@ -440,7 +440,7 @@ export default function GamesPage() {
                 <>
                   {/* Dice Display */}
                   <div className="flex items-center justify-center gap-6">
-                    <div className={`w-24 h-24 rounded-2xl shadow-2xl flex items-center justify-center text-5xl font-black bg-gradient-to-br transition-all duration-300 ${
+                    <div className={`w-24 h-24 rounded-2xl shadow-2xl flex items-center justify-center text-5xl font-black bg-gradient-to-br transition-all duration-300 animate-bounce-in [animation-delay:0.1s] [animation-fill-mode:both] ${
                       diceResult.severity === 'extreme' ? 'from-red-500 to-orange-500 text-white animate-pulse border-4 border-red-300' :
                       diceResult.severity === 'spicy' ? 'from-orange-400 to-yellow-400 text-white border-4 border-orange-300' :
                       diceResult.severity === 'mild' ? 'from-blue-400 to-cyan-400 text-white border-4 border-blue-300' :
@@ -448,7 +448,7 @@ export default function GamesPage() {
                     }`}>
                       {diceResult.dice1}
                     </div>
-                    <div className={`w-24 h-24 rounded-2xl shadow-2xl flex items-center justify-center text-5xl font-black bg-gradient-to-br transition-all duration-300 ${
+                    <div className={`w-24 h-24 rounded-2xl shadow-2xl flex items-center justify-center text-5xl font-black bg-gradient-to-br transition-all duration-300 animate-bounce-in [animation-delay:0.3s] [animation-fill-mode:both] ${
                       diceResult.severity === 'extreme' ? 'from-red-500 to-orange-500 text-white animate-pulse border-4 border-red-300' :
                       diceResult.severity === 'spicy' ? 'from-orange-400 to-yellow-400 text-white border-4 border-orange-300' :
                       diceResult.severity === 'mild' ? 'from-blue-400 to-cyan-400 text-white border-4 border-blue-300' :
