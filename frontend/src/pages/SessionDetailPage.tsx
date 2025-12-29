@@ -206,7 +206,8 @@ export default function SessionDetailPage() {
       navigate('/')
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      console.error('Delete session error:', error)
+      const message = error?.response?.data?.error?.message || error?.message || 'Có lỗi xảy ra khi xóa session'
       toast.error(message)
       setShowDeleteConfirm(false)
     },
