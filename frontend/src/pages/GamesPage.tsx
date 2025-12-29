@@ -3,46 +3,51 @@ import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCircle, X, Skull, Zap, AlertCircle, PartyPopper } from 'lucide-react'
+import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCircle, X, Skull, Zap, AlertCircle, Target, Hand } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
 import type { ApiResponse } from '@/types/api'
 
 type GameType = 'truth_or_dare' | 'never_have_i_ever' | 'challenge' | 'dice'
 
-const GAME_INFO: Record<GameType, { name: string; icon: string; color: string; warning: string }> = {
+const GAME_INFO: Record<GameType, { name: string; color: string; warning: string }> = {
   truth_or_dare: { 
     name: 'Sự thật hay Thách thức', 
-    icon: '🎯', 
     color: 'pink',
     warning: 'Chuẩn bị tinh thần! Có thể bạn sẽ phải thú nhận điều không muốn...'
   },
   never_have_i_ever: { 
     name: 'Tôi chưa bao giờ', 
-    icon: '🙅', 
     color: 'blue',
     warning: 'Ai đã từng làm sẽ phải uống! Bạn có bí mật gì không?'
   },
   challenge: { 
     name: 'Thử thách', 
-    icon: '🔥', 
     color: 'orange',
     warning: 'Thử thách điên rồ đang chờ! Từ chối = PHẠT NẶNG!'
   },
   dice: { 
     name: 'Tung xúc xắc', 
-    icon: '🎲', 
     color: 'purple',
     warning: 'Số phận sẽ quyết định! Ra đôi = Bạn là VƯƠNG!'
   }
 }
 
 const SUSPENSE_MESSAGES = [
-  'Đang xáo trộn câu hỏi... 🃏',
-  'Hmm, câu nào nhỉ... 🤔',
-  'Chuẩn bị tinh thần nào... 😈',
-  'Đây sẽ là câu THÚ VỊ... 👀',
-  'Số phận đang quyết định... ⚡',
+  'Đang xáo trộn câu hỏi...',
+  'Hmm, câu nào nhỉ...',
+  'Chuẩn bị tinh thần nào...',
+  'Đây sẽ là câu THÚ VỊ...',
+  'Số phận đang quyết định...',
 ]
+
+const GameIcon = ({ type, className }: { type: GameType; className?: string }) => {
+  switch (type) {
+    case 'truth_or_dare': return <Target className={className} />
+    case 'never_have_i_ever': return <Hand className={className} />
+    case 'challenge': return <Flame className={className} />
+    case 'dice': return <Dices className={className} />
+  }
+}
 
 interface GameContent {
   id: string
@@ -62,16 +67,16 @@ interface DiceResult {
 
 const GAME_RULES = {
   truth_or_dare: {
-    title: '🎯 Luật chơi Sự thật hay Thách thức',
+    title: 'Luật chơi Sự thật hay Thách thức',
     rules: [
       'Chọn Sự thật hoặc Thách thức',
       'Không trả lời = Uống 2 shot',
       'Từ chối thách thức = Uống 3 shot',
-      'Nói dối bị phát hiện = Uống 5 shot 🔥'
+      'Nói dối bị phát hiện = Uống 5 shot'
     ]
   },
   never_have_i_ever: {
-    title: '🙅 Luật chơi Tôi chưa bao giờ',
+    title: 'Luật chơi Tôi chưa bao giờ',
     rules: [
       'Đọc câu "Tôi chưa bao giờ..."',
       'Ai ĐÃ TỪNG làm điều đó phải UỐNG',
@@ -80,16 +85,16 @@ const GAME_RULES = {
     ]
   },
   challenge: {
-    title: '🔥 Luật chơi Thử thách',
+    title: 'Luật chơi Thử thách',
     rules: [
       'Hoàn thành thử thách được đưa ra',
       'Thất bại = Uống theo độ khó',
       'Dễ: 1 shot | Trung bình: 2 shot',
-      'Khó: 3 shot | Cực khó: 5 shot 💀'
+      'Khó: 3 shot | Cực khó: 5 shot'
     ]
   },
   dice: {
-    title: '🎲 Luật chơi Xúc xắc',
+    title: 'Luật chơi Xúc xắc',
     rules: [
       'Tung 2 xúc xắc và làm theo kết quả',
       'Ra đôi = Chọn người uống',
@@ -352,100 +357,102 @@ export default function GamesPage() {
         </Card>
       </div>
 
-      {/* Game Result */}
-      {(gameContent || diceResult) && (
-        <Card className="border-2 border-dashed border-orange-300 bg-gradient-to-br from-orange-50 to-pink-50">
-          <CardHeader>
-            <CardTitle className="text-center flex items-center justify-center gap-2">
-              {currentGame === 'truth_or_dare' && (
+      {/* Game Result Overlay */}
+      {isRevealed && (gameContent || diceResult) && !isLoading && countdown === 0 && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <Card className="max-w-lg w-full mx-4 border-2 border-orange-300 shadow-2xl animate-in zoom-in-95">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-center flex items-center justify-center gap-2">
+                {currentGame === 'truth_or_dare' && (
+                  <>
+                    <MessageCircleQuestion className="h-6 w-6 text-pink-500" />
+                    {gameContent?.content_type === 'truth' ? 'Sự thật' : 'Thách thức'}
+                  </>
+                )}
+                {currentGame === 'never_have_i_ever' && (
+                  <>
+                    <Hand className="h-6 w-6 text-blue-500" />
+                    Tôi chưa bao giờ...
+                  </>
+                )}
+                {currentGame === 'challenge' && (
+                  <>
+                    <Flame className="h-6 w-6 text-orange-500" />
+                    Thử thách
+                  </>
+                )}
+                {currentGame === 'dice' && (
+                  <>
+                    <Dices className="h-6 w-6 text-purple-500" />
+                    Kết quả xúc xắc
+                  </>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              {gameContent && (
                 <>
-                  <MessageCircleQuestion className="h-6 w-6 text-pink-500" />
-                  {gameContent?.content_type === 'truth' ? '🤔 Sự thật' : '🎯 Thách thức'}
-                </>
-              )}
-              {currentGame === 'never_have_i_ever' && (
-                <>🙅 Tôi chưa bao giờ...</>
-              )}
-              {currentGame === 'challenge' && (
-                <>
-                  <Flame className="h-6 w-6 text-orange-500" />
-                  Thử thách
-                </>
-              )}
-              {currentGame === 'dice' && (
-                <>
-                  <Dices className="h-6 w-6 text-purple-500" />
-                  Kết quả xúc xắc
-                </>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            {gameContent && (
-              <>
-                <p className="text-2xl font-semibold leading-relaxed animate-fade-in">{gameContent.content}</p>
-                <div className="flex items-center justify-center gap-3">
-                  <span className={`inline-block px-4 py-1.5 rounded-full text-sm font-bold ${getDifficultyColor(gameContent.difficulty)}`}>
-                    {getDifficultyLabel(gameContent.difficulty)}
-                  </span>
-                  {gameContent.difficulty && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
-                      <Beer className="h-4 w-4" />
-                      {gameContent.difficulty === 'easy' && '1 shot nếu từ chối'}
-                      {gameContent.difficulty === 'medium' && '2 shot nếu từ chối'}
-                      {gameContent.difficulty === 'hard' && '3 shot nếu từ chối'}
-                      {gameContent.difficulty === 'extreme' && '5 shot nếu từ chối 💀'}
+                  <p className="text-2xl font-semibold leading-relaxed">{gameContent.content}</p>
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    <span className={`inline-block px-4 py-1.5 rounded-full text-sm font-bold ${getDifficultyColor(gameContent.difficulty)}`}>
+                      {getDifficultyLabel(gameContent.difficulty)}
                     </span>
+                    {gameContent.difficulty && (
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
+                        <Beer className="h-4 w-4" />
+                        {gameContent.difficulty === 'easy' && '1 shot nếu từ chối'}
+                        {gameContent.difficulty === 'medium' && '2 shot nếu từ chối'}
+                        {gameContent.difficulty === 'hard' && '3 shot nếu từ chối'}
+                        {gameContent.difficulty === 'extreme' && '5 shot nếu từ chối'}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
+              {diceResult && (
+                <>
+                  <div className="flex items-center justify-center gap-6">
+                    <div className={`w-20 h-20 rounded-xl shadow-xl flex items-center justify-center text-4xl font-bold bg-white border-2 ${diceResult.is_double ? 'border-yellow-400 animate-pulse' : 'border-gray-200'}`}>
+                      {diceResult.dice1}
+                    </div>
+                    <div className={`w-20 h-20 rounded-xl shadow-xl flex items-center justify-center text-4xl font-bold bg-white border-2 ${diceResult.is_double ? 'border-yellow-400 animate-pulse' : 'border-gray-200'}`}>
+                      {diceResult.dice2}
+                    </div>
+                  </div>
+                  <p className={`text-2xl font-bold ${diceResult.is_double ? 'text-yellow-600' : diceResult.total === 7 ? 'text-red-600' : 'text-gray-800'}`}>
+                    {diceResult.message}
+                  </p>
+                  {(diceResult.total === 2 || diceResult.total === 12) && (
+                    <p className="text-red-500 font-medium flex items-center justify-center gap-1">
+                      <Flame className="h-4 w-4" /> Uống gấp đôi!
+                    </p>
                   )}
-                </div>
-              </>
-            )}
-            {diceResult && (
-              <>
-                <div className="flex items-center justify-center gap-6 text-7xl">
-                  <span className={`bg-white rounded-xl shadow-xl p-5 border-2 ${diceResult.is_double ? 'border-yellow-400 animate-pulse' : 'border-gray-200'}`}>
-                    {['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][diceResult.dice1 - 1]}
-                  </span>
-                  <span className={`bg-white rounded-xl shadow-xl p-5 border-2 ${diceResult.is_double ? 'border-yellow-400 animate-pulse' : 'border-gray-200'}`}>
-                    {['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][diceResult.dice2 - 1]}
-                  </span>
-                </div>
-                <p className={`text-2xl font-bold ${diceResult.is_double ? 'text-yellow-600' : diceResult.total === 7 ? 'text-red-600' : 'text-gray-800'}`}>
-                  {diceResult.message}
-                </p>
-                {diceResult.total === 2 || diceResult.total === 12 ? (
-                  <p className="text-red-500 font-medium animate-bounce">🔥 Uống gấp đôi!</p>
-                ) : null}
-              </>
-            )}
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  if (currentGame === 'truth_or_dare') truthOrDare.mutate()
-                  else if (currentGame === 'never_have_i_ever') neverHaveIEver.mutate()
-                  else if (currentGame === 'challenge') challenge.mutate()
-                  else if (currentGame === 'dice') rollDice.mutate()
-                }}
-                className="gap-2"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Câu tiếp theo
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setGameContent(null)
-                  setDiceResult(null)
-                  setCurrentGame(null)
-                }}
-                className="text-gray-500"
-              >
-                Đổi trò chơi
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                </>
+              )}
+              <div className="flex items-center justify-center gap-3 pt-4">
+                <Button 
+                  onClick={() => currentGame && startGame(currentGame)}
+                  className="gap-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Câu tiếp theo
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setGameContent(null)
+                    setDiceResult(null)
+                    setCurrentGame(null)
+                    setIsRevealed(false)
+                  }}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Đóng
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Confirmation Modal */}
@@ -453,8 +460,8 @@ export default function GamesPage() {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <Card className="max-w-md w-full animate-in zoom-in-95 border-2 border-orange-300 shadow-2xl">
             <CardContent className="p-6 text-center space-y-4">
-              <div className="text-6xl animate-bounce">
-                {GAME_INFO[pendingGame].icon}
+              <div className="h-20 w-20 mx-auto rounded-full bg-gradient-to-br from-orange-100 to-pink-100 flex items-center justify-center animate-bounce">
+                <GameIcon type={pendingGame} className="h-10 w-10 text-orange-500" />
               </div>
               <h2 className="text-2xl font-bold">{GAME_INFO[pendingGame].name}</h2>
               <p className="text-orange-600 font-medium flex items-center justify-center gap-2">
@@ -462,7 +469,9 @@ export default function GamesPage() {
                 {GAME_INFO[pendingGame].warning}
               </p>
               <div className="bg-gray-100 rounded-lg p-3 text-sm text-gray-600">
-                <p className="font-semibold mb-1">⚠️ Nhớ luật chơi:</p>
+                <p className="font-semibold mb-1 flex items-center justify-center gap-1">
+                  <AlertCircle className="h-4 w-4" /> Nhớ luật chơi:
+                </p>
                 <p>Từ chối/Thất bại = Phải uống phạt!</p>
               </div>
               <div className="flex gap-3 pt-2">
@@ -471,13 +480,14 @@ export default function GamesPage() {
                   className="flex-1"
                   onClick={() => setPendingGame(null)}
                 >
-                  Để sau 😅
+                  Để sau
                 </Button>
                 <Button 
                   className="flex-1 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
                   onClick={() => startGame(pendingGame)}
                 >
-                  Chơi thôi! 🔥
+                  <Flame className="h-4 w-4 mr-1" />
+                  Chơi thôi!
                 </Button>
               </div>
             </CardContent>
@@ -494,7 +504,7 @@ export default function GamesPage() {
                 <div className="relative">
                   <div className="w-32 h-32 mx-auto rounded-full border-4 border-orange-500/30 border-t-orange-500 animate-spin" />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-5xl animate-pulse">🎰</span>
+                    <Sparkles className="h-12 w-12 text-orange-400 animate-pulse" />
                   </div>
                 </div>
                 <p className="text-white text-xl font-medium animate-pulse">{loadingMessage}</p>
@@ -518,16 +528,6 @@ export default function GamesPage() {
                 </p>
               </>
             ) : null}
-          </div>
-        </div>
-      )}
-
-      {/* Reveal Animation */}
-      {isRevealed && (gameContent || diceResult) && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 animate-in slide-in-from-top-4">
-          <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2">
-            <PartyPopper className="h-5 w-5" />
-            <span className="font-bold">Số phận đã định!</span>
           </div>
         </div>
       )}
