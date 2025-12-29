@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO spin_history (id, session_id, winner_participant_id, spin_type, custom_task, spun_by, created_at)\n        VALUES ($1, $2, $3, $4, $5, $6, NOW())\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9084b776d0630ba6301808e30a1015f696f26e1b759b5bd0a3bb6a20142d33de"
+}

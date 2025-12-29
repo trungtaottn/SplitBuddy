@@ -27,7 +27,7 @@ const STATUS_CONFIG = {
     className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   },
   settled: {
-    label: 'Đã thanh toán',
+    label: 'Đã xong',
     className: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
   },
   pending: {
