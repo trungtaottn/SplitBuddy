@@ -80,13 +80,19 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Connecting to database...");
     
-    // Heroku Postgres requires SSL - append sslmode if not present
+    // Only add sslmode=require for Heroku (production) - check if DATABASE_URL contains heroku
     let database_url = if config.database_url.contains("sslmode") {
         config.database_url.clone()
-    } else if config.database_url.contains('?') {
-        format!("{}&sslmode=require", config.database_url)
+    } else if config.database_url.contains("heroku") || config.database_url.contains("amazonaws") {
+        // Production database - require SSL
+        if config.database_url.contains('?') {
+            format!("{}&sslmode=require", config.database_url)
+        } else {
+            format!("{}?sslmode=require", config.database_url)
+        }
     } else {
-        format!("{}?sslmode=require", config.database_url)
+        // Local development - no SSL
+        config.database_url.clone()
     };
     
     let pool = PgPoolOptions::new()
