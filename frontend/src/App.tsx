@@ -3,6 +3,7 @@ import { useAuth } from './contexts/AuthContext'
 import { MoodProvider } from './contexts/MoodContext'
 import { Toaster } from './components/ui/toaster'
 import { FloatingChat } from './components/chat/FloatingChat'
+import { MoodEffects } from './components/MoodEffects'
 
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
@@ -64,6 +65,7 @@ function App() {
           <Route path="admin" element={<AdminPage />} />
         </Route>
       </Routes>
+      <MoodEffects />
       <FloatingChat />
       <Toaster />
     </MoodProvider>
