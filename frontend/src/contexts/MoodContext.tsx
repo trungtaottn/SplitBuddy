@@ -161,6 +161,7 @@ export const MOOD_CONFIGS: Record<MoodType, MoodConfig> = {
 interface MoodContextType {
   mood: MoodType
   setMood: (mood: MoodType) => void
+  resetMood: () => void
   moodConfig: MoodConfig
   isChatOpen: boolean
   toggleChat: () => void
@@ -180,20 +181,72 @@ export interface ChatMessage {
 
 const MoodContext = createContext<MoodContextType | null>(null)
 
+// Helper to get today's date string
+const getTodayKey = () => new Date().toISOString().split('T')[0]
+
+// Helper to get mood storage key for a user
+const getMoodKey = (userId?: string) => `splitbuddy-mood-${userId || 'guest'}`
+const getMoodDateKey = (userId?: string) => `splitbuddy-mood-date-${userId || 'guest'}`
+
 export function MoodProvider({ children }: { children: ReactNode }) {
+  // Get current user ID from localStorage (set by AuthContext)
+  const getCurrentUserId = () => {
+    try {
+      const authData = localStorage.getItem('splitbuddy-auth')
+      if (authData) {
+        const parsed = JSON.parse(authData)
+        return parsed?.user?.id
+      }
+    } catch { /* ignore */ }
+    return undefined
+  }
+
   const [mood, setMoodState] = useState<MoodType>(() => {
-    const saved = localStorage.getItem('splitbuddy-mood')
-    return (saved as MoodType) || 'neutral'
+    const userId = getCurrentUserId()
+    const savedMood = localStorage.getItem(getMoodKey(userId))
+    const savedDate = localStorage.getItem(getMoodDateKey(userId))
+    const today = getTodayKey()
+    
+    // Reset to neutral if it's a new day or no mood saved
+    if (savedDate !== today || !savedMood) {
+      return 'neutral'
+    }
+    return savedMood as MoodType
   })
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
 
   const moodConfig = MOOD_CONFIGS[mood]
 
-  // Persist mood to localStorage
+  // Persist mood to localStorage with user ID and date
   useEffect(() => {
-    localStorage.setItem('splitbuddy-mood', mood)
+    const userId = getCurrentUserId()
+    localStorage.setItem(getMoodKey(userId), mood)
+    localStorage.setItem(getMoodDateKey(userId), getTodayKey())
   }, [mood])
+  
+  // Listen for auth changes (login/logout)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'splitbuddy-auth') {
+        // User changed - reset mood to check for new user's mood
+        const userId = getCurrentUserId()
+        const savedMood = localStorage.getItem(getMoodKey(userId))
+        const savedDate = localStorage.getItem(getMoodDateKey(userId))
+        const today = getTodayKey()
+        
+        if (savedDate === today && savedMood) {
+          setMoodState(savedMood as MoodType)
+        } else {
+          setMoodState('neutral')
+        }
+        setChatHistory([]) // Clear chat on user change
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
 
   // Apply mood theme to document
   useEffect(() => {
@@ -210,6 +263,12 @@ export function MoodProvider({ children }: { children: ReactNode }) {
   const setMood = (newMood: MoodType) => {
     setMoodState(newMood)
   }
+  
+  // Reset mood to neutral (called on logout)
+  const resetMood = () => {
+    setMoodState('neutral')
+    setChatHistory([])
+  }
 
   const toggleChat = () => setIsChatOpen(prev => !prev)
   const openChat = () => setIsChatOpen(true)
@@ -225,6 +284,7 @@ export function MoodProvider({ children }: { children: ReactNode }) {
     <MoodContext.Provider value={{
       mood,
       setMood,
+      resetMood,
       moodConfig,
       isChatOpen,
       toggleChat,
