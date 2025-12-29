@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
+import { MoodProvider } from './contexts/MoodContext'
 import { Toaster } from './components/ui/toaster'
+import { FloatingChat } from './components/chat/FloatingChat'
 
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
@@ -42,7 +44,7 @@ function AdminRedirect() {
 
 function App() {
   return (
-    <>
+    <MoodProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
@@ -62,8 +64,9 @@ function App() {
           <Route path="admin" element={<AdminPage />} />
         </Route>
       </Routes>
+      <FloatingChat />
       <Toaster />
-    </>
+    </MoodProvider>
   )
 }
 

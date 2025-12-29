@@ -1,10 +1,12 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { useMood } from '@/contexts/MoodContext'
 import { LogOut, User, Wallet, Home, Users, Shield, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function AppLayout() {
   const { user, logout } = useAuth()
+  const { moodConfig } = useMood()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -18,7 +20,7 @@ export default function AppLayout() {
   const isActive = (path: string) => location.pathname === path
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50/50 to-white pb-16 md:pb-0">
+    <div className={`min-h-screen bg-gradient-to-b ${moodConfig.theme.background} pb-16 md:pb-0 transition-colors duration-500`}>
       {/* Desktop Header */}
       <header className="sticky top-0 z-50 border-b border-white/20 glass shadow-sm">
         <div className="container mx-auto flex h-14 items-center justify-between px-4 md:h-16">
