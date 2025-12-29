@@ -62,7 +62,11 @@ interface DiceResult {
   dice2: number
   total: number
   is_double: boolean
-  message: string
+  rule_name: string
+  rule_description: string
+  action: string
+  severity: 'safe' | 'mild' | 'spicy' | 'extreme'
+  target: 'self' | 'choose' | 'all' | 'left' | 'right' | 'none'
 }
 
 const GAME_RULES = {
@@ -411,22 +415,67 @@ export default function GamesPage() {
               )}
               {diceResult && (
                 <>
+                  {/* Dice Display */}
                   <div className="flex items-center justify-center gap-6">
-                    <div className={`w-20 h-20 rounded-xl shadow-xl flex items-center justify-center text-4xl font-bold bg-white border-2 ${diceResult.is_double ? 'border-yellow-400 animate-pulse' : 'border-gray-200'}`}>
+                    <div className={`w-24 h-24 rounded-2xl shadow-2xl flex items-center justify-center text-5xl font-black bg-gradient-to-br transition-all duration-300 ${
+                      diceResult.severity === 'extreme' ? 'from-red-500 to-orange-500 text-white animate-pulse border-4 border-red-300' :
+                      diceResult.severity === 'spicy' ? 'from-orange-400 to-yellow-400 text-white border-4 border-orange-300' :
+                      diceResult.severity === 'mild' ? 'from-blue-400 to-cyan-400 text-white border-4 border-blue-300' :
+                      'from-gray-100 to-white text-gray-800 border-2 border-gray-200'
+                    }`}>
                       {diceResult.dice1}
                     </div>
-                    <div className={`w-20 h-20 rounded-xl shadow-xl flex items-center justify-center text-4xl font-bold bg-white border-2 ${diceResult.is_double ? 'border-yellow-400 animate-pulse' : 'border-gray-200'}`}>
+                    <div className={`w-24 h-24 rounded-2xl shadow-2xl flex items-center justify-center text-5xl font-black bg-gradient-to-br transition-all duration-300 ${
+                      diceResult.severity === 'extreme' ? 'from-red-500 to-orange-500 text-white animate-pulse border-4 border-red-300' :
+                      diceResult.severity === 'spicy' ? 'from-orange-400 to-yellow-400 text-white border-4 border-orange-300' :
+                      diceResult.severity === 'mild' ? 'from-blue-400 to-cyan-400 text-white border-4 border-blue-300' :
+                      'from-gray-100 to-white text-gray-800 border-2 border-gray-200'
+                    }`}>
                       {diceResult.dice2}
                     </div>
                   </div>
-                  <p className={`text-2xl font-bold ${diceResult.is_double ? 'text-yellow-600' : diceResult.total === 7 ? 'text-red-600' : 'text-gray-800'}`}>
-                    {diceResult.message}
-                  </p>
-                  {(diceResult.total === 2 || diceResult.total === 12) && (
-                    <p className="text-red-500 font-medium flex items-center justify-center gap-1">
-                      <Flame className="h-4 w-4" /> Uống gấp đôi!
+                  
+                  {/* Rule Name & Badge */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-center gap-2">
+                      <span className={`text-3xl font-black ${
+                        diceResult.severity === 'extreme' ? 'text-red-600' :
+                        diceResult.severity === 'spicy' ? 'text-orange-600' :
+                        diceResult.severity === 'mild' ? 'text-blue-600' :
+                        'text-gray-600'
+                      }`}>
+                        {diceResult.rule_name}
+                      </span>
+                      {diceResult.is_double && (
+                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-bold rounded-full animate-bounce">
+                          ĐÔI!
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-600 text-lg">{diceResult.rule_description}</p>
+                  </div>
+
+                  {/* Action Card */}
+                  <div className={`p-4 rounded-xl border-2 ${
+                    diceResult.severity === 'extreme' ? 'bg-red-50 border-red-300' :
+                    diceResult.severity === 'spicy' ? 'bg-orange-50 border-orange-300' :
+                    diceResult.severity === 'mild' ? 'bg-blue-50 border-blue-300' :
+                    'bg-green-50 border-green-300'
+                  }`}>
+                    <p className="font-bold text-lg flex items-center justify-center gap-2">
+                      {diceResult.severity === 'extreme' && <Skull className="h-5 w-5 text-red-500" />}
+                      {diceResult.severity === 'spicy' && <Flame className="h-5 w-5 text-orange-500" />}
+                      {diceResult.severity === 'mild' && <Beer className="h-5 w-5 text-blue-500" />}
+                      {diceResult.severity === 'safe' && <Sparkles className="h-5 w-5 text-green-500" />}
+                      {diceResult.action}
                     </p>
-                  )}
+                    <p className="text-sm text-gray-500 mt-1">
+                      {diceResult.target === 'self' && 'Bạn phải thực hiện'}
+                      {diceResult.target === 'choose' && 'Chọn người thực hiện'}
+                      {diceResult.target === 'all' && 'Tất cả cùng chơi'}
+                      {diceResult.target === 'none' && 'Không ai phải làm gì'}
+                    </p>
+                  </div>
                 </>
               )}
               <div className="flex items-center justify-center gap-3 pt-4">
@@ -497,17 +546,26 @@ export default function GamesPage() {
 
       {/* Loading Suspense Overlay */}
       {(isLoading || countdown > 0) && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-md">
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-md">
           <div className="text-center space-y-6">
             {isLoading ? (
               <>
-                <div className="relative">
-                  <div className="w-32 h-32 mx-auto rounded-full border-4 border-orange-500/30 border-t-orange-500 animate-spin" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Sparkles className="h-12 w-12 text-orange-400 animate-pulse" />
+                {/* Animated Dice Rolling */}
+                <div className="flex items-center justify-center gap-4">
+                  <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl shadow-2xl flex items-center justify-center text-4xl font-black text-white animate-bounce" style={{ animationDelay: '0s' }}>
+                    {Math.floor(Math.random() * 6) + 1}
+                  </div>
+                  <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl shadow-2xl flex items-center justify-center text-4xl font-black text-white animate-bounce" style={{ animationDelay: '0.1s' }}>
+                    {Math.floor(Math.random() * 6) + 1}
                   </div>
                 </div>
-                <p className="text-white text-xl font-medium animate-pulse">{loadingMessage}</p>
+                <div className="relative">
+                  <div className="w-24 h-24 mx-auto rounded-full border-4 border-orange-500/30 border-t-orange-500 animate-spin" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Dices className="h-10 w-10 text-orange-400 animate-pulse" />
+                  </div>
+                </div>
+                <p className="text-white text-2xl font-bold animate-pulse">{loadingMessage}</p>
                 <div className="flex justify-center gap-1">
                   {[...Array(3)].map((_, i) => (
                     <div 
