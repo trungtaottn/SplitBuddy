@@ -250,3 +250,51 @@ export interface MemberSessionAmount {
   user_id: string
   amount_owed: string
 }
+
+// Game Types
+export interface GameHistoryEntry {
+  id: string
+  game_type: string
+  content_text: string
+  difficulty: string | null
+  player_name: string | null
+  result: string | null
+  drink_count: number | null
+  created_at: string
+}
+
+export interface CustomQuestion {
+  id: string
+  user_id: string
+  game_type: string
+  content_type: string
+  content: string
+  difficulty: string | null
+  is_public: boolean | null
+  use_count: number | null
+  created_at: string
+}
+
+export interface CreateCustomQuestion {
+  game_type: string
+  content_type?: string
+  content: string
+  difficulty?: string
+  is_public?: boolean
+}
+
+export interface DrinkingStats {
+  participant_id: string
+  participant_name: string
+  total_drinks: number
+  games_played: number
+  games_lost: number
+}
+
+export interface LeaderboardEntry {
+  participant_id: string
+  participant_name: string
+  total_drinks: number
+  total_games: number
+  rank: number | null
+}
