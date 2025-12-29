@@ -8,6 +8,7 @@ pub mod ai;
 pub mod auth;
 pub mod bills;
 pub mod debts;
+pub mod games;
 pub mod groups;
 pub mod response;
 pub mod sessions;
@@ -28,4 +29,5 @@ pub fn routes() -> Router<AppState> {
         .nest("/sessions", sessions::routes())
         .nest("/debts", debts::routes())
         .nest("/ai", ai::routes())
+        .nest("/games", games::routes())
 }

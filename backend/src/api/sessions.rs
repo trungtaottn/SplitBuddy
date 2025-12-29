@@ -25,6 +25,8 @@ pub fn routes() -> Router<AppState> {
         .route("/:id/bills", get(list_bills).post(create_bill))
         .route("/:id/bills/:bill_id", put(update_bill).delete(delete_bill))
         .route("/:id/export", get(export_session))
+        .route("/:id/spin", post(super::games::spin_wheel))
+        .route("/:id/spin-history", get(super::games::get_spin_history))
 }
 
 #[derive(Serialize)]

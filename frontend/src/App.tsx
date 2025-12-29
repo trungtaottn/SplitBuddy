@@ -9,6 +9,7 @@ import DebtsPage from './pages/DebtsPage'
 import GroupsPage from './pages/GroupsPage'
 import GroupDebtsPage from './pages/GroupDebtsPage'
 import AdminPage from './pages/AdminPage'
+import GamesPage from './pages/GamesPage'
 import AppLayout from './components/layout/AppLayout'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -57,6 +58,7 @@ function App() {
           <Route path="debts" element={<DebtsPage />} />
           <Route path="groups" element={<GroupsPage />} />
           <Route path="groups/:groupId/debts" element={<GroupDebtsPage />} />
+          <Route path="games" element={<GamesPage />} />
           <Route path="admin" element={<AdminPage />} />
         </Route>
       </Routes>

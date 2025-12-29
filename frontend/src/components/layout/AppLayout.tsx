@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { LogOut, User, Wallet, Home, Users, Shield } from 'lucide-react'
+import { LogOut, User, Wallet, Home, Users, Shield, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function AppLayout() {
@@ -48,6 +48,12 @@ export default function AppLayout() {
                   <Button variant="ghost" size="sm" className="gap-2">
                     <Wallet className="h-4 w-4" />
                     Công nợ
+                  </Button>
+                </Link>
+                <Link to="/games">
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    Trò chơi
                   </Button>
                 </Link>
               </>
@@ -129,6 +135,17 @@ export default function AppLayout() {
             >
               <Wallet className="h-5 w-5" />
               <span className="text-xs font-medium">Công nợ</span>
+            </Link>
+            <Link
+              to="/games"
+              className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
+                isActive('/games') 
+                  ? 'text-primary bg-primary/10 scale-105' 
+                  : 'text-gray-500 hover:text-primary'
+              }`}
+            >
+              <Sparkles className="h-5 w-5" />
+              <span className="text-xs font-medium">Trò chơi</span>
             </Link>
           </div>
         </nav>
