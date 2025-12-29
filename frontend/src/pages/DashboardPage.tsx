@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, MapPin, TrendingDown, TrendingUp, Calendar, Beer } from 'lucide-react'
+import { Plus, MapPin, TrendingDown, TrendingUp, Calendar, Beer, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
 import AiGreeting from '@/components/AiGreeting'
 import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
-import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupDetail } from '@/types/api'
+import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupDetail, PaginatedResponse } from '@/types/api'
 
 export default function DashboardPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -24,13 +24,38 @@ export default function DashboardPage() {
   const [newGuestName, setNewGuestName] = useState('')
   const queryClient = useQueryClient()
 
-  const { data: sessions, isLoading: sessionsLoading } = useQuery({
-    queryKey: ['sessions'],
+  // Search & Filter state
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, statusFilter])
+
+  const { data: sessionsData, isLoading: sessionsLoading } = useQuery({
+    queryKey: ['sessions', debouncedSearch, statusFilter, currentPage],
     queryFn: async () => {
-      const res = await api.get<ApiResponse<Session[]>>('/sessions')
-      return res.data.data
+      const params = new URLSearchParams()
+      if (debouncedSearch) params.set('search', debouncedSearch)
+      if (statusFilter) params.set('status', statusFilter)
+      params.set('page', String(currentPage))
+      params.set('limit', '10')
+      const res = await api.get<PaginatedResponse<Session[]>>(`/sessions?${params.toString()}`)
+      return res.data
     },
   })
+
+  const sessions = sessionsData?.data
+  const pagination = sessionsData?.meta
 
   const { data: debts } = useQuery({
     queryKey: ['debts', 'me'],
@@ -169,6 +194,35 @@ export default function DashboardPage() {
         </FunTooltip>
       </div>
 
+      {/* Search & Filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Tìm kiếm cuộc nhậu..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex gap-2">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">Tất cả</option>
+            <option value="active">Đang hoạt động</option>
+            <option value="closed">Đã đóng</option>
+          </select>
+        </div>
+        {pagination && (
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <span>{pagination.total} kết quả</span>
+          </div>
+        )}
+      </div>
+
       {sessionsLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
@@ -236,6 +290,31 @@ export default function DashboardPage() {
               </Link>
             </FunTooltip>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pagination && pagination.total_pages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm">
+            Trang {currentPage} / {pagination.total_pages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.min(pagination.total_pages, p + 1))}
+            disabled={currentPage === pagination.total_pages}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       )}
 

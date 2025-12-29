@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     routing::{delete, get, post, put},
     Json, Router,
 };
@@ -149,14 +149,62 @@ pub struct PayerInput {
     pub amount: Decimal,
 }
 
+#[derive(Deserialize, Default)]
+pub struct SessionQuery {
+    pub search: Option<String>,
+    pub status: Option<String>,
+    pub from: Option<chrono::NaiveDate>,
+    pub to: Option<chrono::NaiveDate>,
+    #[serde(default = "default_page")]
+    pub page: i64,
+    #[serde(default = "default_limit")]
+    pub limit: i64,
+}
+
+fn default_page() -> i64 { 1 }
+fn default_limit() -> i64 { 10 }
+
+#[derive(Serialize)]
+pub struct PaginatedResponse<T> {
+    pub data: T,
+    pub meta: PaginationMeta,
+}
+
+#[derive(Serialize)]
+pub struct PaginationMeta {
+    pub total: i64,
+    pub page: i64,
+    pub limit: i64,
+    pub total_pages: i64,
+}
+
 async fn list_sessions(
     State(state): State<AppState>,
     auth_user: AuthUser,
-) -> Result<Json<ApiResponse<Vec<SessionResponse>>>, AppError> {
+    Query(query): Query<SessionQuery>,
+) -> Result<Json<PaginatedResponse<Vec<SessionResponse>>>, AppError> {
     let repo = SessionRepository::new(state.pool.clone());
-    let sessions = repo.find_by_user(auth_user.user_id).await?;
+    let (sessions, total) = repo.find_by_user_paginated(
+        auth_user.user_id,
+        query.search.as_deref(),
+        query.status.as_deref(),
+        query.from,
+        query.to,
+        query.page,
+        query.limit,
+    ).await?;
 
-    Ok(ok(sessions))
+    let total_pages = (total as f64 / query.limit as f64).ceil() as i64;
+
+    Ok(Json(PaginatedResponse {
+        data: sessions,
+        meta: PaginationMeta {
+            total,
+            page: query.page,
+            limit: query.limit,
+            total_pages,
+        },
+    }))
 }
 
 async fn create_session(

@@ -13,6 +13,11 @@ export interface PaginationMeta {
   total_pages: number
 }
 
+export interface PaginatedResponse<T> {
+  data: T
+  meta: PaginationMeta
+}
+
 export interface ApiError {
   error: {
     code: string
