@@ -633,9 +633,9 @@ async fn export_session(
             COALESCE(du.full_name, dsp.guest_name, 'Unknown') as debtor_name,
             d.amount
         FROM debts d
-        JOIN session_participants csp ON d.creditor_participant_id = csp.id
+        JOIN session_participants csp ON d.creditor_id = csp.id
         LEFT JOIN users cu ON csp.user_id = cu.id
-        JOIN session_participants dsp ON d.debtor_participant_id = dsp.id
+        JOIN session_participants dsp ON d.debtor_id = dsp.id
         LEFT JOIN users du ON dsp.user_id = du.id
         WHERE d.session_id = $1
         ORDER BY d.amount DESC
