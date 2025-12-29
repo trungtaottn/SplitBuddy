@@ -1,4 +1,4 @@
-use axum::{extract::State, routing::get, Json, Router};
+use axum::{extract::State, routing::{get, post}, Json, Router};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -11,6 +11,7 @@ use crate::repository::user_repo::UserRepository;
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/me", get(get_me).put(update_me))
+        .route("/me/password", post(change_password))
 }
 
 #[derive(Serialize)]
@@ -26,6 +27,17 @@ pub struct UserProfileResponse {
 pub struct UpdateProfileRequest {
     pub full_name: Option<String>,
     pub avatar_url: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct ChangePasswordRequest {
+    pub current_password: String,
+    pub new_password: String,
+}
+
+#[derive(Serialize)]
+pub struct MessageResponse {
+    pub message: String,
 }
 
 async fn get_me(
@@ -71,4 +83,70 @@ async fn update_me(
         avatar_url: user.avatar_url,
         created_at: user.created_at,
     }))
+}
+
+async fn change_password(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Json(payload): Json<ChangePasswordRequest>,
+) -> Result<Json<ApiResponse<MessageResponse>>, AppError> {
+    let repo = UserRepository::new(state.pool.clone());
+
+    let user = repo
+        .find_by_id(auth_user.user_id)
+        .await?
+        .ok_or(AppError::UserNotFound {
+            user_id: auth_user.user_id,
+        })?;
+
+    // Verify current password
+    if !verify_password(&payload.current_password, &user.password_hash)? {
+        return Err(AppError::InvalidCredentials);
+    }
+
+    // Validate new password
+    if payload.new_password.len() < 6 {
+        return Err(AppError::Validation { 
+            field: "new_password".to_string(), 
+            message: "Mật khẩu mới phải có ít nhất 6 ký tự".to_string() 
+        });
+    }
+
+    // Hash and update
+    let new_hash = hash_password(&payload.new_password)?;
+
+    repo.update_password(auth_user.user_id, new_hash).await?;
+
+    Ok(ok(MessageResponse {
+        message: "Đổi mật khẩu thành công".to_string(),
+    }))
+}
+
+fn hash_password(password: &str) -> Result<String, AppError> {
+    use argon2::{
+        password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
+        Argon2,
+    };
+
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+
+    argon2
+        .hash_password(password.as_bytes(), &salt)
+        .map(|hash| hash.to_string())
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Password hashing failed: {}", e)))
+}
+
+fn verify_password(password: &str, hash: &str) -> Result<bool, AppError> {
+    use argon2::{
+        password_hash::{PasswordHash, PasswordVerifier},
+        Argon2,
+    };
+
+    let parsed_hash = PasswordHash::new(hash)
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Invalid password hash: {}", e)))?;
+
+    Ok(Argon2::default()
+        .verify_password(password.as_bytes(), &parsed_hash)
+        .is_ok())
 }

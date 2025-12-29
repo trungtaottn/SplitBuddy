@@ -61,12 +61,12 @@ export default function AppLayout() {
               </>
             )}
 
-            <div className="flex items-center gap-2">
+            <Link to="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white">
                 <User className="h-4 w-4" />
               </div>
               <span className="text-sm font-medium">{user?.full_name}</span>
-            </div>
+            </Link>
 
             <Button variant="ghost" size="icon" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
@@ -75,7 +75,9 @@ export default function AppLayout() {
 
           {/* Mobile: Show user avatar and logout */}
           <div className="flex items-center gap-2 md:hidden">
-            <span className="max-w-24 truncate text-sm font-medium">{user?.full_name}</span>
+            <Link to="/profile" className="max-w-24 truncate text-sm font-medium hover:text-primary">
+              {user?.full_name}
+            </Link>
             <Button variant="ghost" size="icon" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
             </Button>

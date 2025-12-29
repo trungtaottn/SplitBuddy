@@ -189,7 +189,7 @@ export default function DashboardPage() {
         <FunTooltip messages={FUN_MESSAGES.createSession}>
           <Button onClick={() => setShowCreateModal(true)} className="gap-2 bg-orange-500 hover:bg-orange-600 rounded-lg hover-wiggle font-bold">
             <Plus className="h-4 w-4" />
-            Tạo cuộc nhậu
+            Nhậu đê! Nhìn cái giề hả...
           </Button>
         </FunTooltip>
       </div>

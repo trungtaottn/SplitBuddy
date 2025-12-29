@@ -1,115 +1,49 @@
-import { useEffect, useState } from 'react'
 import { useMood, MoodType } from '@/contexts/MoodContext'
 
-// Particle component for visual effects
-interface Particle {
-  id: number
-  x: number
-  y: number
-  size: number
-  opacity: number
-  emoji: string
-  duration: number
-  delay: number
-}
-
-const MOOD_PARTICLES: Record<MoodType, string[]> = {
-  happy: ['✨', '🌟', '⭐', '💫', '🎉'],
-  sad: ['💧', '🌧️', '☁️', '💙'],
-  tired: ['💤', '😴', '🌙', '⭐'],
-  stressed: ['🍃', '🌿', '💚', '🧘'],
-  excited: ['🔥', '⚡', '💥', '🎊', '🎉'],
-  neutral: [],
-}
-
-const MOOD_ANIMATION_CONFIG: Record<MoodType, { count: number; speed: string }> = {
-  happy: { count: 8, speed: '3s' },
-  sad: { count: 5, speed: '6s' },
-  tired: { count: 4, speed: '8s' },
-  stressed: { count: 6, speed: '5s' },
-  excited: { count: 10, speed: '2s' },
-  neutral: { count: 0, speed: '0s' },
+// Subtle, natural mood effects - no emojis, just gentle visual cues
+const MOOD_COLORS: Record<MoodType, { from: string; to: string; dots: string }> = {
+  happy: { from: 'from-amber-200/10', to: 'to-orange-100/5', dots: 'bg-amber-300' },
+  sad: { from: 'from-blue-200/10', to: 'to-slate-100/5', dots: 'bg-blue-300' },
+  tired: { from: 'from-violet-200/10', to: 'to-purple-100/5', dots: 'bg-violet-300' },
+  stressed: { from: 'from-emerald-200/10', to: 'to-teal-100/5', dots: 'bg-emerald-300' },
+  excited: { from: 'from-pink-200/10', to: 'to-rose-100/5', dots: 'bg-pink-300' },
+  neutral: { from: 'from-gray-100/5', to: 'to-transparent', dots: 'bg-gray-300' },
 }
 
 export function MoodEffects() {
   const { mood } = useMood()
-  const [particles, setParticles] = useState<Particle[]>([])
+  
+  if (mood === 'neutral') return null
 
-  useEffect(() => {
-    if (mood === 'neutral') {
-      setParticles([])
-      return
-    }
-
-    const config = MOOD_ANIMATION_CONFIG[mood]
-    const emojis = MOOD_PARTICLES[mood]
-    
-    const newParticles: Particle[] = Array.from({ length: config.count }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: 16 + Math.random() * 12,
-      opacity: 0.3 + Math.random() * 0.4,
-      emoji: emojis[Math.floor(Math.random() * emojis.length)],
-      duration: 10 + Math.random() * 15,
-      delay: Math.random() * 5,
-    }))
-    
-    setParticles(newParticles)
-  }, [mood])
-
-  if (mood === 'neutral' || particles.length === 0) return null
+  const colors = MOOD_COLORS[mood]
 
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-      {particles.map((particle) => (
-        <div
-          key={particle.id}
-          className="absolute animate-float"
-          style={{
-            left: `${particle.x}%`,
-            top: `${particle.y}%`,
-            fontSize: `${particle.size}px`,
-            opacity: particle.opacity,
-            animation: `float ${particle.duration}s ease-in-out infinite`,
-            animationDelay: `${particle.delay}s`,
-          }}
-        >
-          {particle.emoji}
-        </div>
-      ))}
+    <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+      {/* Subtle gradient overlay */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${colors.from} ${colors.to} transition-all duration-1000`} />
       
-      {/* Mood-specific overlay effect */}
-      {mood === 'sad' && (
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent" />
-      )}
-      {mood === 'happy' && (
-        <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/5 to-transparent" />
-      )}
-      {mood === 'excited' && (
-        <div className="absolute inset-0 bg-gradient-to-b from-pink-500/5 to-transparent" />
-      )}
-      {mood === 'tired' && (
-        <div className="absolute inset-0 bg-gradient-to-b from-violet-500/5 to-transparent" />
-      )}
-      {mood === 'stressed' && (
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent" />
-      )}
-      
+      {/* Soft bokeh dots - very subtle */}
+      <div className="absolute inset-0">
+        {[...Array(6)].map((_, i) => (
+          <div
+            key={i}
+            className={`absolute rounded-full ${colors.dots} opacity-[0.08] blur-xl`}
+            style={{
+              width: `${80 + i * 40}px`,
+              height: `${80 + i * 40}px`,
+              left: `${10 + i * 15}%`,
+              top: `${5 + (i % 3) * 30}%`,
+              animation: `gentle-float ${20 + i * 5}s ease-in-out infinite`,
+              animationDelay: `${i * 2}s`,
+            }}
+          />
+        ))}
+      </div>
+
       <style>{`
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0) translateX(0) rotate(0deg);
-          }
-          25% {
-            transform: translateY(-20px) translateX(10px) rotate(5deg);
-          }
-          50% {
-            transform: translateY(-10px) translateX(-10px) rotate(-5deg);
-          }
-          75% {
-            transform: translateY(-30px) translateX(5px) rotate(3deg);
-          }
+        @keyframes gentle-float {
+          0%, 100% { transform: translate(0, 0); }
+          50% { transform: translate(20px, -15px); }
         }
       `}</style>
     </div>
