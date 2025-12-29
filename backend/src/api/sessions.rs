@@ -24,6 +24,7 @@ pub fn routes() -> Router<AppState> {
         .route("/:id/reopen", post(reopen_session))
         .route("/:id/bills", get(list_bills).post(create_bill))
         .route("/:id/bills/:bill_id", put(update_bill).delete(delete_bill))
+        .route("/:id/export", get(export_session))
 }
 
 #[derive(Serialize)]
@@ -598,4 +599,108 @@ async fn delete_bill(
     repo.delete_bill(params.bill_id, params.id).await?;
 
     Ok(ok(()))
+}
+
+async fn export_session(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(session_id): Path<Uuid>,
+) -> Result<axum::response::Response, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is participant
+    repo.verify_participant(session_id, auth_user.user_id).await?;
+
+    // Get session details
+    let session = repo.find_by_id_with_details(session_id, auth_user.user_id).await?
+        .ok_or(AppError::SessionNotFound { session_id })?;
+
+    // Get bills with details
+    let bills = repo.find_bills_by_session(session_id).await?;
+
+    // Get debts
+    #[derive(sqlx::FromRow)]
+    struct DebtRow {
+        creditor_name: String,
+        debtor_name: String,
+        amount: Decimal,
+    }
+
+    let debts: Vec<DebtRow> = sqlx::query_as(
+        r#"
+        SELECT 
+            COALESCE(cu.full_name, csp.guest_name, 'Unknown') as creditor_name,
+            COALESCE(du.full_name, dsp.guest_name, 'Unknown') as debtor_name,
+            d.amount
+        FROM debts d
+        JOIN session_participants csp ON d.creditor_participant_id = csp.id
+        LEFT JOIN users cu ON csp.user_id = cu.id
+        JOIN session_participants dsp ON d.debtor_participant_id = dsp.id
+        LEFT JOIN users du ON dsp.user_id = du.id
+        WHERE d.session_id = $1
+        ORDER BY d.amount DESC
+        "#
+    )
+    .bind(session_id)
+    .fetch_all(&state.pool)
+    .await?;
+
+    // Generate CSV content
+    let mut csv = String::new();
+    
+    // Add BOM for UTF-8 Excel compatibility
+    csv.push('\u{FEFF}');
+    
+    // Session info
+    csv.push_str(&format!("Cuộc nhậu: {}\n", session.name));
+    csv.push_str(&format!("Ngày: {}\n", session.session_date));
+    if let Some(loc) = &session.location {
+        csv.push_str(&format!("Địa điểm: {}\n", loc));
+    }
+    csv.push_str(&format!("Số người: {}\n", session.participants.len()));
+    csv.push_str(&format!("Tổng tiền: {}\n\n", session.total_amount));
+
+    // Participants
+    csv.push_str("NGƯỜI THAM GIA\n");
+    csv.push_str("Tên,Vai trò\n");
+    for p in &session.participants {
+        csv.push_str(&format!("{},{}\n", p.display_name, if p.role == crate::domain::session::ParticipantRole::Owner { "Chủ xị" } else { "Thành viên" }));
+    }
+    csv.push('\n');
+
+    // Bills
+    csv.push_str("HÓA ĐƠN\n");
+    csv.push_str("Mô tả,Số tiền,Ngày tạo\n");
+    for bill in &bills {
+        csv.push_str(&format!("{},{},{}\n", 
+            bill.description, 
+            bill.amount,
+            bill.created_at.format("%d/%m/%Y %H:%M")
+        ));
+    }
+    csv.push('\n');
+
+    // Debts
+    csv.push_str("CÔNG NỢ\n");
+    csv.push_str("Người nợ,Nợ,Số tiền\n");
+    for debt in &debts {
+        csv.push_str(&format!("{},{},{}\n", debt.debtor_name, debt.creditor_name, debt.amount));
+    }
+
+    // Create filename
+    let filename = format!(
+        "{}_{}.csv",
+        session.name.replace(' ', "_"),
+        chrono::Utc::now().format("%Y%m%d")
+    );
+
+    // Return CSV response
+    use axum::response::IntoResponse;
+    Ok((
+        [
+            (axum::http::header::CONTENT_TYPE, "text/csv; charset=utf-8"),
+            (axum::http::header::CONTENT_DISPOSITION, &format!("attachment; filename=\"{}\"", filename)),
+        ],
+        csv,
+    ).into_response())
 }

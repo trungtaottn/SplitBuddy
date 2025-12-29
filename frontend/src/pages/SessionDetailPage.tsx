@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Plus, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check, Lock, Unlock } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check, Lock, Unlock, Download } from 'lucide-react'
 import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
@@ -305,7 +305,32 @@ export default function SessionDetailPage() {
             {session.location && <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {session.location}</span>}
           </div>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                const response = await api.get(`/sessions/${id}/export`, { responseType: 'blob' })
+                const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' })
+                const url = window.URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `${session.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+                document.body.appendChild(a)
+                a.click()
+                window.URL.revokeObjectURL(url)
+                document.body.removeChild(a)
+                toast.success('Đã xuất file CSV!')
+              } catch {
+                toast.error('Không thể xuất file')
+              }
+            }}
+            className="gap-1"
+          >
+            <Download className="h-4 w-4" />
+            Xuất CSV
+          </Button>
           {session.status === 'active' ? (
             <Button
               variant="outline"
