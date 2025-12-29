@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                ds.participant_id,\n                COALESCE(u.full_name, sp.guest_name, 'Unknown') as \"participant_name!\",\n                COALESCE(ds.total_drinks, 0) as \"total_drinks!\",\n                COALESCE(ds.games_played, 0) as \"games_played!\",\n                COALESCE(ds.games_lost, 0) as \"games_lost!\"\n            FROM drinking_stats ds\n            JOIN session_participants sp ON ds.participant_id = sp.id\n            LEFT JOIN users u ON sp.user_id = u.id\n            WHERE ds.session_id = $1\n            ORDER BY ds.total_drinks DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "participant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "participant_name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "total_drinks!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "games_played!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "games_lost!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "7ee1b27d42d3cbd44b596692295c5a7384a0dcdd01843149ac5598ea54f94c4f"
+}

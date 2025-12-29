@@ -307,16 +307,24 @@ impl GameRepository {
             LeaderboardEntry,
             r#"
             SELECT 
-                sp.id as participant_id,
-                COALESCE(u.full_name, sp.guest_name, 'Unknown') as "participant_name!",
-                COALESCE(SUM(ds.total_drinks), 0) as "total_drinks!",
-                COALESCE(SUM(ds.games_played), 0) as "total_games!",
-                ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(ds.total_drinks), 0) DESC) as rank
-            FROM session_participants sp
-            LEFT JOIN drinking_stats ds ON sp.id = ds.participant_id
-            LEFT JOIN users u ON sp.user_id = u.id
-            GROUP BY sp.id, u.full_name, sp.guest_name
-            HAVING COALESCE(SUM(ds.total_drinks), 0) > 0
+                participant_id,
+                participant_name as "participant_name!",
+                total_drinks as "total_drinks!",
+                total_games as "total_games!",
+                rank
+            FROM (
+                SELECT 
+                    sp.id as participant_id,
+                    COALESCE(u.full_name, sp.guest_name, 'Unknown') as participant_name,
+                    COALESCE(SUM(ds.total_drinks), 0)::bigint as total_drinks,
+                    COALESCE(SUM(ds.games_played), 0)::bigint as total_games,
+                    ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(ds.total_drinks), 0) DESC) as rank
+                FROM session_participants sp
+                LEFT JOIN drinking_stats ds ON sp.id = ds.participant_id
+                LEFT JOIN users u ON sp.user_id = u.id
+                GROUP BY sp.id, u.full_name, sp.guest_name
+                HAVING COALESCE(SUM(ds.total_drinks), 0) > 0
+            ) sub
             ORDER BY total_drinks DESC
             LIMIT $1
             "#,

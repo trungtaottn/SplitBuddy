@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO game_history (session_id, game_type, content_id, content_text, difficulty, player_id, result, drink_count)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n            RETURNING id, session_id, game_type, content_id, content_text, difficulty, player_id, result, drink_count, created_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "session_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "game_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "content_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "content_text",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "difficulty",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "player_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "result",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "drink_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Uuid",
+        "Text",
+        "Varchar",
+        "Uuid",
+        "Varchar",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "92fe41d59549acd22b6914b9927b54ed0b3af8b1a7c9777dfa5ac57e9060e21c"
+}

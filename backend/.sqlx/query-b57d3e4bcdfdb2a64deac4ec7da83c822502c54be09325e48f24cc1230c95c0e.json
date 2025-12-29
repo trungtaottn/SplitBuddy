@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                participant_id,\n                participant_name as \"participant_name!\",\n                total_drinks as \"total_drinks!\",\n                total_games as \"total_games!\",\n                rank\n            FROM (\n                SELECT \n                    sp.id as participant_id,\n                    COALESCE(u.full_name, sp.guest_name, 'Unknown') as participant_name,\n                    COALESCE(SUM(ds.total_drinks), 0)::bigint as total_drinks,\n                    COALESCE(SUM(ds.games_played), 0)::bigint as total_games,\n                    ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(ds.total_drinks), 0) DESC) as rank\n                FROM session_participants sp\n                LEFT JOIN drinking_stats ds ON sp.id = ds.participant_id\n                LEFT JOIN users u ON sp.user_id = u.id\n                GROUP BY sp.id, u.full_name, sp.guest_name\n                HAVING COALESCE(SUM(ds.total_drinks), 0) > 0\n            ) sub\n            ORDER BY total_drinks DESC\n            LIMIT $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "participant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "participant_name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "total_drinks!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "total_games!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "rank",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "b57d3e4bcdfdb2a64deac4ec7da83c822502c54be09325e48f24cc1230c95c0e"
+}

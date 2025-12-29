@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE custom_questions SET use_count = use_count + 1 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3c58cceb2115b6f647a26bc9e3c818f66f24c51e8014fbb9ca6610662189af48"
+}
