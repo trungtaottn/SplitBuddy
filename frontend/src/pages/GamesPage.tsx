@@ -1,11 +1,48 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCircle, X, Skull, Zap } from 'lucide-react'
+import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCircle, X, Skull, Zap, AlertCircle, PartyPopper } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
 import type { ApiResponse } from '@/types/api'
+
+type GameType = 'truth_or_dare' | 'never_have_i_ever' | 'challenge' | 'dice'
+
+const GAME_INFO: Record<GameType, { name: string; icon: string; color: string; warning: string }> = {
+  truth_or_dare: { 
+    name: 'Sự thật hay Thách thức', 
+    icon: '🎯', 
+    color: 'pink',
+    warning: 'Chuẩn bị tinh thần! Có thể bạn sẽ phải thú nhận điều không muốn...'
+  },
+  never_have_i_ever: { 
+    name: 'Tôi chưa bao giờ', 
+    icon: '🙅', 
+    color: 'blue',
+    warning: 'Ai đã từng làm sẽ phải uống! Bạn có bí mật gì không?'
+  },
+  challenge: { 
+    name: 'Thử thách', 
+    icon: '🔥', 
+    color: 'orange',
+    warning: 'Thử thách điên rồ đang chờ! Từ chối = PHẠT NẶNG!'
+  },
+  dice: { 
+    name: 'Tung xúc xắc', 
+    icon: '🎲', 
+    color: 'purple',
+    warning: 'Số phận sẽ quyết định! Ra đôi = Bạn là VƯƠNG!'
+  }
+}
+
+const SUSPENSE_MESSAGES = [
+  'Đang xáo trộn câu hỏi... 🃏',
+  'Hmm, câu nào nhỉ... 🤔',
+  'Chuẩn bị tinh thần nào... 😈',
+  'Đây sẽ là câu THÚ VỊ... 👀',
+  'Số phận đang quyết định... ⚡',
+]
 
 interface GameContent {
   id: string
@@ -63,11 +100,68 @@ const GAME_RULES = {
 }
 
 export default function GamesPage() {
-  const [currentGame, setCurrentGame] = useState<'truth_or_dare' | 'never_have_i_ever' | 'challenge' | 'dice' | null>(null)
+  const [currentGame, setCurrentGame] = useState<GameType | null>(null)
   const [gameContent, setGameContent] = useState<GameContent | null>(null)
   const [diceResult, setDiceResult] = useState<DiceResult | null>(null)
   const [isSpinning, setIsSpinning] = useState(false)
   const [showRules, setShowRules] = useState<string | null>(null)
+  
+  // New states for effects
+  const [pendingGame, setPendingGame] = useState<GameType | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [loadingMessage, setLoadingMessage] = useState('')
+  const [countdown, setCountdown] = useState(0)
+  const [isRevealed, setIsRevealed] = useState(false)
+
+  // Countdown effect
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [countdown])
+
+  // Loading message rotation
+  useEffect(() => {
+    if (isLoading) {
+      const interval = setInterval(() => {
+        setLoadingMessage(SUSPENSE_MESSAGES[Math.floor(Math.random() * SUSPENSE_MESSAGES.length)])
+      }, 800)
+      return () => clearInterval(interval)
+    }
+  }, [isLoading])
+
+  const startGame = async (gameType: GameType) => {
+    setPendingGame(null)
+    setIsLoading(true)
+    setIsRevealed(false)
+    setLoadingMessage(SUSPENSE_MESSAGES[Math.floor(Math.random() * SUSPENSE_MESSAGES.length)])
+    
+    // Suspense delay
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    setIsLoading(false)
+    setCountdown(3)
+    
+    // Wait for countdown
+    await new Promise(resolve => setTimeout(resolve, 3500))
+    
+    // Now fetch and reveal
+    if (gameType === 'truth_or_dare') truthOrDare.mutate()
+    else if (gameType === 'never_have_i_ever') neverHaveIEver.mutate()
+    else if (gameType === 'challenge') challenge.mutate()
+    else if (gameType === 'dice') rollDice.mutate()
+  }
+
+  const handleGameSelect = (gameType: GameType) => {
+    if (currentGame === gameType) {
+      // Already playing this game, just get next question
+      startGame(gameType)
+    } else {
+      // Show confirmation
+      setPendingGame(gameType)
+    }
+  }
 
   const truthOrDare = useMutation({
     mutationFn: async () => {
@@ -76,7 +170,9 @@ export default function GamesPage() {
     },
     onSuccess: (data) => {
       setGameContent(data)
+      setDiceResult(null)
       setCurrentGame('truth_or_dare')
+      setIsRevealed(true)
     },
     onError: () => toast.error('Không thể lấy câu hỏi')
   })
@@ -88,7 +184,9 @@ export default function GamesPage() {
     },
     onSuccess: (data) => {
       setGameContent(data)
+      setDiceResult(null)
       setCurrentGame('never_have_i_ever')
+      setIsRevealed(true)
     },
     onError: () => toast.error('Không thể lấy câu hỏi')
   })
@@ -100,7 +198,9 @@ export default function GamesPage() {
     },
     onSuccess: (data) => {
       setGameContent(data)
+      setDiceResult(null)
       setCurrentGame('challenge')
+      setIsRevealed(true)
     },
     onError: () => toast.error('Không thể lấy thử thách')
   })
@@ -108,14 +208,16 @@ export default function GamesPage() {
   const rollDice = useMutation({
     mutationFn: async () => {
       setIsSpinning(true)
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise(resolve => setTimeout(resolve, 1500))
       const res = await api.get<ApiResponse<DiceResult>>('/games/dice')
       return res.data.data
     },
     onSuccess: (data) => {
       setDiceResult(data)
+      setGameContent(null)
       setCurrentGame('dice')
       setIsSpinning(false)
+      setIsRevealed(true)
     },
     onError: () => {
       toast.error('Không thể tung xúc xắc')
@@ -151,14 +253,14 @@ export default function GamesPage() {
           Trò chơi nhậu
         </h1>
         <p className="text-muted-foreground mt-2">Chọn một trò chơi để bắt đầu cuộc vui! 🍻</p>
-        <p className="text-xs text-orange-500 mt-1">⚠️ Uống có trách nhiệm - Đã uống không lái xe</p>
+        <p className="text-xs text-orange-500 mt-1">Uống có trách nhiệm - Đã uống không lái xe</p>
       </div>
 
       {/* Game Selection */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card 
           className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-pink-400 group"
-          onClick={() => truthOrDare.mutate()}
+          onClick={() => handleGameSelect('truth_or_dare')}
         >
           <CardContent className="p-6 text-center relative">
             <button
@@ -182,7 +284,7 @@ export default function GamesPage() {
 
         <Card 
           className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-blue-400 group"
-          onClick={() => neverHaveIEver.mutate()}
+          onClick={() => handleGameSelect('never_have_i_ever')}
         >
           <CardContent className="p-6 text-center relative">
             <button
@@ -205,7 +307,7 @@ export default function GamesPage() {
 
         <Card 
           className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-orange-400 group"
-          onClick={() => challenge.mutate()}
+          onClick={() => handleGameSelect('challenge')}
         >
           <CardContent className="p-6 text-center relative">
             <button
@@ -228,7 +330,7 @@ export default function GamesPage() {
 
         <Card 
           className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-purple-400 group"
-          onClick={() => rollDice.mutate()}
+          onClick={() => handleGameSelect('dice')}
         >
           <CardContent className="p-6 text-center relative">
             <button
@@ -344,6 +446,90 @@ export default function GamesPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Confirmation Modal */}
+      {pendingGame && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <Card className="max-w-md w-full animate-in zoom-in-95 border-2 border-orange-300 shadow-2xl">
+            <CardContent className="p-6 text-center space-y-4">
+              <div className="text-6xl animate-bounce">
+                {GAME_INFO[pendingGame].icon}
+              </div>
+              <h2 className="text-2xl font-bold">{GAME_INFO[pendingGame].name}</h2>
+              <p className="text-orange-600 font-medium flex items-center justify-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                {GAME_INFO[pendingGame].warning}
+              </p>
+              <div className="bg-gray-100 rounded-lg p-3 text-sm text-gray-600">
+                <p className="font-semibold mb-1">⚠️ Nhớ luật chơi:</p>
+                <p>Từ chối/Thất bại = Phải uống phạt!</p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setPendingGame(null)}
+                >
+                  Để sau 😅
+                </Button>
+                <Button 
+                  className="flex-1 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+                  onClick={() => startGame(pendingGame)}
+                >
+                  Chơi thôi! 🔥
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Loading Suspense Overlay */}
+      {(isLoading || countdown > 0) && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-md">
+          <div className="text-center space-y-6">
+            {isLoading ? (
+              <>
+                <div className="relative">
+                  <div className="w-32 h-32 mx-auto rounded-full border-4 border-orange-500/30 border-t-orange-500 animate-spin" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-5xl animate-pulse">🎰</span>
+                  </div>
+                </div>
+                <p className="text-white text-xl font-medium animate-pulse">{loadingMessage}</p>
+                <div className="flex justify-center gap-1">
+                  {[...Array(3)].map((_, i) => (
+                    <div 
+                      key={i} 
+                      className="w-3 h-3 bg-orange-500 rounded-full animate-bounce"
+                      style={{ animationDelay: `${i * 0.15}s` }}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : countdown > 0 ? (
+              <>
+                <div className="text-9xl font-black text-white animate-ping">
+                  {countdown}
+                </div>
+                <p className="text-2xl text-orange-400 font-bold animate-pulse">
+                  Chuẩn bị đón nhận số phận...
+                </p>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Reveal Animation */}
+      {isRevealed && (gameContent || diceResult) && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 animate-in slide-in-from-top-4">
+          <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2">
+            <PartyPopper className="h-5 w-5" />
+            <span className="font-bold">Số phận đã định!</span>
+          </div>
+        </div>
       )}
 
       {/* Rules Modal */}
