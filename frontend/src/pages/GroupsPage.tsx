@@ -17,6 +17,9 @@ export default function GroupsPage() {
   const queryClient = useQueryClient()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [showQuickSessionModal, setShowQuickSessionModal] = useState(false)
+  const [quickSessionGroup, setQuickSessionGroup] = useState<Group | null>(null)
+  const [quickSessionLocation, setQuickSessionLocation] = useState('')
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [groupName, setGroupName] = useState('')
   const [groupDescription, setGroupDescription] = useState('')
@@ -88,20 +91,36 @@ export default function GroupsPage() {
     },
   })
 
+  // Fetch group detail for quick session (to get member IDs)
+  const { data: quickSessionGroupDetail } = useQuery({
+    queryKey: ['groups', quickSessionGroup?.id],
+    queryFn: async () => {
+      if (!quickSessionGroup?.id) return null
+      const res = await api.get<ApiResponse<GroupDetail>>(`/groups/${quickSessionGroup.id}`)
+      return res.data.data
+    },
+    enabled: !!quickSessionGroup?.id,
+  })
+
   // Quick create session from group
   const quickCreateSession = useMutation({
-    mutationFn: async (groupId: string) => {
+    mutationFn: async ({ groupId, location, memberIds }: { groupId: string; location?: string; memberIds: string[] }) => {
       const today = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
       const res = await api.post<ApiResponse<{ id: string }>>('/sessions', {
         name: `Nhậu ${today}`,
         group_id: groupId,
+        location: location || undefined,
         session_date: new Date().toISOString().split('T')[0],
+        participant_ids: memberIds,
       })
       return res.data.data
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] })
       toast.success('Tạo buổi nhậu thành công! 🍺')
+      setShowQuickSessionModal(false)
+      setQuickSessionGroup(null)
+      setQuickSessionLocation('')
       navigate(`/sessions/${data.id}`)
     },
     onError: () => {
@@ -109,9 +128,25 @@ export default function GroupsPage() {
     },
   })
 
-  const handleQuickCreateSession = (e: React.MouseEvent, groupId: string) => {
+  const handleQuickCreateSession = (e: React.MouseEvent, group: Group) => {
     e.stopPropagation()
-    quickCreateSession.mutate(groupId)
+    setQuickSessionGroup(group)
+    setQuickSessionLocation('')
+    setShowQuickSessionModal(true)
+  }
+
+  const submitQuickSession = () => {
+    if (!quickSessionGroup || !quickSessionGroupDetail) return
+    
+    const memberIds = quickSessionGroupDetail.members
+      .filter(m => m.user_id)
+      .map(m => m.user_id as string)
+    
+    quickCreateSession.mutate({
+      groupId: quickSessionGroup.id,
+      location: quickSessionLocation,
+      memberIds,
+    })
   }
 
   const handleCreateGroup = (e: React.FormEvent) => {
@@ -196,11 +231,11 @@ export default function GroupsPage() {
                     <Button
                       size="sm"
                       className="gap-1 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
-                      onClick={(e) => handleQuickCreateSession(e, group.id)}
+                      onClick={(e) => handleQuickCreateSession(e, group)}
                       disabled={quickCreateSession.isPending}
                     >
                       <Beer className="h-4 w-4" />
-                      {quickCreateSession.isPending ? '...' : 'Nhậu ngay!'}
+                      Nhậu ngay!
                     </Button>
                     <Button
                       size="sm"
@@ -348,6 +383,81 @@ export default function GroupsPage() {
               >
                 Đóng
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Quick Session Modal */}
+      {showQuickSessionModal && quickSessionGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-md animate-in zoom-in-95">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Beer className="h-5 w-5 text-orange-500" />
+                Tạo buổi nhậu nhanh
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-lg bg-orange-50 p-3 border border-orange-200">
+                <p className="text-sm text-orange-800">
+                  <span className="font-semibold">Nhóm:</span> {quickSessionGroup.name}
+                </p>
+                <p className="text-sm text-orange-600 mt-1">
+                  {quickSessionGroup.member_count} thành viên sẽ tham gia
+                </p>
+              </div>
+
+              {quickSessionGroupDetail && (
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Thành viên tham gia:</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {quickSessionGroupDetail.members.map((member) => (
+                      <span
+                        key={member.id}
+                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs"
+                      >
+                        <div className="h-4 w-4 rounded-full bg-primary/30 flex items-center justify-center text-[10px] font-bold">
+                          {member.full_name.charAt(0).toUpperCase()}
+                        </div>
+                        {member.full_name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="quickLocation">Địa điểm (tuỳ chọn)</Label>
+                <Input
+                  id="quickLocation"
+                  placeholder="VD: Quán bia hơi, Nhà anh A..."
+                  value={quickSessionLocation}
+                  onChange={(e) => setQuickSessionLocation(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowQuickSessionModal(false)
+                    setQuickSessionGroup(null)
+                    setQuickSessionLocation('')
+                  }}
+                >
+                  Huỷ
+                </Button>
+                <Button
+                  className="flex-1 gap-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+                  onClick={submitQuickSession}
+                  disabled={quickCreateSession.isPending || !quickSessionGroupDetail}
+                >
+                  <Beer className="h-4 w-4" />
+                  {quickCreateSession.isPending ? 'Đang tạo...' : 'Bắt đầu nhậu!'}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
