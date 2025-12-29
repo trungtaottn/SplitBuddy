@@ -4,6 +4,7 @@ import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/contexts/AuthContext'
+import { useMood, MoodType } from '@/contexts/MoodContext'
 import { Smile, Frown, Moon, Flame, Zap } from 'lucide-react'
 
 interface GreetingResponse {
@@ -19,31 +20,26 @@ interface AiGreetingProps {
 }
 
 const MOODS = [
-  { id: 'happy', icon: Smile, label: 'Vui vẻ' },
-  { id: 'sad', icon: Frown, label: 'Buồn' },
-  { id: 'tired', icon: Moon, label: 'Mệt mỏi' },
-  { id: 'stressed', icon: Zap, label: 'Căng thẳng' },
-  { id: 'excited', icon: Flame, label: 'Hào hứng' },
+  { id: 'happy' as MoodType, icon: Smile, label: 'Vui vẻ', color: 'orange' },
+  { id: 'sad' as MoodType, icon: Frown, label: 'Buồn', color: 'blue' },
+  { id: 'tired' as MoodType, icon: Moon, label: 'Mệt mỏi', color: 'violet' },
+  { id: 'stressed' as MoodType, icon: Zap, label: 'Căng thẳng', color: 'emerald' },
+  { id: 'excited' as MoodType, icon: Flame, label: 'Hào hứng', color: 'pink' },
 ]
 
 const SLOGANS = [
-  "Không nhậu đời không nể! 🍻",
-  "Nhậu là nghệ thuật, say là đẳng cấp!",
-  "Cuộc đời ngắn lắm, nhậu đi đừng ngại!",
-  "Bạn bè là để nhậu cùng!",
-  "Hôm nay không nhậu, mai hối hận!",
   "Bia lạnh, bạn thân, cuộc đời tươi đẹp!",
   "Chia bill rõ ràng, tình bạn bền lâu!",
-  "Ly này tôi mời, ly sau bạn trả!",
   "Có bạn có bia, có bia có vui!",
   "Tiền chia đều, vui chia đôi!",
+  "Cuộc vui nào rồi cũng tàn, nhưng bill thì vẫn phải chia!",
 ]
 
 export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingProps) {
   const { user } = useAuth()
-  const [selectedMood, setSelectedMood] = useState<string | null>(null)
+  const { mood, setMood } = useMood()
   const [greeting, setGreeting] = useState<GreetingResponse | null>(null)
-  const [showMoodSelector, setShowMoodSelector] = useState(true)
+  const [showMoodSelector, setShowMoodSelector] = useState(mood === 'neutral')
   const [currentSlogan, setCurrentSlogan] = useState(() => 
     SLOGANS[Math.floor(Math.random() * SLOGANS.length)]
   )
@@ -69,8 +65,8 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
     },
   })
 
-  const handleMoodSelect = (moodId: string) => {
-    setSelectedMood(moodId)
+  const handleMoodSelect = (moodId: MoodType) => {
+    setMood(moodId)
     greetingMutation.mutate(moodId)
   }
 
@@ -109,19 +105,19 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
             </div>
             
             <div className="flex flex-wrap justify-center gap-2">
-              {MOODS.map((mood) => (
+              {MOODS.map((moodItem) => (
                 <button
-                  key={mood.id}
-                  onClick={() => handleMoodSelect(mood.id)}
+                  key={moodItem.id}
+                  onClick={() => handleMoodSelect(moodItem.id)}
                   disabled={greetingMutation.isPending}
                   className={`flex flex-col items-center gap-1 rounded-xl px-4 py-2 transition-all ${
-                    selectedMood === mood.id
-                      ? 'bg-orange-500 text-white shadow-md'
-                      : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                    mood === moodItem.id
+                      ? `bg-gradient-to-r from-${moodItem.color}-500 to-${moodItem.color}-600 text-white shadow-md scale-105`
+                      : 'bg-gray-50 hover:bg-gray-100 border border-gray-200 hover:scale-105'
                   }`}
                 >
-                  <mood.icon className="h-6 w-6" />
-                  <span className="text-xs font-medium">{mood.label}</span>
+                  <moodItem.icon className="h-6 w-6" />
+                  <span className="text-xs font-medium">{moodItem.label}</span>
                 </button>
               ))}
             </div>
