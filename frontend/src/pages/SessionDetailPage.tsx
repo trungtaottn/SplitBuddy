@@ -194,6 +194,24 @@ export default function SessionDetailPage() {
     },
   })
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  const deleteSession = useMutation({
+    mutationFn: async () => {
+      await api.delete(`/sessions/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      toast.success('Đã xóa buổi nhậu!')
+      navigate('/')
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      toast.error(message)
+      setShowDeleteConfirm(false)
+    },
+  })
+
   const handleCreateBill = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedPayer) {
@@ -354,6 +372,15 @@ export default function SessionDetailPage() {
               {reopenSession.isPending ? 'Đang mở...' : 'Mở lại session'}
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="gap-1 text-red-500 hover:text-red-600 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            Xóa
+          </Button>
         </div>
       </div>
 
@@ -967,6 +994,43 @@ export default function SessionDetailPage() {
                   </Button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-600">
+                <Trash2 className="h-5 w-5" />
+                Xác nhận xóa
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Bạn có chắc muốn xóa buổi nhậu <strong>"{session?.name}"</strong>? 
+                Tất cả hoá đơn và công nợ liên quan sẽ bị xóa vĩnh viễn.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowDeleteConfirm(false)}
+                >
+                  Huỷ
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => deleteSession.mutate()}
+                  disabled={deleteSession.isPending}
+                >
+                  {deleteSession.isPending ? 'Đang xóa...' : 'Xóa'}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

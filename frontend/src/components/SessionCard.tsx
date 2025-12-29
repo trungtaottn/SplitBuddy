@@ -17,7 +17,6 @@ interface SessionCardProps {
   status: 'active' | 'settled' | 'pending'
   total_amount: number
   participants: Participant[]
-  settled_amount?: number
   user_debt?: number
   user_owed?: number
 }
@@ -68,22 +67,6 @@ function AvatarStack({ participants, max = 4 }: { participants: Participant[]; m
   )
 }
 
-function ProgressBar({ value, max, className }: { value: number; max: number; className?: string }) {
-  const percentage = max > 0 ? Math.min((value / max) * 100, 100) : 0
-  
-  return (
-    <div className={cn('h-2 w-full rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden', className)}>
-      <div
-        className={cn(
-          'h-full rounded-full transition-all duration-500',
-          percentage >= 100 ? 'bg-green-500' : percentage > 50 ? 'bg-amber-500' : 'bg-orange-500'
-        )}
-        style={{ width: `${percentage}%` }}
-      />
-    </div>
-  )
-}
-
 export function SessionCard({
   id,
   name,
@@ -92,12 +75,10 @@ export function SessionCard({
   status,
   total_amount,
   participants,
-  settled_amount = 0,
   user_debt = 0,
   user_owed = 0,
 }: SessionCardProps) {
   const statusConfig = STATUS_CONFIG[status]
-  const settledPercentage = total_amount > 0 ? Math.round((settled_amount / total_amount) * 100) : 0
   const formattedDate = new Date(date).toLocaleDateString('vi-VN', {
     day: '2-digit',
     month: '2-digit',
@@ -137,15 +118,6 @@ export function SessionCard({
         {/* Participants */}
         <AvatarStack participants={participants} max={5} />
 
-        {/* Progress */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>Đã thanh toán</span>
-            <span>{settledPercentage}%</span>
-          </div>
-          <ProgressBar value={settled_amount} max={total_amount} />
-        </div>
-
         {/* Footer */}
         <div className="flex justify-between items-center pt-2 border-t dark:border-gray-700">
           <span className="font-semibold text-gray-900 dark:text-gray-100">
@@ -163,7 +135,7 @@ export function SessionCard({
               </span>
             )}
             {user_debt === 0 && user_owed === 0 && status !== 'settled' && (
-              <span className="text-gray-400">Không có nợ</span>
+              <span className="text-gray-400"></span>
             )}
             <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-primary group-hover:translate-x-1 transition-all" />
           </div>

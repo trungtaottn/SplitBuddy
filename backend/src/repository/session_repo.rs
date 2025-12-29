@@ -624,6 +624,14 @@ impl SessionRepository {
         Ok(())
     }
 
+    pub async fn delete(&self, session_id: Uuid) -> Result<(), AppError> {
+        // Foreign key constraints with ON DELETE CASCADE will handle related data
+        sqlx::query!("DELETE FROM sessions WHERE id = $1", session_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
     pub async fn find_bills_by_session(
         &self,
         session_id: Uuid,

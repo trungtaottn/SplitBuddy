@@ -17,7 +17,7 @@ use crate::repository::session_repo::SessionRepository;
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list_sessions).post(create_session))
-        .route("/:id", get(get_session))
+        .route("/:id", get(get_session).delete(delete_session))
         .route("/:id/participants", post(add_participant))
         .route("/:id/participants/:pid", put(update_participant).delete(delete_participant))
         .route("/:id/close", post(close_session))
@@ -245,6 +245,22 @@ async fn get_session(
         .ok_or(AppError::SessionNotFound { session_id })?;
 
     Ok(ok(session))
+}
+
+async fn delete_session(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(session_id): Path<Uuid>,
+) -> Result<axum::http::StatusCode, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is session owner
+    repo.verify_owner(session_id, auth_user.user_id).await?;
+
+    // Delete the session
+    repo.delete(session_id).await?;
+
+    Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
 async fn add_participant(
