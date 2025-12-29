@@ -3,8 +3,9 @@ import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCircle, X, Skull, Zap, AlertCircle, Target, Hand } from 'lucide-react'
+import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCircle, X, Skull, Zap, AlertCircle, Target, Hand, Volume2, VolumeX } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
+import { soundManager, vibrate, vibrationPatterns } from '@/utils/sounds'
 import type { ApiResponse } from '@/types/api'
 
 type GameType = 'truth_or_dare' | 'never_have_i_ever' | 'challenge' | 'dice'
@@ -117,6 +118,8 @@ export default function GamesPage() {
   const [diceResult, setDiceResult] = useState<DiceResult | null>(null)
   const [isSpinning, setIsSpinning] = useState(false)
   const [showRules, setShowRules] = useState<string | null>(null)
+  const [soundEnabled, setSoundEnabled] = useState(() => soundManager.isEnabled())
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null)
   
   // Unified game phase state - prevents overlay flickering
   const [gamePhase, setGamePhase] = useState<GamePhase>('idle')
@@ -125,9 +128,23 @@ export default function GamesPage() {
   const [loadingMessage, setLoadingMessage] = useState('')
   const [countdown, setCountdown] = useState(0)
 
-  // Countdown effect
+  // Toggle sound
+  const toggleSound = () => {
+    const newValue = !soundEnabled
+    setSoundEnabled(newValue)
+    soundManager.setEnabled(newValue)
+    if (newValue) soundManager.playClick()
+  }
+
+  // Countdown effect with sound
   useEffect(() => {
     if (countdown > 0) {
+      // Play countdown beep
+      if (countdown === 1) {
+        soundManager.playCountdownFinal()
+      } else {
+        soundManager.playCountdownBeep()
+      }
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
       return () => clearTimeout(timer)
     }
@@ -195,6 +212,9 @@ export default function GamesPage() {
       setDiceResult(null)
       setCurrentGame('truth_or_dare')
       setGamePhase('revealed')
+      // Sound & vibration on reveal
+      soundManager.playReveal()
+      vibrate(vibrationPatterns.success)
     },
     onError: () => {
       toast.error('Không thể lấy câu hỏi')
@@ -212,6 +232,8 @@ export default function GamesPage() {
       setDiceResult(null)
       setCurrentGame('never_have_i_ever')
       setGamePhase('revealed')
+      soundManager.playReveal()
+      vibrate(vibrationPatterns.success)
     },
     onError: () => {
       toast.error('Không thể lấy câu hỏi')
@@ -229,6 +251,14 @@ export default function GamesPage() {
       setDiceResult(null)
       setCurrentGame('challenge')
       setGamePhase('revealed')
+      // Play danger sound for hard challenges
+      if (data.difficulty === 'hard' || data.difficulty === 'extreme') {
+        soundManager.playDanger()
+        vibrate(vibrationPatterns.danger)
+      } else {
+        soundManager.playReveal()
+        vibrate(vibrationPatterns.success)
+      }
     },
     onError: () => {
       toast.error('Không thể lấy thử thách')
@@ -239,6 +269,8 @@ export default function GamesPage() {
   const rollDice = useMutation({
     mutationFn: async () => {
       setIsSpinning(true)
+      soundManager.playDiceRoll()
+      vibrate(vibrationPatterns.dice)
       await new Promise(resolve => setTimeout(resolve, 1500))
       const res = await api.get<ApiResponse<DiceResult>>('/games/dice')
       return res.data.data
@@ -249,6 +281,17 @@ export default function GamesPage() {
       setCurrentGame('dice')
       setIsSpinning(false)
       setGamePhase('revealed')
+      // Different sounds based on severity
+      if (data.severity === 'extreme') {
+        soundManager.playDanger()
+        vibrate(vibrationPatterns.danger)
+      } else if (data.is_double) {
+        soundManager.playSuccess()
+        vibrate(vibrationPatterns.success)
+      } else {
+        soundManager.playReveal()
+        vibrate(vibrationPatterns.short)
+      }
     },
     onError: () => {
       toast.error('Không thể tung xúc xắc')
@@ -279,7 +322,31 @@ export default function GamesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
+      <div className="text-center relative">
+        {/* Sound & Filter Controls */}
+        <div className="absolute right-0 top-0 flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleSound}
+            className="gap-1"
+            title={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
+          >
+            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-gray-400" />}
+          </Button>
+          <select
+            value={selectedDifficulty || ''}
+            onChange={(e) => setSelectedDifficulty(e.target.value || null)}
+            className="text-xs border rounded-lg px-2 py-1.5 bg-white"
+          >
+            <option value="">Tất cả độ khó</option>
+            <option value="easy">🟢 Dễ</option>
+            <option value="medium">🟡 Trung bình</option>
+            <option value="hard">🔴 Khó</option>
+            <option value="extreme">💀 Cực khó</option>
+          </select>
+        </div>
+
         <h1 className="text-3xl font-bold text-gray-800 flex items-center justify-center gap-2">
           <Sparkles className="h-8 w-8 text-yellow-500 animate-pulse" />
           Trò chơi nhậu
