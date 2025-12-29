@@ -108,6 +108,9 @@ const GAME_RULES = {
   }
 }
 
+// Game phases for smooth overlay transitions
+type GamePhase = 'idle' | 'confirming' | 'loading' | 'countdown' | 'revealed'
+
 export default function GamesPage() {
   const [currentGame, setCurrentGame] = useState<GameType | null>(null)
   const [gameContent, setGameContent] = useState<GameContent | null>(null)
@@ -115,12 +118,11 @@ export default function GamesPage() {
   const [isSpinning, setIsSpinning] = useState(false)
   const [showRules, setShowRules] = useState<string | null>(null)
   
-  // New states for effects
+  // Unified game phase state - prevents overlay flickering
+  const [gamePhase, setGamePhase] = useState<GamePhase>('idle')
   const [pendingGame, setPendingGame] = useState<GameType | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('')
   const [countdown, setCountdown] = useState(0)
-  const [isRevealed, setIsRevealed] = useState(false)
 
   // Countdown effect
   useEffect(() => {
@@ -132,30 +134,31 @@ export default function GamesPage() {
 
   // Loading message rotation
   useEffect(() => {
-    if (isLoading) {
+    if (gamePhase === 'loading') {
       const interval = setInterval(() => {
         setLoadingMessage(SUSPENSE_MESSAGES[Math.floor(Math.random() * SUSPENSE_MESSAGES.length)])
       }, 800)
       return () => clearInterval(interval)
     }
-  }, [isLoading])
+  }, [gamePhase])
 
   const startGame = async (gameType: GameType) => {
-    setPendingGame(null)
-    setIsLoading(true)
-    setIsRevealed(false)
+    // Set loading FIRST, then clear pending - prevents flash
     setLoadingMessage(SUSPENSE_MESSAGES[Math.floor(Math.random() * SUSPENSE_MESSAGES.length)])
+    setGamePhase('loading')
+    setPendingGame(null)
     
     // Suspense delay
     await new Promise(resolve => setTimeout(resolve, 2000))
     
-    setIsLoading(false)
+    // Transition to countdown (no gap - same overlay stays)
+    setGamePhase('countdown')
     setCountdown(3)
     
     // Wait for countdown
     await new Promise(resolve => setTimeout(resolve, 3500))
     
-    // Now fetch and reveal
+    // Fetch and reveal - phase stays as countdown until data arrives
     if (gameType === 'truth_or_dare') truthOrDare.mutate()
     else if (gameType === 'never_have_i_ever') neverHaveIEver.mutate()
     else if (gameType === 'challenge') challenge.mutate()
@@ -163,13 +166,21 @@ export default function GamesPage() {
   }
 
   const handleGameSelect = (gameType: GameType) => {
-    if (currentGame === gameType) {
-      // Already playing this game, just get next question
+    if (currentGame === gameType && gamePhase === 'revealed') {
+      // Already playing this game, get next question with full animation
       startGame(gameType)
-    } else {
+    } else if (gamePhase === 'idle') {
       // Show confirmation
       setPendingGame(gameType)
+      setGamePhase('confirming')
     }
+  }
+  
+  const closeGame = () => {
+    setGameContent(null)
+    setDiceResult(null)
+    setCurrentGame(null)
+    setGamePhase('idle')
   }
 
   const truthOrDare = useMutation({
@@ -181,9 +192,12 @@ export default function GamesPage() {
       setGameContent(data)
       setDiceResult(null)
       setCurrentGame('truth_or_dare')
-      setIsRevealed(true)
+      setGamePhase('revealed')
     },
-    onError: () => toast.error('Không thể lấy câu hỏi')
+    onError: () => {
+      toast.error('Không thể lấy câu hỏi')
+      setGamePhase('idle')
+    }
   })
 
   const neverHaveIEver = useMutation({
@@ -195,9 +209,12 @@ export default function GamesPage() {
       setGameContent(data)
       setDiceResult(null)
       setCurrentGame('never_have_i_ever')
-      setIsRevealed(true)
+      setGamePhase('revealed')
     },
-    onError: () => toast.error('Không thể lấy câu hỏi')
+    onError: () => {
+      toast.error('Không thể lấy câu hỏi')
+      setGamePhase('idle')
+    }
   })
 
   const challenge = useMutation({
@@ -209,9 +226,12 @@ export default function GamesPage() {
       setGameContent(data)
       setDiceResult(null)
       setCurrentGame('challenge')
-      setIsRevealed(true)
+      setGamePhase('revealed')
     },
-    onError: () => toast.error('Không thể lấy thử thách')
+    onError: () => {
+      toast.error('Không thể lấy thử thách')
+      setGamePhase('idle')
+    }
   })
 
   const rollDice = useMutation({
@@ -226,11 +246,12 @@ export default function GamesPage() {
       setGameContent(null)
       setCurrentGame('dice')
       setIsSpinning(false)
-      setIsRevealed(true)
+      setGamePhase('revealed')
     },
     onError: () => {
       toast.error('Không thể tung xúc xắc')
       setIsSpinning(false)
+      setGamePhase('idle')
     }
   })
 
@@ -362,7 +383,7 @@ export default function GamesPage() {
       </div>
 
       {/* Game Result Overlay */}
-      {isRevealed && (gameContent || diceResult) && !isLoading && countdown === 0 && (
+      {gamePhase === 'revealed' && (gameContent || diceResult) && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
           <Card className="max-w-lg w-full mx-4 border-2 border-orange-300 shadow-2xl animate-in zoom-in-95">
             <CardHeader className="pb-2">
@@ -488,12 +509,7 @@ export default function GamesPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    setGameContent(null)
-                    setDiceResult(null)
-                    setCurrentGame(null)
-                    setIsRevealed(false)
-                  }}
+                  onClick={closeGame}
                 >
                   <X className="h-4 w-4 mr-1" />
                   Đóng
@@ -527,7 +543,10 @@ export default function GamesPage() {
                 <Button 
                   variant="outline" 
                   className="flex-1"
-                  onClick={() => setPendingGame(null)}
+                  onClick={() => {
+                    setPendingGame(null)
+                    setGamePhase('idle')
+                  }}
                 >
                   Để sau
                 </Button>
@@ -545,10 +564,10 @@ export default function GamesPage() {
       )}
 
       {/* Loading Suspense Overlay */}
-      {(isLoading || countdown > 0) && (
+      {(gamePhase === 'loading' || gamePhase === 'countdown') && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-md">
           <div className="text-center space-y-6">
-            {isLoading ? (
+            {gamePhase === 'loading' ? (
               <>
                 {/* Animated Dice Rolling */}
                 <div className="flex items-center justify-center gap-4">
