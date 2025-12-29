@@ -121,6 +121,7 @@ export default function GamesPage() {
   // Unified game phase state - prevents overlay flickering
   const [gamePhase, setGamePhase] = useState<GamePhase>('idle')
   const [pendingGame, setPendingGame] = useState<GameType | null>(null)
+  const [activeGame, setActiveGame] = useState<GameType | null>(null) // Track which game is loading
   const [loadingMessage, setLoadingMessage] = useState('')
   const [countdown, setCountdown] = useState(0)
 
@@ -144,6 +145,7 @@ export default function GamesPage() {
 
   const startGame = async (gameType: GameType) => {
     // Set loading FIRST, then clear pending - prevents flash
+    setActiveGame(gameType) // Track which game is loading for correct animation
     setLoadingMessage(SUSPENSE_MESSAGES[Math.floor(Math.random() * SUSPENSE_MESSAGES.length)])
     setGamePhase('loading')
     setPendingGame(null)
@@ -564,32 +566,77 @@ export default function GamesPage() {
       )}
 
       {/* Loading Suspense Overlay */}
-      {(gamePhase === 'loading' || gamePhase === 'countdown') && (
+      {(gamePhase === 'loading' || gamePhase === 'countdown') && activeGame && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-md">
           <div className="text-center space-y-6">
             {gamePhase === 'loading' ? (
               <>
-                {/* Animated Dice Rolling */}
-                <div className="flex items-center justify-center gap-4">
-                  <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl shadow-2xl flex items-center justify-center text-4xl font-black text-white animate-bounce" style={{ animationDelay: '0s' }}>
-                    {Math.floor(Math.random() * 6) + 1}
+                {/* Game-specific loading animation */}
+                {activeGame === 'dice' && (
+                  <div className="flex items-center justify-center gap-4">
+                    <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl shadow-2xl flex items-center justify-center text-4xl font-black text-white animate-bounce" style={{ animationDelay: '0s' }}>
+                      {Math.floor(Math.random() * 6) + 1}
+                    </div>
+                    <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl shadow-2xl flex items-center justify-center text-4xl font-black text-white animate-bounce" style={{ animationDelay: '0.1s' }}>
+                      {Math.floor(Math.random() * 6) + 1}
+                    </div>
                   </div>
-                  <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl shadow-2xl flex items-center justify-center text-4xl font-black text-white animate-bounce" style={{ animationDelay: '0.1s' }}>
-                    {Math.floor(Math.random() * 6) + 1}
+                )}
+                {activeGame === 'truth_or_dare' && (
+                  <div className="flex items-center justify-center gap-4">
+                    <div className="w-24 h-24 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full shadow-2xl flex items-center justify-center animate-bounce">
+                      <MessageCircleQuestion className="h-12 w-12 text-white" />
+                    </div>
+                    <div className="w-24 h-24 bg-gradient-to-br from-orange-500 to-red-500 rounded-full shadow-2xl flex items-center justify-center animate-bounce" style={{ animationDelay: '0.2s' }}>
+                      <Target className="h-12 w-12 text-white" />
+                    </div>
                   </div>
-                </div>
+                )}
+                {activeGame === 'never_have_i_ever' && (
+                  <div className="flex items-center justify-center">
+                    <div className="w-28 h-28 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full shadow-2xl flex items-center justify-center animate-bounce">
+                      <Hand className="h-14 w-14 text-white" />
+                    </div>
+                  </div>
+                )}
+                {activeGame === 'challenge' && (
+                  <div className="flex items-center justify-center">
+                    <div className="w-28 h-28 bg-gradient-to-br from-orange-500 to-red-500 rounded-full shadow-2xl flex items-center justify-center animate-pulse">
+                      <Flame className="h-14 w-14 text-white animate-bounce" />
+                    </div>
+                  </div>
+                )}
+                
+                {/* Spinner */}
                 <div className="relative">
-                  <div className="w-24 h-24 mx-auto rounded-full border-4 border-orange-500/30 border-t-orange-500 animate-spin" />
+                  <div className={`w-24 h-24 mx-auto rounded-full border-4 border-t-4 animate-spin ${
+                    activeGame === 'dice' ? 'border-purple-500/30 border-t-purple-500' :
+                    activeGame === 'truth_or_dare' ? 'border-pink-500/30 border-t-pink-500' :
+                    activeGame === 'never_have_i_ever' ? 'border-blue-500/30 border-t-blue-500' :
+                    'border-orange-500/30 border-t-orange-500'
+                  }`} />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <Dices className="h-10 w-10 text-orange-400 animate-pulse" />
+                    <GameIcon type={activeGame} className={`h-10 w-10 animate-pulse ${
+                      activeGame === 'dice' ? 'text-purple-400' :
+                      activeGame === 'truth_or_dare' ? 'text-pink-400' :
+                      activeGame === 'never_have_i_ever' ? 'text-blue-400' :
+                      'text-orange-400'
+                    }`} />
                   </div>
                 </div>
+                
                 <p className="text-white text-2xl font-bold animate-pulse">{loadingMessage}</p>
+                <p className="text-gray-400">{GAME_INFO[activeGame].name}</p>
                 <div className="flex justify-center gap-1">
                   {[...Array(3)].map((_, i) => (
                     <div 
                       key={i} 
-                      className="w-3 h-3 bg-orange-500 rounded-full animate-bounce"
+                      className={`w-3 h-3 rounded-full animate-bounce ${
+                        activeGame === 'dice' ? 'bg-purple-500' :
+                        activeGame === 'truth_or_dare' ? 'bg-pink-500' :
+                        activeGame === 'never_have_i_ever' ? 'bg-blue-500' :
+                        'bg-orange-500'
+                      }`}
                       style={{ animationDelay: `${i * 0.15}s` }}
                     />
                   ))}
@@ -597,11 +644,24 @@ export default function GamesPage() {
               </>
             ) : countdown > 0 ? (
               <>
-                <div className="text-9xl font-black text-white animate-ping">
+                <div className={`text-9xl font-black animate-ping ${
+                  activeGame === 'dice' ? 'text-purple-400' :
+                  activeGame === 'truth_or_dare' ? 'text-pink-400' :
+                  activeGame === 'never_have_i_ever' ? 'text-blue-400' :
+                  'text-orange-400'
+                }`}>
                   {countdown}
                 </div>
-                <p className="text-2xl text-orange-400 font-bold animate-pulse">
-                  Chuẩn bị đón nhận số phận...
+                <p className={`text-2xl font-bold animate-pulse ${
+                  activeGame === 'dice' ? 'text-purple-400' :
+                  activeGame === 'truth_or_dare' ? 'text-pink-400' :
+                  activeGame === 'never_have_i_ever' ? 'text-blue-400' :
+                  'text-orange-400'
+                }`}>
+                  {activeGame === 'truth_or_dare' && 'Sự thật hay Thách thức...'}
+                  {activeGame === 'never_have_i_ever' && 'Bạn đã từng chưa...'}
+                  {activeGame === 'challenge' && 'Thử thách đang đến...'}
+                  {activeGame === 'dice' && 'Xúc xắc đang lăn...'}
                 </p>
               </>
             ) : null}
