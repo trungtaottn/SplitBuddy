@@ -363,6 +363,68 @@ impl SessionRepository {
         Ok(())
     }
 
+    pub async fn update_status(
+        &self,
+        session_id: Uuid,
+        status: SessionStatus,
+    ) -> Result<SessionResponse, AppError> {
+        let status_str = match status {
+            SessionStatus::Active => "active",
+            SessionStatus::Closed => "closed",
+        };
+
+        #[derive(sqlx::FromRow)]
+        struct SessionRow {
+            id: Uuid,
+            name: String,
+            location: Option<String>,
+            status: String,
+            created_by: Uuid,
+            created_at: chrono::DateTime<chrono::Utc>,
+            session_date: chrono::NaiveDate,
+        }
+
+        let session: SessionRow = sqlx::query_as(
+            r#"
+            UPDATE sessions
+            SET status = $1::session_status, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, name, location, status::text, created_by, created_at, session_date
+            "#,
+        )
+        .bind(status_str)
+        .bind(session_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(AppError::SessionNotFound { session_id })?;
+
+        let participant_count = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) as "count!" FROM session_participants WHERE session_id = $1"#,
+            session_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let total_amount = sqlx::query_scalar!(
+            r#"SELECT COALESCE(SUM(amount), 0) as "total!" FROM bills WHERE session_id = $1"#,
+            session_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(SessionResponse {
+            id: session.id,
+            name: session.name,
+            location: session.location,
+            status: if session.status == "closed" { SessionStatus::Closed } else { SessionStatus::Active },
+            created_by: session.created_by,
+            created_at: session.created_at,
+            session_date: session.session_date,
+            participant_count,
+            total_amount,
+        })
+    }
+
     pub async fn add_participant(
         &self,
         session_id: Uuid,

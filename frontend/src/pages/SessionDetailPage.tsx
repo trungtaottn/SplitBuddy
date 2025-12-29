@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Plus, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check, Lock, Unlock } from 'lucide-react'
 import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
@@ -164,6 +164,36 @@ export default function SessionDetailPage() {
     },
   })
 
+  const closeSession = useMutation({
+    mutationFn: async () => {
+      await api.post(`/sessions/${id}/close`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      toast.success('Đã đóng session!')
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      toast.error(message)
+    },
+  })
+
+  const reopenSession = useMutation({
+    mutationFn: async () => {
+      await api.post(`/sessions/${id}/reopen`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      toast.success('Đã mở lại session!')
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      toast.error(message)
+    },
+  })
+
   const handleCreateBill = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedPayer) {
@@ -264,11 +294,41 @@ export default function SessionDetailPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Beer className="h-6 w-6 text-orange-500" /> {session.name}
+            {session.status === 'closed' && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">
+                <Lock className="h-3 w-3" /> Đã đóng
+              </span>
+            )}
           </h1>
           <div className="flex items-center gap-3 text-muted-foreground">
             <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {new Date(session.session_date).toLocaleDateString('vi-VN')}</span>
             {session.location && <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {session.location}</span>}
           </div>
+        </div>
+        <div className="ml-auto">
+          {session.status === 'active' ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => closeSession.mutate()}
+              disabled={closeSession.isPending}
+              className="gap-1"
+            >
+              <Lock className="h-4 w-4" />
+              {closeSession.isPending ? 'Đang đóng...' : 'Đóng session'}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => reopenSession.mutate()}
+              disabled={reopenSession.isPending}
+              className="gap-1"
+            >
+              <Unlock className="h-4 w-4" />
+              {reopenSession.isPending ? 'Đang mở...' : 'Mở lại session'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -408,12 +468,19 @@ export default function SessionDetailPage() {
       {activeTab === 'bills' && (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <FunTooltip messages={FUN_MESSAGES.addBill}>
-              <Button onClick={() => setShowBillModal(true)} className="gap-2 hover-wiggle">
-                <Plus className="h-4 w-4" />
-                Thêm hoá đơn
+            {session.status === 'active' ? (
+              <FunTooltip messages={FUN_MESSAGES.addBill}>
+                <Button onClick={() => setShowBillModal(true)} className="gap-2 hover-wiggle">
+                  <Plus className="h-4 w-4" />
+                  Thêm hoá đơn
+                </Button>
+              </FunTooltip>
+            ) : (
+              <Button disabled className="gap-2 opacity-50">
+                <Lock className="h-4 w-4" />
+                Session đã đóng
               </Button>
-            </FunTooltip>
+            )}
           </div>
 
           {bills?.length === 0 ? (

@@ -20,6 +20,8 @@ pub fn routes() -> Router<AppState> {
         .route("/:id", get(get_session))
         .route("/:id/participants", post(add_participant))
         .route("/:id/participants/:pid", put(update_participant).delete(delete_participant))
+        .route("/:id/close", post(close_session))
+        .route("/:id/reopen", post(reopen_session))
         .route("/:id/bills", get(list_bills).post(create_bill))
         .route("/:id/bills/:bill_id", put(update_bill).delete(delete_bill))
 }
@@ -304,6 +306,38 @@ async fn delete_participant(
     repo.delete_participant(params.pid).await?;
 
     Ok(ok(()))
+}
+
+async fn close_session(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(session_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<SessionResponse>>, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is session owner
+    repo.verify_owner(session_id, auth_user.user_id).await?;
+
+    // Update session status to closed
+    let session = repo.update_status(session_id, SessionStatus::Closed).await?;
+
+    Ok(ok(session))
+}
+
+async fn reopen_session(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(session_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<SessionResponse>>, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is session owner
+    repo.verify_owner(session_id, auth_user.user_id).await?;
+
+    // Update session status to active
+    let session = repo.update_status(session_id, SessionStatus::Active).await?;
+
+    Ok(ok(session))
 }
 
 async fn list_bills(
