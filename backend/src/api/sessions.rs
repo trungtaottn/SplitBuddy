@@ -1,6 +1,6 @@
 use axum::{
-    extract::{Path, State},
-    routing::{get, post, put},
+    extract::{Path, Query, State},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use rust_decimal::Decimal;
@@ -17,10 +17,16 @@ use crate::repository::session_repo::SessionRepository;
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list_sessions).post(create_session))
-        .route("/:id", get(get_session))
+        .route("/:id", get(get_session).delete(delete_session))
         .route("/:id/participants", post(add_participant))
+        .route("/:id/participants/:pid", put(update_participant).delete(delete_participant))
+        .route("/:id/close", post(close_session))
+        .route("/:id/reopen", post(reopen_session))
         .route("/:id/bills", get(list_bills).post(create_bill))
-        .route("/:id/bills/:bill_id", put(update_bill))
+        .route("/:id/bills/:bill_id", put(update_bill).delete(delete_bill))
+        .route("/:id/export", get(export_session))
+        .route("/:id/spin", post(super::games::spin_wheel))
+        .route("/:id/spin-history", get(super::games::get_spin_history))
 }
 
 #[derive(Serialize)]
@@ -146,14 +152,62 @@ pub struct PayerInput {
     pub amount: Decimal,
 }
 
+#[derive(Deserialize, Default)]
+pub struct SessionQuery {
+    pub search: Option<String>,
+    pub status: Option<String>,
+    pub from: Option<chrono::NaiveDate>,
+    pub to: Option<chrono::NaiveDate>,
+    #[serde(default = "default_page")]
+    pub page: i64,
+    #[serde(default = "default_limit")]
+    pub limit: i64,
+}
+
+fn default_page() -> i64 { 1 }
+fn default_limit() -> i64 { 10 }
+
+#[derive(Serialize)]
+pub struct PaginatedResponse<T> {
+    pub data: T,
+    pub meta: PaginationMeta,
+}
+
+#[derive(Serialize)]
+pub struct PaginationMeta {
+    pub total: i64,
+    pub page: i64,
+    pub limit: i64,
+    pub total_pages: i64,
+}
+
 async fn list_sessions(
     State(state): State<AppState>,
     auth_user: AuthUser,
-) -> Result<Json<ApiResponse<Vec<SessionResponse>>>, AppError> {
+    Query(query): Query<SessionQuery>,
+) -> Result<Json<PaginatedResponse<Vec<SessionResponse>>>, AppError> {
     let repo = SessionRepository::new(state.pool.clone());
-    let sessions = repo.find_by_user(auth_user.user_id).await?;
+    let (sessions, total) = repo.find_by_user_paginated(
+        auth_user.user_id,
+        query.search.as_deref(),
+        query.status.as_deref(),
+        query.from,
+        query.to,
+        query.page,
+        query.limit,
+    ).await?;
 
-    Ok(ok(sessions))
+    let total_pages = (total as f64 / query.limit as f64).ceil() as i64;
+
+    Ok(Json(PaginatedResponse {
+        data: sessions,
+        meta: PaginationMeta {
+            total,
+            page: query.page,
+            limit: query.limit,
+            total_pages,
+        },
+    }))
 }
 
 async fn create_session(
@@ -193,6 +247,22 @@ async fn get_session(
     Ok(ok(session))
 }
 
+async fn delete_session(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(session_id): Path<Uuid>,
+) -> Result<axum::http::StatusCode, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is session owner
+    repo.verify_owner(session_id, auth_user.user_id).await?;
+
+    // Delete the session
+    repo.delete(session_id).await?;
+
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
 async fn add_participant(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -215,6 +285,126 @@ async fn add_participant(
         .await?;
 
     Ok(created(participant))
+}
+
+#[derive(Deserialize)]
+pub struct UpdateParticipantRequest {
+    pub guest_name: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ParticipantPathParams {
+    id: Uuid,
+    pid: Uuid,
+}
+
+async fn update_participant(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(params): Path<ParticipantPathParams>,
+    Json(payload): Json<UpdateParticipantRequest>,
+) -> Result<Json<ApiResponse<ParticipantResponse>>, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is session owner
+    repo.verify_owner(params.id, auth_user.user_id).await?;
+
+    // Update participant (only guest_name can be updated)
+    let participant = repo
+        .update_participant(params.pid, payload.guest_name)
+        .await?;
+
+    Ok(ok(participant))
+}
+
+async fn delete_participant(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(params): Path<ParticipantPathParams>,
+) -> Result<Json<ApiResponse<()>>, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is session owner
+    repo.verify_owner(params.id, auth_user.user_id).await?;
+
+    // Check if participant has any bills
+    let has_bills: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM bill_payers WHERE participant_id = $1
+            UNION
+            SELECT 1 FROM bill_splits WHERE participant_id = $1
+        )
+        "#
+    )
+    .bind(params.pid)
+    .fetch_one(&state.pool)
+    .await?;
+
+    if has_bills {
+        return Err(AppError::Validation {
+            field: "participant".to_string(),
+            message: "Không thể xóa người tham gia đã có trong hóa đơn".to_string(),
+        });
+    }
+
+    // Check if participant is the session owner
+    let is_owner: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM session_participants sp
+            JOIN sessions s ON sp.session_id = s.id
+            WHERE sp.id = $1 AND sp.user_id = s.created_by
+        )
+        "#
+    )
+    .bind(params.pid)
+    .fetch_one(&state.pool)
+    .await?;
+
+    if is_owner {
+        return Err(AppError::Validation {
+            field: "participant".to_string(),
+            message: "Không thể xóa người tạo session".to_string(),
+        });
+    }
+
+    // Delete participant
+    repo.delete_participant(params.pid).await?;
+
+    Ok(ok(()))
+}
+
+async fn close_session(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(session_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<SessionResponse>>, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is session owner
+    repo.verify_owner(session_id, auth_user.user_id).await?;
+
+    // Update session status to closed
+    let session = repo.update_status(session_id, SessionStatus::Closed).await?;
+
+    Ok(ok(session))
+}
+
+async fn reopen_session(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(session_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<SessionResponse>>, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is session owner
+    repo.verify_owner(session_id, auth_user.user_id).await?;
+
+    // Update session status to active
+    let session = repo.update_status(session_id, SessionStatus::Active).await?;
+
+    Ok(ok(session))
 }
 
 async fn list_bills(
@@ -394,4 +584,141 @@ async fn update_bill(
     ).await?;
 
     Ok(ok(updated_bill))
+}
+
+async fn delete_bill(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(params): Path<BillPathParams>,
+) -> Result<Json<ApiResponse<()>>, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is participant
+    repo.verify_participant(params.id, auth_user.user_id).await?;
+
+    // Check if bill exists and user is the creator
+    let bill_creator: Option<(Uuid,)> = sqlx::query_as(
+        "SELECT created_by FROM bills WHERE id = $1 AND session_id = $2"
+    )
+    .bind(params.bill_id)
+    .bind(params.id)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    let (creator_id,) = bill_creator.ok_or(AppError::BillNotFound { bill_id: params.bill_id })?;
+
+    if creator_id != auth_user.user_id {
+        return Err(AppError::Forbidden {
+            message: "Chỉ người tạo hóa đơn mới có thể xóa".to_string(),
+        });
+    }
+
+    // Delete bill and recalculate debts
+    repo.delete_bill(params.bill_id, params.id).await?;
+
+    Ok(ok(()))
+}
+
+async fn export_session(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(session_id): Path<Uuid>,
+) -> Result<axum::response::Response, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is participant
+    repo.verify_participant(session_id, auth_user.user_id).await?;
+
+    // Get session details
+    let session = repo.find_by_id_with_details(session_id, auth_user.user_id).await?
+        .ok_or(AppError::SessionNotFound { session_id })?;
+
+    // Get bills with details
+    let bills = repo.find_bills_by_session(session_id).await?;
+
+    // Get debts
+    #[derive(sqlx::FromRow)]
+    struct DebtRow {
+        creditor_name: String,
+        debtor_name: String,
+        amount: Decimal,
+    }
+
+    let debts: Vec<DebtRow> = sqlx::query_as(
+        r#"
+        SELECT 
+            COALESCE(cu.full_name, csp.guest_name, 'Unknown') as creditor_name,
+            COALESCE(du.full_name, dsp.guest_name, 'Unknown') as debtor_name,
+            d.amount
+        FROM debts d
+        JOIN session_participants csp ON d.creditor_id = csp.id
+        LEFT JOIN users cu ON csp.user_id = cu.id
+        JOIN session_participants dsp ON d.debtor_id = dsp.id
+        LEFT JOIN users du ON dsp.user_id = du.id
+        WHERE d.session_id = $1
+        ORDER BY d.amount DESC
+        "#
+    )
+    .bind(session_id)
+    .fetch_all(&state.pool)
+    .await?;
+
+    // Generate CSV content
+    let mut csv = String::new();
+    
+    // Add BOM for UTF-8 Excel compatibility
+    csv.push('\u{FEFF}');
+    
+    // Session info
+    csv.push_str(&format!("Cuộc nhậu: {}\n", session.name));
+    csv.push_str(&format!("Ngày: {}\n", session.session_date));
+    if let Some(loc) = &session.location {
+        csv.push_str(&format!("Địa điểm: {}\n", loc));
+    }
+    csv.push_str(&format!("Số người: {}\n", session.participants.len()));
+    csv.push_str(&format!("Tổng tiền: {}\n\n", session.total_amount));
+
+    // Participants
+    csv.push_str("NGƯỜI THAM GIA\n");
+    csv.push_str("Tên,Vai trò\n");
+    for p in &session.participants {
+        csv.push_str(&format!("{},{}\n", p.display_name, if p.role == crate::domain::session::ParticipantRole::Owner { "Chủ xị" } else { "Thành viên" }));
+    }
+    csv.push('\n');
+
+    // Bills
+    csv.push_str("HÓA ĐƠN\n");
+    csv.push_str("Mô tả,Số tiền,Ngày tạo\n");
+    for bill in &bills {
+        csv.push_str(&format!("{},{},{}\n", 
+            bill.description, 
+            bill.amount,
+            bill.created_at.format("%d/%m/%Y %H:%M")
+        ));
+    }
+    csv.push('\n');
+
+    // Debts
+    csv.push_str("CÔNG NỢ\n");
+    csv.push_str("Người nợ,Nợ,Số tiền\n");
+    for debt in &debts {
+        csv.push_str(&format!("{},{},{}\n", debt.debtor_name, debt.creditor_name, debt.amount));
+    }
+
+    // Create filename
+    let filename = format!(
+        "{}_{}.csv",
+        session.name.replace(' ', "_"),
+        chrono::Utc::now().format("%Y%m%d")
+    );
+
+    // Return CSV response
+    use axum::response::IntoResponse;
+    Ok((
+        [
+            (axum::http::header::CONTENT_TYPE, "text/csv; charset=utf-8"),
+            (axum::http::header::CONTENT_DISPOSITION, &format!("attachment; filename=\"{}\"", filename)),
+        ],
+        csv,
+    ).into_response())
 }

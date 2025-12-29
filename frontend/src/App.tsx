@@ -1,6 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
+import { MoodProvider } from './contexts/MoodContext'
 import { Toaster } from './components/ui/toaster'
+import { FloatingChat } from './components/chat/FloatingChat'
+import { MoodEffects } from './components/MoodEffects'
 
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
@@ -9,6 +12,8 @@ import DebtsPage from './pages/DebtsPage'
 import GroupsPage from './pages/GroupsPage'
 import GroupDebtsPage from './pages/GroupDebtsPage'
 import AdminPage from './pages/AdminPage'
+import GamesPage from './pages/GamesPage'
+import ProfilePage from './pages/ProfilePage'
 import AppLayout from './components/layout/AppLayout'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -41,7 +46,7 @@ function AdminRedirect() {
 
 function App() {
   return (
-    <>
+    <MoodProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
@@ -57,11 +62,15 @@ function App() {
           <Route path="debts" element={<DebtsPage />} />
           <Route path="groups" element={<GroupsPage />} />
           <Route path="groups/:groupId/debts" element={<GroupDebtsPage />} />
+          <Route path="games" element={<GamesPage />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="admin" element={<AdminPage />} />
         </Route>
       </Routes>
+      <MoodEffects />
+      <FloatingChat />
       <Toaster />
-    </>
+    </MoodProvider>
   )
 }
 

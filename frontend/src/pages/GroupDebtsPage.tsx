@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Trophy, Calendar, Beer, Banknote, Crown, Medal, Skull } from 'lucide-react'
+import { ArrowLeft, Trophy, Calendar, Beer, Banknote, Crown, Skull } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
 import type { GroupDebtSummary, ApiResponse } from '@/types/api'
 
@@ -108,111 +108,206 @@ export default function GroupDebtsPage() {
 
         const totalAmount = filteredSessions.reduce((sum, s) => sum + parseFloat(s.total_amount), 0)
 
+        // Calculate additional stats
+        const avgPerSession = totalAmount / filteredSessions.length
+        const activeMembers = sortedByParticipation.filter(m => m.count > 0)
+        const avgPerPerson = activeMembers.length > 0 ? totalAmount / activeMembers.length : 0
+
+        // Smart split into Top and Bottom
+        // Logic: 
+        // - ≤4 users: Top shows all, Bottom shows encouraging message
+        // - 5-8 users: Top 4, Bottom shows remaining (no overlap)
+        // - >8 users: Top 4, Bottom 4 (from end, no overlap)
+        const totalUsers = sortedByParticipation.length
+        const midPoint = Math.ceil(totalUsers / 2)
+        
+        let topList: typeof sortedByParticipation
+        let bottomList: typeof sortedByParticipation
+        
+        if (totalUsers <= 4) {
+          topList = sortedByParticipation
+          bottomList = []
+        } else if (totalUsers <= 8) {
+          topList = sortedByParticipation.slice(0, midPoint)
+          bottomList = sortedByParticipation.slice(midPoint).reverse()
+        } else {
+          topList = sortedByParticipation.slice(0, 4)
+          bottomList = sortedByParticipation.slice(-4).reverse()
+        }
+
+        const RankingItem = ({ member, index, isTop }: { member: typeof sortedByParticipation[0]; index: number; isTop: boolean }) => {
+          const actualIndex = isTop ? index : sortedByParticipation.length - 4 + (3 - index)
+          const isFirst = isTop && index === 0
+          const isLast = !isTop && index === 0
+          
+          const funMessages = isFirst 
+            ? ["Không ai qua nổi!", "Vua nhậu!"]
+            : isLast 
+            ? ["Đi nhậu đi chứ!", "Bỏ anh em à?"]
+            : isTop 
+            ? ["Cố lên nào!", "Chiến tiếp thôi!"]
+            : ["Ủa sao lười thế?", "Nhớ anh em không?"]
+          
+          const randomMsg = funMessages[Math.floor(Math.random() * funMessages.length)]
+          
+          return (
+            <div
+              className={`relative rounded-xl p-3 transition-all hover:scale-[1.02] ${
+                isFirst ? 'ranking-glow-gold bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 shadow-md' :
+                isLast ? 'ranking-glow-red bg-gradient-to-r from-red-50 via-orange-50 to-red-50' :
+                'bg-gray-50 hover:bg-gray-100'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`relative w-10 h-10 rounded-lg flex flex-col items-center justify-center ${
+                  isFirst ? 'bg-gradient-to-br from-yellow-400 to-amber-500 shadow-lg animate-pulse' :
+                  isTop && index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400' :
+                  isTop && index === 2 ? 'bg-gradient-to-br from-amber-500 to-amber-600' :
+                  isLast ? 'bg-gradient-to-br from-red-400 to-red-500' :
+                  'bg-gray-200'
+                }`}>
+                  {isFirst ? (
+                    <Crown className="h-5 w-5 text-white" />
+                  ) : (
+                    <span className="text-lg font-black text-white">{actualIndex + 1}</span>
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="font-bold truncate">{member.name}</span>
+                    {isFirst && <span>👑</span>}
+                    {isLast && <Skull className="h-3 w-3 text-red-400" />}
+                  </div>
+                  <p className={`text-xs ${isFirst ? 'text-yellow-600' : isLast ? 'text-red-500' : 'text-muted-foreground'}`}>
+                    {randomMsg}
+                  </p>
+                </div>
+                
+                <div className="text-right">
+                  <p className="font-bold text-lg">{member.count} <span className="text-base">cuộc</span></p>
+                </div>
+                
+                {isTop && index < 3 && (
+                  <span className={`text-2xl ${index === 0 ? 'animate-bounce' : ''}`}>
+                    {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        }
+
         return (
           <div className="grid gap-4 md:grid-cols-2">
-            {/* Summary Card */}
-            <Card>
-              <CardHeader className="pb-2">
+            {/* Summary Card - Enhanced */}
+            <Card className="overflow-hidden">
+              <CardHeader className="pb-2 bg-gradient-to-r from-orange-50 to-amber-50">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Beer className="h-5 w-5 text-orange-500" /> Tổng quan - {monthName}
+                  <Beer className="h-5 w-5 text-orange-500 animate-bounce" /> 
+                  Tổng quan - {monthName}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div className="rounded-lg bg-primary/10 p-3">
-                    <p className="text-2xl font-bold text-primary">{filteredSessions.length}</p>
-                    <p className="text-xs text-muted-foreground">Cuộc nhậu</p>
+              <CardContent className="space-y-4 pt-4">
+                {/* Hero Stat - Sessions */}
+                <div className="relative rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 p-5 text-white text-center shadow-lg overflow-hidden">
+                  <div className="absolute -top-4 -right-4 text-6xl opacity-20">🍺</div>
+                  <p className="text-5xl font-black">{filteredSessions.length}</p>
+                  <p className="text-sm opacity-90">Cuộc nhậu trong tháng</p>
+                  {filteredSessions.length >= 4 && (
+                    <p className="text-xs mt-1 bg-white/20 rounded-full px-2 py-0.5 inline-block">
+                      🔥 Tháng sôi động!
+                    </p>
+                  )}
+                </div>
+
+                {/* Money Stats */}
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 p-4 border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-green-600 font-medium">💰 Tổng chi tiêu</p>
+                        <p className="text-2xl font-bold text-green-700">{formatCurrency(totalAmount.toFixed(0))}</p>
+                      </div>
+                      <div className="text-3xl">💸</div>
+                    </div>
                   </div>
-                  <div className="rounded-lg bg-green-50 p-3">
-                    <p className="text-lg font-bold text-green-600">{formatCurrency(totalAmount.toFixed(0))}</p>
-                    <p className="text-xs text-muted-foreground">Tổng chi tiêu</p>
+                </div>
+
+                {/* Average Stats */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-blue-50 p-3 border border-blue-100 text-center hover:shadow-md transition-shadow">
+                    <p className="text-2xl">📊</p>
+                    <p className="text-lg font-bold text-blue-600">{formatCurrency(avgPerSession.toFixed(0))}</p>
+                    <p className="text-xs text-muted-foreground">TB/cuộc</p>
                   </div>
+                  <div className="rounded-xl bg-purple-50 p-3 border border-purple-100 text-center hover:shadow-md transition-shadow">
+                    <p className="text-2xl">👤</p>
+                    <p className="text-lg font-bold text-purple-600">{formatCurrency(avgPerPerson.toFixed(0))}</p>
+                    <p className="text-xs text-muted-foreground">TB/người</p>
+                  </div>
+                </div>
+
+                {/* Fun Quote */}
+                <div className="text-center pt-2 border-t">
+                  <p className="text-xs text-muted-foreground italic">
+                    {filteredSessions.length === 0 ? "Chưa có cuộc nhậu nào 😢" :
+                     filteredSessions.length === 1 ? "Mới khởi động thôi! 🚀" :
+                     filteredSessions.length <= 3 ? "Đang ấm lên rồi đấy! 🔥" :
+                     "Tháng này nhậu dữ quá! 🍻🎉"}
+                  </p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Ranking Card */}
-            <Card className="overflow-hidden">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-yellow-600" />
-                  Bảng xếp hạng tham gia - {monthName}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {sortedByParticipation.map((member, index) => {
-                    const isFirst = index === 0
-                    const isLast = index === sortedByParticipation.length - 1 && sortedByParticipation.length > 1
-                    
-                    const funMessages = isFirst 
-                      ? ["Vua nhậu đây rồi!", "Đệ nhất bia rượu!", "Chúa tể cuộc vui!", "Không ai qua nổi!"]
-                      : isLast 
-                      ? ["Ủa sao lười thế?", "Đi nhậu đi chứ!", "Bỏ anh em à?", "Nhớ anh em không?"]
-                      : ["Cố lên nào!", "Sắp top 1 rồi!", "Chiến tiếp thôi!"]
-                    
-                    const randomMsg = funMessages[Math.floor(Math.random() * funMessages.length)]
-                    
-                    return (
-                      <div
-                        key={member.name}
-                        className={`relative rounded-xl p-4 transition-all hover:scale-[1.01] ${
-                          isFirst ? 'ranking-glow-gold bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50' :
-                          isLast ? 'ranking-glow-red bg-gradient-to-r from-red-50 via-orange-50 to-red-50' :
-                          'bg-gray-50 hover:bg-gray-100'
-                        }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          {/* Rank badge */}
-                          <div className={`relative w-14 h-14 rounded-xl flex flex-col items-center justify-center ${
-                            isFirst ? 'bg-gradient-to-br from-yellow-400 to-amber-500 shadow-lg' :
-                            index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400' :
-                            index === 2 ? 'bg-gradient-to-br from-amber-500 to-amber-600' :
-                            'bg-gray-200'
-                          }`}>
-                            {isFirst ? (
-                              <Crown className="h-6 w-6 text-white animate-pulse" />
-                            ) : (
-                              <span className="text-2xl font-black text-white">{index + 1}</span>
-                            )}
-                            {isFirst && <span className="text-[10px] text-white font-bold">VUA</span>}
-                          </div>
-                          
-                          {/* Info */}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg font-bold">{member.name}</span>
-                              {isFirst && <Medal className="h-5 w-5 text-yellow-500" />}
-                              {isLast && <Skull className="h-4 w-4 text-red-400" />}
-                            </div>
-                            <p className={`text-sm mt-0.5 ${isFirst ? 'text-yellow-600' : isLast ? 'text-red-500' : 'text-muted-foreground'}`}>
-                              <span className="animate-marquee">{randomMsg}</span>
-                            </p>
-                            <div className="flex items-center gap-4 mt-2">
-                              <span className="text-sm">
-                                <span className="font-bold text-lg">{member.count}</span> cuộc nhậu
-                              </span>
-                              <span className="text-sm text-muted-foreground">
-                                Chi: <span className="font-semibold">{formatCurrency(member.totalOwed.toFixed(0))}</span>
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* Trophy for top 3 */}
-                          {index < 3 && (
-                            <div className={`text-4xl ${
-                              index === 0 ? 'animate-bounce' : ''
-                            }`}>
-                              {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+            {/* Ranking Cards - Split into Top 4 and Bottom 4 */}
+            <div className="space-y-4">
+              {/* Top performers */}
+              <Card className="overflow-hidden">
+                <CardHeader className="pb-2 bg-gradient-to-r from-yellow-50 to-amber-50">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-yellow-600" />
+                    🔥 Top tham gia ({topList.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-3">
+                  <div className="space-y-2">
+                    {topList.map((member, index) => (
+                      <RankingItem key={member.name} member={member} index={index} isTop={true} />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Bottom performers - always show */}
+              <Card className="overflow-hidden">
+                <CardHeader className="pb-2 bg-gradient-to-r from-red-50 to-orange-50">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Skull className="h-5 w-5 text-red-500" />
+                    Dưới đáy xã hội ({bottomList.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-3">
+                  {bottomList.length > 0 ? (
+                    <div className="space-y-2">
+                      {bottomList.map((member, index) => (
+                        <RankingItem key={member.name} member={member} index={index} isTop={false} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <p className="text-2xl mb-2">🎉</p>
+                      <p className="text-sm text-muted-foreground">
+                        Tất cả đều tham gia tốt!
+                      </p>
+                      <p className="text-xs text-green-600 mt-1">
+                        Nhóm có ít thành viên, ai cũng là top cả 💪
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         )
       })()}

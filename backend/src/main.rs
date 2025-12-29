@@ -80,13 +80,19 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Connecting to database...");
     
-    // Heroku Postgres requires SSL - append sslmode if not present
+    // Only add sslmode=require for Heroku (production) - check if DATABASE_URL contains heroku
     let database_url = if config.database_url.contains("sslmode") {
         config.database_url.clone()
-    } else if config.database_url.contains('?') {
-        format!("{}&sslmode=require", config.database_url)
+    } else if config.database_url.contains("heroku") || config.database_url.contains("amazonaws") {
+        // Production database - require SSL
+        if config.database_url.contains('?') {
+            format!("{}&sslmode=require", config.database_url)
+        } else {
+            format!("{}?sslmode=require", config.database_url)
+        }
     } else {
-        format!("{}?sslmode=require", config.database_url)
+        // Local development - no SSL
+        config.database_url.clone()
     };
     
     let pool = PgPoolOptions::new()
@@ -110,13 +116,20 @@ async fn main() -> anyhow::Result<()> {
         .allow_methods(Any)
         .allow_headers(Any);
 
+    // Create uploads directory if it doesn't exist
+    tokio::fs::create_dir_all("uploads/avatars").await.ok();
+
     // Serve static files (frontend) - fallback to index.html for SPA routing
     let static_service = ServeDir::new("static")
         .not_found_service(ServeFile::new("static/index.html"));
+    
+    // Serve uploaded files
+    let uploads_service = ServeDir::new("uploads");
 
     let app = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .nest("/api", api::routes())
+        .nest_service("/uploads", uploads_service)
         .with_state(app_state)
         .fallback_service(static_service)
         .layer(cors)

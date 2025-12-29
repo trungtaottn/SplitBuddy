@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, game_type, content_type, content, difficulty\n        FROM game_content\n        WHERE game_type = 'truth_or_dare' AND is_active = true\n        ORDER BY RANDOM()\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "game_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "content_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "difficulty",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "b8ba7d545d3e3c5c90a7e6e7f2b24b300ed60dbf42db2e478be4257bcad2efbb"
+}

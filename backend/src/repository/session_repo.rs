@@ -75,6 +75,108 @@ impl SessionRepository {
         Ok(sessions)
     }
 
+    pub async fn find_by_user_paginated(
+        &self,
+        user_id: Uuid,
+        search: Option<&str>,
+        status: Option<&str>,
+        from: Option<chrono::NaiveDate>,
+        to: Option<chrono::NaiveDate>,
+        page: i64,
+        limit: i64,
+    ) -> Result<(Vec<SessionResponse>, i64), AppError> {
+        #[derive(sqlx::FromRow)]
+        struct SessionRow {
+            id: Uuid,
+            name: String,
+            location: Option<String>,
+            status: String,
+            created_by: Uuid,
+            created_at: chrono::DateTime<chrono::Utc>,
+            session_date: chrono::NaiveDate,
+            participant_count: i64,
+            total_amount: Decimal,
+        }
+
+        let offset = (page - 1) * limit;
+
+        // Build dynamic query
+        let rows: Vec<SessionRow> = sqlx::query_as(
+            r#"
+            SELECT 
+                s.id,
+                s.name,
+                s.location,
+                s.status::text,
+                s.created_by,
+                s.created_at,
+                s.session_date,
+                (SELECT COUNT(*) FROM session_participants WHERE session_id = s.id)::bigint as participant_count,
+                (SELECT COALESCE(SUM(amount), 0) FROM bills WHERE session_id = s.id) as total_amount
+            FROM sessions s
+            WHERE s.id IN (
+                SELECT session_id FROM session_participants WHERE user_id = $1
+            )
+            AND ($2::text IS NULL OR s.name ILIKE '%' || $2 || '%')
+            AND ($3::text IS NULL OR s.status::text = $3)
+            AND ($4::date IS NULL OR s.session_date >= $4)
+            AND ($5::date IS NULL OR s.session_date <= $5)
+            ORDER BY s.session_date DESC, s.created_at DESC
+            LIMIT $6 OFFSET $7
+            "#
+        )
+        .bind(user_id)
+        .bind(search)
+        .bind(status)
+        .bind(from)
+        .bind(to)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // Get total count
+        let total: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)::bigint
+            FROM sessions s
+            WHERE s.id IN (
+                SELECT session_id FROM session_participants WHERE user_id = $1
+            )
+            AND ($2::text IS NULL OR s.name ILIKE '%' || $2 || '%')
+            AND ($3::text IS NULL OR s.status::text = $3)
+            AND ($4::date IS NULL OR s.session_date >= $4)
+            AND ($5::date IS NULL OR s.session_date <= $5)
+            "#
+        )
+        .bind(user_id)
+        .bind(search)
+        .bind(status)
+        .bind(from)
+        .bind(to)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let sessions = rows.into_iter().map(|row| {
+            SessionResponse {
+                id: row.id,
+                name: row.name,
+                location: row.location,
+                status: match row.status.as_str() {
+                    "active" => SessionStatus::Active,
+                    _ => SessionStatus::Closed,
+                },
+                created_by: row.created_by,
+                created_at: row.created_at,
+                session_date: row.session_date,
+                participant_count: row.participant_count,
+                total_amount: row.total_amount,
+            }
+        }).collect();
+
+        Ok((sessions, total))
+    }
+
     pub async fn create(
         &self,
         name: &str,
@@ -363,6 +465,68 @@ impl SessionRepository {
         Ok(())
     }
 
+    pub async fn update_status(
+        &self,
+        session_id: Uuid,
+        status: SessionStatus,
+    ) -> Result<SessionResponse, AppError> {
+        let status_str = match status {
+            SessionStatus::Active => "active",
+            SessionStatus::Closed => "closed",
+        };
+
+        #[derive(sqlx::FromRow)]
+        struct SessionRow {
+            id: Uuid,
+            name: String,
+            location: Option<String>,
+            status: String,
+            created_by: Uuid,
+            created_at: chrono::DateTime<chrono::Utc>,
+            session_date: chrono::NaiveDate,
+        }
+
+        let session: SessionRow = sqlx::query_as(
+            r#"
+            UPDATE sessions
+            SET status = $1::session_status, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, name, location, status::text, created_by, created_at, session_date
+            "#,
+        )
+        .bind(status_str)
+        .bind(session_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(AppError::SessionNotFound { session_id })?;
+
+        let participant_count = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) as "count!" FROM session_participants WHERE session_id = $1"#,
+            session_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let total_amount = sqlx::query_scalar!(
+            r#"SELECT COALESCE(SUM(amount), 0) as "total!" FROM bills WHERE session_id = $1"#,
+            session_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(SessionResponse {
+            id: session.id,
+            name: session.name,
+            location: session.location,
+            status: if session.status == "closed" { SessionStatus::Closed } else { SessionStatus::Active },
+            created_by: session.created_by,
+            created_at: session.created_at,
+            session_date: session.session_date,
+            participant_count,
+            total_amount,
+        })
+    }
+
     pub async fn add_participant(
         &self,
         session_id: Uuid,
@@ -404,6 +568,68 @@ impl SessionRepository {
             role: ParticipantRole::Member,
             joined_at: chrono::Utc::now(),
         })
+    }
+
+    pub async fn update_participant(
+        &self,
+        participant_id: Uuid,
+        guest_name: Option<String>,
+    ) -> Result<ParticipantResponse, AppError> {
+        let participant = sqlx::query!(
+            r#"
+            UPDATE session_participants
+            SET guest_name = COALESCE($1, guest_name)
+            WHERE id = $2
+            RETURNING id, session_id, user_id, guest_name, role::text as "role!", joined_at
+            "#,
+            guest_name,
+            participant_id
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(AppError::Validation {
+            field: "participant_id".to_string(),
+            message: "Participant not found".to_string(),
+        })?;
+
+        let display_name = if let Some(uid) = participant.user_id {
+            sqlx::query_scalar!(
+                r#"SELECT full_name FROM users WHERE id = $1"#,
+                uid
+            )
+            .fetch_optional(&self.pool)
+            .await?
+            .unwrap_or_else(|| "Unknown".to_string())
+        } else {
+            participant.guest_name.clone().unwrap_or_else(|| "Guest".to_string())
+        };
+
+        Ok(ParticipantResponse {
+            id: participant.id,
+            user_id: participant.user_id,
+            guest_name: participant.guest_name,
+            display_name,
+            role: if participant.role == "owner" { ParticipantRole::Owner } else { ParticipantRole::Member },
+            joined_at: participant.joined_at,
+        })
+    }
+
+    pub async fn delete_participant(
+        &self,
+        participant_id: Uuid,
+    ) -> Result<(), AppError> {
+        sqlx::query!("DELETE FROM session_participants WHERE id = $1", participant_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn delete(&self, session_id: Uuid) -> Result<(), AppError> {
+        // Foreign key constraints with ON DELETE CASCADE will handle related data
+        sqlx::query!("DELETE FROM sessions WHERE id = $1", session_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
 
     pub async fn find_bills_by_session(
@@ -735,5 +961,35 @@ impl SessionRepository {
         tx.commit().await?;
 
         Ok(updated_bill)
+    }
+
+    pub async fn delete_bill(
+        &self,
+        bill_id: Uuid,
+        session_id: Uuid,
+    ) -> Result<(), AppError> {
+        let mut tx = self.pool.begin().await?;
+
+        // Delete bill payers
+        sqlx::query!("DELETE FROM bill_payers WHERE bill_id = $1", bill_id)
+            .execute(&mut *tx)
+            .await?;
+
+        // Delete bill splits
+        sqlx::query!("DELETE FROM bill_splits WHERE bill_id = $1", bill_id)
+            .execute(&mut *tx)
+            .await?;
+
+        // Delete the bill itself
+        sqlx::query!("DELETE FROM bills WHERE id = $1", bill_id)
+            .execute(&mut *tx)
+            .await?;
+
+        // Recalculate debts for the session
+        Self::recalculate_debts(&mut tx, session_id).await?;
+
+        tx.commit().await?;
+
+        Ok(())
     }
 }

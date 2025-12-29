@@ -7,7 +7,7 @@ description = "Backend API for SplitBuddy - Bill splitting application"
 
 [dependencies]
 # Web Framework
-axum = { version = "0.7", features = ["macros"] }
+axum = { version = "0.7", features = ["macros", "multipart"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace", "fs"] }
 
@@ -27,6 +27,7 @@ argon2 = "0.5"
 
 # Types
 uuid = { version = "1", features = ["v4", "serde"] }
+rand = "0.8"
 chrono = { version = "0.4", features = ["serde"] }
 rust_decimal = { version = "1.33", features = ["serde", "serde-with-str"] }
 

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Plus, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check, Lock, Unlock, Download } from 'lucide-react'
 import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
@@ -110,6 +110,109 @@ export default function SessionDetailPage() {
     },
   })
 
+  const [deletingBillId, setDeletingBillId] = useState<string | null>(null)
+
+  const deleteBill = useMutation({
+    mutationFn: async (billId: string) => {
+      await api.delete(`/sessions/${id}/bills/${billId}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions', id, 'bills'] })
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
+      setDeletingBillId(null)
+      toast.success('Đã xóa hoá đơn!')
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      toast.error(message)
+      setDeletingBillId(null)
+    },
+  })
+
+  const [editingParticipant, setEditingParticipant] = useState<{ id: string; name: string } | null>(null)
+  const [deletingParticipantId, setDeletingParticipantId] = useState<string | null>(null)
+
+  const updateParticipant = useMutation({
+    mutationFn: async ({ participantId, guestName }: { participantId: string; guestName: string }) => {
+      await api.put(`/sessions/${id}/participants/${participantId}`, { guest_name: guestName })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
+      setEditingParticipant(null)
+      toast.success('Đã cập nhật tên!')
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      toast.error(message)
+    },
+  })
+
+  const deleteParticipant = useMutation({
+    mutationFn: async (participantId: string) => {
+      await api.delete(`/sessions/${id}/participants/${participantId}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
+      setDeletingParticipantId(null)
+      toast.success('Đã xóa người tham gia!')
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      toast.error(message)
+      setDeletingParticipantId(null)
+    },
+  })
+
+  const closeSession = useMutation({
+    mutationFn: async () => {
+      await api.post(`/sessions/${id}/close`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      toast.success('Đã đóng session!')
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      toast.error(message)
+    },
+  })
+
+  const reopenSession = useMutation({
+    mutationFn: async () => {
+      await api.post(`/sessions/${id}/reopen`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      toast.success('Đã mở lại session!')
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      toast.error(message)
+    },
+  })
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  const deleteSession = useMutation({
+    mutationFn: async () => {
+      await api.delete(`/sessions/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      toast.success('Đã xóa buổi nhậu!')
+      navigate('/')
+    },
+    onError: (error: any) => {
+      console.error('Delete session error:', error)
+      const message = error?.response?.data?.error?.message || error?.message || 'Có lỗi xảy ra khi xóa session'
+      toast.error(message)
+      setShowDeleteConfirm(false)
+    },
+  })
+
   const handleCreateBill = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedPayer) {
@@ -210,11 +313,75 @@ export default function SessionDetailPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Beer className="h-6 w-6 text-orange-500" /> {session.name}
+            {session.status === 'closed' && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">
+                <Lock className="h-3 w-3" /> Đã đóng
+              </span>
+            )}
           </h1>
           <div className="flex items-center gap-3 text-muted-foreground">
             <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {new Date(session.session_date).toLocaleDateString('vi-VN')}</span>
             {session.location && <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {session.location}</span>}
           </div>
+        </div>
+        <div className="ml-auto flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                const response = await api.get(`/sessions/${id}/export`, { responseType: 'blob' })
+                const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' })
+                const url = window.URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `${session.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+                document.body.appendChild(a)
+                a.click()
+                window.URL.revokeObjectURL(url)
+                document.body.removeChild(a)
+                toast.success('Đã xuất file CSV!')
+              } catch {
+                toast.error('Không thể xuất file')
+              }
+            }}
+            className="gap-1"
+          >
+            <Download className="h-4 w-4" />
+            Xuất CSV
+          </Button>
+          {session.status === 'active' ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => closeSession.mutate()}
+              disabled={closeSession.isPending}
+              className="gap-1"
+            >
+              <Lock className="h-4 w-4" />
+              {closeSession.isPending ? 'Đang đóng...' : 'Đóng session'}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => reopenSession.mutate()}
+              disabled={reopenSession.isPending}
+              className="gap-1"
+            >
+              <Unlock className="h-4 w-4" />
+              {reopenSession.isPending ? 'Đang mở...' : 'Mở lại session'}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="gap-1 text-red-500 hover:text-red-600 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            Xóa
+          </Button>
         </div>
       </div>
 
@@ -264,14 +431,85 @@ export default function SessionDetailPage() {
               {session.participants.map((p) => (
                 <div
                   key={p.id}
-                  className={`flex items-center gap-2 rounded-full px-4 py-2 ${
+                  className={`flex items-center gap-2 rounded-full px-3 py-2 ${
                     p.role === 'owner' ? 'bg-primary/10 text-primary' : 'bg-gray-100'
                   }`}
                 >
-                  <span>{p.user_id ? '👤' : '👻 Khách'}</span>
-                  <span>{p.display_name}</span>
-                  {p.role === 'owner' && (
-                    <span className="text-xs">(Chủ xị)</span>
+                  {editingParticipant?.id === p.id ? (
+                    <>
+                      <Input
+                        value={editingParticipant.name}
+                        onChange={(e) => setEditingParticipant({ ...editingParticipant, name: e.target.value })}
+                        className="h-7 w-32 text-sm"
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0"
+                        onClick={() => updateParticipant.mutate({ participantId: p.id, guestName: editingParticipant.name })}
+                        disabled={updateParticipant.isPending}
+                      >
+                        <Check className="h-3 w-3 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0"
+                        onClick={() => setEditingParticipant(null)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </>
+                  ) : deletingParticipantId === p.id ? (
+                    <>
+                      <span className="text-sm">Xóa {p.display_name}?</span>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => deleteParticipant.mutate(p.id)}
+                        disabled={deleteParticipant.isPending}
+                      >
+                        {deleteParticipant.isPending ? '...' : 'Xóa'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setDeletingParticipantId(null)}
+                      >
+                        Hủy
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span>{p.user_id ? '👤' : '👻'}</span>
+                      <span>{p.display_name}</span>
+                      {p.role === 'owner' && (
+                        <span className="text-xs">(Chủ xị)</span>
+                      )}
+                      {p.role !== 'owner' && !p.user_id && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-5 w-5 p-0 opacity-50 hover:opacity-100"
+                          onClick={() => setEditingParticipant({ id: p.id, name: p.guest_name || p.display_name })}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {p.role !== 'owner' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-5 w-5 p-0 text-red-400 opacity-50 hover:opacity-100 hover:text-red-600"
+                          onClick={() => setDeletingParticipantId(p.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               ))}
@@ -283,12 +521,19 @@ export default function SessionDetailPage() {
       {activeTab === 'bills' && (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <FunTooltip messages={FUN_MESSAGES.addBill}>
-              <Button onClick={() => setShowBillModal(true)} className="gap-2 hover-wiggle">
-                <Plus className="h-4 w-4" />
-                Thêm hoá đơn
+            {session.status === 'active' ? (
+              <FunTooltip messages={FUN_MESSAGES.addBill}>
+                <Button onClick={() => setShowBillModal(true)} className="gap-2 hover-wiggle">
+                  <Plus className="h-4 w-4" />
+                  Thêm hoá đơn
+                </Button>
+              </FunTooltip>
+            ) : (
+              <Button disabled className="gap-2 opacity-50">
+                <Lock className="h-4 w-4" />
+                Session đã đóng
               </Button>
-            </FunTooltip>
+            )}
           </div>
 
           {bills?.length === 0 ? (
@@ -436,6 +681,34 @@ export default function SessionDetailPage() {
                             >
                               ✏️
                             </Button>
+                            {deletingBillId === bill.id ? (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => deleteBill.mutate(bill.id)}
+                                  disabled={deleteBill.isPending}
+                                >
+                                  {deleteBill.isPending ? '...' : 'Xóa'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setDeletingBillId(null)}
+                                >
+                                  Hủy
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setDeletingBillId(bill.id)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                         
@@ -722,6 +995,43 @@ export default function SessionDetailPage() {
                   </Button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-600">
+                <Trash2 className="h-5 w-5" />
+                Xác nhận xóa
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Bạn có chắc muốn xóa buổi nhậu <strong>"{session?.name}"</strong>? 
+                Tất cả hoá đơn và công nợ liên quan sẽ bị xóa vĩnh viễn.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowDeleteConfirm(false)}
+                >
+                  Huỷ
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => deleteSession.mutate()}
+                  disabled={deleteSession.isPending}
+                >
+                  {deleteSession.isPending ? 'Đang xóa...' : 'Xóa'}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
