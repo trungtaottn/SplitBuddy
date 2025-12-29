@@ -19,6 +19,7 @@ pub fn routes() -> Router<AppState> {
         .route("/", get(list_sessions).post(create_session))
         .route("/:id", get(get_session))
         .route("/:id/participants", post(add_participant))
+        .route("/:id/participants/:pid", put(update_participant).delete(delete_participant))
         .route("/:id/bills", get(list_bills).post(create_bill))
         .route("/:id/bills/:bill_id", put(update_bill).delete(delete_bill))
 }
@@ -215,6 +216,94 @@ async fn add_participant(
         .await?;
 
     Ok(created(participant))
+}
+
+#[derive(Deserialize)]
+pub struct UpdateParticipantRequest {
+    pub guest_name: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ParticipantPathParams {
+    id: Uuid,
+    pid: Uuid,
+}
+
+async fn update_participant(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(params): Path<ParticipantPathParams>,
+    Json(payload): Json<UpdateParticipantRequest>,
+) -> Result<Json<ApiResponse<ParticipantResponse>>, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is session owner
+    repo.verify_owner(params.id, auth_user.user_id).await?;
+
+    // Update participant (only guest_name can be updated)
+    let participant = repo
+        .update_participant(params.pid, payload.guest_name)
+        .await?;
+
+    Ok(ok(participant))
+}
+
+async fn delete_participant(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(params): Path<ParticipantPathParams>,
+) -> Result<Json<ApiResponse<()>>, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    // Verify user is session owner
+    repo.verify_owner(params.id, auth_user.user_id).await?;
+
+    // Check if participant has any bills
+    let has_bills: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM bill_payers WHERE participant_id = $1
+            UNION
+            SELECT 1 FROM bill_splits WHERE participant_id = $1
+        )
+        "#
+    )
+    .bind(params.pid)
+    .fetch_one(&state.pool)
+    .await?;
+
+    if has_bills {
+        return Err(AppError::Validation {
+            field: "participant".to_string(),
+            message: "Không thể xóa người tham gia đã có trong hóa đơn".to_string(),
+        });
+    }
+
+    // Check if participant is the session owner
+    let is_owner: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM session_participants sp
+            JOIN sessions s ON sp.session_id = s.id
+            WHERE sp.id = $1 AND sp.user_id = s.created_by
+        )
+        "#
+    )
+    .bind(params.pid)
+    .fetch_one(&state.pool)
+    .await?;
+
+    if is_owner {
+        return Err(AppError::Validation {
+            field: "participant".to_string(),
+            message: "Không thể xóa người tạo session".to_string(),
+        });
+    }
+
+    // Delete participant
+    repo.delete_participant(params.pid).await?;
+
+    Ok(ok(()))
 }
 
 async fn list_bills(

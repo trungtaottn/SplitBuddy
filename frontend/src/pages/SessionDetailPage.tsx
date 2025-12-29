@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Plus, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check } from 'lucide-react'
 import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
@@ -127,6 +127,40 @@ export default function SessionDetailPage() {
       const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
       toast.error(message)
       setDeletingBillId(null)
+    },
+  })
+
+  const [editingParticipant, setEditingParticipant] = useState<{ id: string; name: string } | null>(null)
+  const [deletingParticipantId, setDeletingParticipantId] = useState<string | null>(null)
+
+  const updateParticipant = useMutation({
+    mutationFn: async ({ participantId, guestName }: { participantId: string; guestName: string }) => {
+      await api.put(`/sessions/${id}/participants/${participantId}`, { guest_name: guestName })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
+      setEditingParticipant(null)
+      toast.success('Đã cập nhật tên!')
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      toast.error(message)
+    },
+  })
+
+  const deleteParticipant = useMutation({
+    mutationFn: async (participantId: string) => {
+      await api.delete(`/sessions/${id}/participants/${participantId}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
+      setDeletingParticipantId(null)
+      toast.success('Đã xóa người tham gia!')
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      toast.error(message)
+      setDeletingParticipantId(null)
     },
   })
 
@@ -284,14 +318,85 @@ export default function SessionDetailPage() {
               {session.participants.map((p) => (
                 <div
                   key={p.id}
-                  className={`flex items-center gap-2 rounded-full px-4 py-2 ${
+                  className={`flex items-center gap-2 rounded-full px-3 py-2 ${
                     p.role === 'owner' ? 'bg-primary/10 text-primary' : 'bg-gray-100'
                   }`}
                 >
-                  <span>{p.user_id ? '👤' : '👻 Khách'}</span>
-                  <span>{p.display_name}</span>
-                  {p.role === 'owner' && (
-                    <span className="text-xs">(Chủ xị)</span>
+                  {editingParticipant?.id === p.id ? (
+                    <>
+                      <Input
+                        value={editingParticipant.name}
+                        onChange={(e) => setEditingParticipant({ ...editingParticipant, name: e.target.value })}
+                        className="h-7 w-32 text-sm"
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0"
+                        onClick={() => updateParticipant.mutate({ participantId: p.id, guestName: editingParticipant.name })}
+                        disabled={updateParticipant.isPending}
+                      >
+                        <Check className="h-3 w-3 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0"
+                        onClick={() => setEditingParticipant(null)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </>
+                  ) : deletingParticipantId === p.id ? (
+                    <>
+                      <span className="text-sm">Xóa {p.display_name}?</span>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => deleteParticipant.mutate(p.id)}
+                        disabled={deleteParticipant.isPending}
+                      >
+                        {deleteParticipant.isPending ? '...' : 'Xóa'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setDeletingParticipantId(null)}
+                      >
+                        Hủy
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span>{p.user_id ? '👤' : '👻'}</span>
+                      <span>{p.display_name}</span>
+                      {p.role === 'owner' && (
+                        <span className="text-xs">(Chủ xị)</span>
+                      )}
+                      {p.role !== 'owner' && !p.user_id && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-5 w-5 p-0 opacity-50 hover:opacity-100"
+                          onClick={() => setEditingParticipant({ id: p.id, name: p.guest_name || p.display_name })}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {p.role !== 'owner' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-5 w-5 p-0 text-red-400 opacity-50 hover:opacity-100 hover:text-red-600"
+                          onClick={() => setDeletingParticipantId(p.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               ))}

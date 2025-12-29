@@ -406,6 +406,60 @@ impl SessionRepository {
         })
     }
 
+    pub async fn update_participant(
+        &self,
+        participant_id: Uuid,
+        guest_name: Option<String>,
+    ) -> Result<ParticipantResponse, AppError> {
+        let participant = sqlx::query!(
+            r#"
+            UPDATE session_participants
+            SET guest_name = COALESCE($1, guest_name)
+            WHERE id = $2
+            RETURNING id, session_id, user_id, guest_name, role::text as "role!", joined_at
+            "#,
+            guest_name,
+            participant_id
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(AppError::Validation {
+            field: "participant_id".to_string(),
+            message: "Participant not found".to_string(),
+        })?;
+
+        let display_name = if let Some(uid) = participant.user_id {
+            sqlx::query_scalar!(
+                r#"SELECT full_name FROM users WHERE id = $1"#,
+                uid
+            )
+            .fetch_optional(&self.pool)
+            .await?
+            .unwrap_or_else(|| "Unknown".to_string())
+        } else {
+            participant.guest_name.clone().unwrap_or_else(|| "Guest".to_string())
+        };
+
+        Ok(ParticipantResponse {
+            id: participant.id,
+            user_id: participant.user_id,
+            guest_name: participant.guest_name,
+            display_name,
+            role: if participant.role == "owner" { ParticipantRole::Owner } else { ParticipantRole::Member },
+            joined_at: participant.joined_at,
+        })
+    }
+
+    pub async fn delete_participant(
+        &self,
+        participant_id: Uuid,
+    ) -> Result<(), AppError> {
+        sqlx::query!("DELETE FROM session_participants WHERE id = $1", participant_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
     pub async fn find_bills_by_session(
         &self,
         session_id: Uuid,
