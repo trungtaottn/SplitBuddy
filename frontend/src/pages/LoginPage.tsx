@@ -7,35 +7,57 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/toaster'
 
-const FESTIVE_ITEMS = ['🎆', '🎇', '🧨', '🎊', '🎉', '✨', '💫', '⭐', '🌟', '🎋', '🏮', '🧧', '🍺', '🍻', '🥂']
-
-function FestiveBackground() {
-  const particles = useMemo(() => {
-    return Array.from({ length: 30 }, (_, i) => ({
+function AnimatedBackground() {
+  const blobs = useMemo(() => {
+    const colors = [
+      'from-orange-400/30 to-pink-400/30',
+      'from-pink-400/30 to-red-400/30',
+      'from-red-400/30 to-orange-400/30',
+      'from-amber-400/30 to-orange-400/30',
+      'from-rose-400/30 to-pink-400/30',
+    ]
+    return Array.from({ length: 8 }, (_, i) => ({
       id: i,
-      emoji: FESTIVE_ITEMS[Math.floor(Math.random() * FESTIVE_ITEMS.length)],
+      color: colors[i % colors.length],
+      size: 150 + Math.random() * 200,
       left: Math.random() * 100,
+      top: Math.random() * 100,
       delay: Math.random() * 5,
-      duration: 8 + Math.random() * 10,
-      size: 16 + Math.random() * 20,
+      duration: 15 + Math.random() * 10,
     }))
   }, [])
 
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      {particles.map((p) => (
+      {/* Floating gradient blobs */}
+      {blobs.map((blob) => (
         <div
-          key={p.id}
-          className="absolute animate-float-down opacity-60"
+          key={blob.id}
+          className={`absolute rounded-full bg-gradient-to-br ${blob.color} blur-3xl animate-blob`}
           style={{
-            left: `${p.left}%`,
-            animationDelay: `${p.delay}s`,
-            animationDuration: `${p.duration}s`,
-            fontSize: `${p.size}px`,
+            width: `${blob.size}px`,
+            height: `${blob.size}px`,
+            left: `${blob.left}%`,
+            top: `${blob.top}%`,
+            animationDelay: `${blob.delay}s`,
+            animationDuration: `${blob.duration}s`,
           }}
-        >
-          {p.emoji}
-        </div>
+        />
+      ))}
+      
+      {/* Rising bubbles */}
+      {Array.from({ length: 15 }).map((_, i) => (
+        <div
+          key={`bubble-${i}`}
+          className="absolute rounded-full bg-white/20 dark:bg-white/10 animate-rise"
+          style={{
+            width: `${8 + Math.random() * 16}px`,
+            height: `${8 + Math.random() * 16}px`,
+            left: `${Math.random() * 100}%`,
+            animationDelay: `${Math.random() * 8}s`,
+            animationDuration: `${10 + Math.random() * 15}s`,
+          }}
+        />
       ))}
     </div>
   )
@@ -92,7 +114,7 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-orange-50 via-pink-50 to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 px-4 overflow-hidden">
-      <FestiveBackground />
+      <AnimatedBackground />
       <Card className="w-full max-w-md relative z-10 shadow-xl">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 text-5xl animate-bounce">
