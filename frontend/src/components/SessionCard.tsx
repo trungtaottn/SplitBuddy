@@ -88,26 +88,26 @@ export function SessionCard({
   return (
     <Link
       to={`/sessions/${id}`}
-      className="block group"
+      className="block group h-full"
     >
-      <div className="rounded-xl border bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/50 space-y-3">
+      <div className="rounded-xl border bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/50 space-y-3 h-full flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0 overflow-hidden">
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-primary transition-colors">
               🍺 {name}
             </h3>
-            <div className="flex items-center gap-2 mt-1 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
+            <div className="mt-1 text-sm text-gray-500 dark:text-gray-400 space-y-0.5">
               {location && (
-                <span className="flex items-center gap-1 max-w-[120px]">
+                <div className="flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="truncate">{location}</span>
-                </span>
+                  <span>{location}</span>
+                </div>
               )}
-              <span className="flex items-center gap-1 flex-shrink-0">
-                <Calendar className="h-3.5 w-3.5" />
-                {formattedDate}
-              </span>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>{formattedDate}</span>
+              </div>
             </div>
           </div>
           <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap', statusConfig.className)}>
@@ -116,10 +116,12 @@ export function SessionCard({
         </div>
 
         {/* Participants */}
-        <AvatarStack participants={participants} max={5} />
+        <div className="flex-1">
+          <AvatarStack participants={participants} max={5} />
+        </div>
 
         {/* Footer */}
-        <div className="flex justify-between items-center pt-2 border-t dark:border-gray-700">
+        <div className="flex justify-between items-center pt-2 border-t dark:border-gray-700 mt-auto">
           <span className="font-semibold text-gray-900 dark:text-gray-100">
             {formatCurrency(total_amount)}
           </span>

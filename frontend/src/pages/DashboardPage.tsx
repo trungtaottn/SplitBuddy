@@ -246,7 +246,7 @@ export default function DashboardPage() {
               onClick: () => setShowCreateModal(true),
             }}
             secondaryAction={{
-              label: 'Tạo nhóm bạn nhậu',
+              label: 'Tìm anh em cùng nhau nhậu',
               onClick: () => navigate('/groups'),
             }}
           />
