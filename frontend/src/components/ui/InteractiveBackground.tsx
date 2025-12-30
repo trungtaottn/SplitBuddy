@@ -28,34 +28,34 @@ const MOOD_COLORS: Record<string, string[]> = {
 
 const MOOD_BLOB_COLORS: Record<string, string[]> = {
   happy: [
-    'from-orange-400/20 to-amber-400/20',
-    'from-amber-400/20 to-yellow-400/20',
-    'from-yellow-400/20 to-orange-400/20',
+    'from-orange-400/10 to-amber-400/10',
+    'from-amber-400/10 to-yellow-400/10',
+    'from-yellow-400/10 to-orange-400/10',
   ],
   sad: [
-    'from-blue-400/20 to-slate-400/20',
-    'from-slate-400/20 to-gray-400/20',
-    'from-gray-400/20 to-blue-400/20',
+    'from-blue-400/10 to-slate-400/10',
+    'from-slate-400/10 to-gray-400/10',
+    'from-gray-400/10 to-blue-400/10',
   ],
   tired: [
-    'from-violet-400/20 to-purple-400/20',
-    'from-purple-400/20 to-indigo-400/20',
-    'from-indigo-400/20 to-violet-400/20',
+    'from-violet-400/10 to-purple-400/10',
+    'from-purple-400/10 to-indigo-400/10',
+    'from-indigo-400/10 to-violet-400/10',
   ],
   stressed: [
-    'from-emerald-400/20 to-teal-400/20',
-    'from-teal-400/20 to-cyan-400/20',
-    'from-cyan-400/20 to-emerald-400/20',
+    'from-emerald-400/10 to-teal-400/10',
+    'from-teal-400/10 to-cyan-400/10',
+    'from-cyan-400/10 to-emerald-400/10',
   ],
   excited: [
-    'from-pink-400/20 to-rose-400/20',
-    'from-rose-400/20 to-red-400/20',
-    'from-red-400/20 to-pink-400/20',
+    'from-pink-400/10 to-rose-400/10',
+    'from-rose-400/10 to-red-400/10',
+    'from-red-400/10 to-pink-400/10',
   ],
   neutral: [
-    'from-gray-400/20 to-slate-400/20',
-    'from-slate-400/20 to-zinc-400/20',
-    'from-zinc-400/20 to-gray-400/20',
+    'from-gray-400/10 to-slate-400/10',
+    'from-slate-400/10 to-zinc-400/10',
+    'from-zinc-400/10 to-gray-400/10',
   ],
 }
 
@@ -73,14 +73,14 @@ export function InteractiveBackground() {
   const blobColors = MOOD_BLOB_COLORS[mood] || MOOD_BLOB_COLORS.neutral
 
   const blobs = useMemo(() => {
-    return Array.from({ length: 5 }, (_, i) => ({
+    return Array.from({ length: 7 }, (_, i) => ({
       id: i,
       color: blobColors[i % blobColors.length],
-      size: 250 + Math.random() * 200,
+      size: 200 + Math.random() * 200,
       left: Math.random() * 100,
       top: Math.random() * 100,
-      delay: Math.random() * 5,
-      duration: 25 + Math.random() * 15,
+      delay: Math.random() * 3,
+      duration: 12 + Math.random() * 8,
     }))
   }, [mood])
 
@@ -195,7 +195,7 @@ export function InteractiveBackground() {
           height: '250px',
           left: 0,
           top: 0,
-          background: `radial-gradient(circle, ${colors[0]}20 0%, transparent 70%)`,
+          background: `radial-gradient(circle, ${colors[0]}08 0%, transparent 70%)`,
         }}
       />
 

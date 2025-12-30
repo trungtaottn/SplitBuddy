@@ -38,20 +38,20 @@ function InteractiveBackground() {
 
   const blobs = useMemo(() => {
     const blobColors = [
-      'from-orange-400/20 to-pink-400/20',
-      'from-pink-400/20 to-red-400/20',
-      'from-red-400/20 to-orange-400/20',
-      'from-amber-400/20 to-orange-400/20',
-      'from-rose-400/20 to-pink-400/20',
+      'from-orange-400/10 to-pink-400/10',
+      'from-pink-400/10 to-red-400/10',
+      'from-red-400/10 to-orange-400/10',
+      'from-amber-400/10 to-orange-400/10',
+      'from-rose-400/10 to-pink-400/10',
     ]
-    return Array.from({ length: 5 }, (_, i) => ({
+    return Array.from({ length: 7 }, (_, i) => ({
       id: i,
       color: blobColors[i % blobColors.length],
-      size: 250 + Math.random() * 150,
+      size: 200 + Math.random() * 200,
       left: Math.random() * 100,
       top: Math.random() * 100,
-      delay: Math.random() * 5,
-      duration: 25 + Math.random() * 15,
+      delay: Math.random() * 3,
+      duration: 12 + Math.random() * 8,
     }))
   }, [])
 
@@ -158,7 +158,7 @@ function InteractiveBackground() {
           height: '300px',
           left: 0,
           top: 0,
-          background: 'radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 70%)',
         }}
       />
 
