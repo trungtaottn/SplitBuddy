@@ -134,7 +134,7 @@ export default function DebtsPage() {
                               <td className="py-2 text-right">{formatCurrency(p.total_paid)}</td>
                               <td className="py-2 text-right">{formatCurrency(p.total_owed)}</td>
                               <td className={`py-2 text-right font-medium ${
-                                balance > 0 ? 'text-green-600' : balance < 0 ? 'text-red-600' : ''
+                                balance > 0 ? 'text-green-600 dark:text-green-400' : balance < 0 ? 'text-red-600 dark:text-red-400' : ''
                               }`}>
                                 {balance > 0 && '+'}
                                 {formatCurrency(p.balance)}
@@ -161,12 +161,12 @@ export default function DebtsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardContent className="flex items-center gap-4 p-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
                   <Wallet className="h-6 w-6" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Tổng nợ</p>
-                  <p className="text-2xl font-bold text-red-600">
+                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                     {debts ? formatCurrency(debts.total_i_owe) : '0đ'}
                   </p>
                 </div>
@@ -174,12 +174,12 @@ export default function DebtsPage() {
             </Card>
             <Card>
               <CardContent className="flex items-center gap-4 p-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
                   <Wallet className="h-6 w-6" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Được nợ</p>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                     {debts ? formatCurrency(debts.total_owed_to_me) : '0đ'}
                   </p>
                 </div>
@@ -190,7 +190,7 @@ export default function DebtsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-600">
+            <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
               <ArrowRight className="h-5 w-5" />
               Tôi nợ
             </CardTitle>
@@ -210,7 +210,7 @@ export default function DebtsPage() {
                       <p className="text-sm text-muted-foreground">{debt.session_name}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-red-600">{formatCurrency(debt.amount)}</p>
+                      <p className="font-bold text-red-600 dark:text-red-400">{formatCurrency(debt.amount)}</p>
                       {debt.status === 'pending' && (
                         <Button
                           size="sm"
@@ -222,7 +222,7 @@ export default function DebtsPage() {
                         </Button>
                       )}
                       {debt.status === 'settlement_requested' && (
-                        <span className="flex items-center gap-1 text-sm text-yellow-600">
+                        <span className="flex items-center gap-1 text-sm text-yellow-600 dark:text-yellow-400">
                           <Clock className="h-4 w-4" />
                           Chờ xác nhận
                         </span>
@@ -237,7 +237,7 @@ export default function DebtsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-600">
+            <CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
               <ArrowRight className="h-5 w-5 rotate-180" />
               Nợ tôi
             </CardTitle>
@@ -257,7 +257,7 @@ export default function DebtsPage() {
                       <p className="text-sm text-muted-foreground">{debt.session_name}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-green-600">{formatCurrency(debt.amount)}</p>
+                      <p className="font-bold text-green-600 dark:text-green-400">{formatCurrency(debt.amount)}</p>
                       {debt.status === 'settlement_requested' && (
                         <Button
                           size="sm"
