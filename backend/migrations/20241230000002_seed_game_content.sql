@@ -103,5 +103,140 @@ INSERT INTO game_content (game_type, content_type, content, difficulty) VALUES
 ('challenge', 'action', 'Cởi 1 món đồ (giày dép không tính)', 'extreme'),
 ('challenge', 'action', 'Để người khác post bất cứ gì lên story của bạn', 'extreme'),
 ('challenge', 'action', 'Gọi cho người yêu cũ và xin lỗi', 'extreme'),
-('challenge', 'action', 'Thực hiện 1 dare do cả nhóm vote chọn', 'extreme')
+('challenge', 'action', 'Thực hiện 1 dare do cả nhóm vote chọn', 'extreme'),
+
+-- ============================================
+-- THÊM CÂU HỎI HÓC BÚA VÀ THÚ VỊ HƠN
+-- ============================================
+
+-- Truth or Dare - SPICY TRUTHS
+('truth_or_dare', 'truth', 'Nếu được quay lại quá khứ, mối quan hệ nào bạn sẽ không bắt đầu?', 'hard'),
+('truth_or_dare', 'truth', 'Bạn đã từng có feelings với người yêu của bạn bè chưa?', 'hard'),
+('truth_or_dare', 'truth', 'Điều gì bạn làm mà nếu người yêu biết sẽ chia tay ngay?', 'extreme'),
+('truth_or_dare', 'truth', 'Bạn có từng fake orgasm không?', 'extreme'),
+('truth_or_dare', 'truth', 'Người trong nhóm này bạn muốn "thử" nhất là ai?', 'extreme'),
+('truth_or_dare', 'truth', 'Bạn đã từng sexting với ai chưa? Kể chi tiết', 'extreme'),
+('truth_or_dare', 'truth', 'Điều kinky nhất bạn từng làm là gì?', 'extreme'),
+('truth_or_dare', 'truth', 'Bạn có từng chụp/quay video 18+ không?', 'extreme'),
+('truth_or_dare', 'truth', 'Lần đầu tiên của bạn như thế nào? Kể đi', 'extreme'),
+('truth_or_dare', 'truth', 'Bạn có fetish gì đặc biệt không?', 'extreme'),
+('truth_or_dare', 'truth', 'Ai là người bạn nghĩ đến khi "tự sướng"?', 'extreme'),
+('truth_or_dare', 'truth', 'Bạn đã từng làm chuyện ấy ở đâu kỳ lạ nhất?', 'extreme'),
+('truth_or_dare', 'truth', 'Số người bạn đã ngủ cùng là bao nhiêu? Thành thật đi', 'extreme'),
+('truth_or_dare', 'truth', 'Bạn có từng threesome hoặc muốn thử không?', 'extreme'),
+('truth_or_dare', 'truth', 'Điều gì bạn muốn thử trong phòng ngủ nhưng chưa dám nói?', 'extreme'),
+
+-- Truth or Dare - AWKWARD TRUTHS  
+('truth_or_dare', 'truth', 'Bạn có từng giả vờ thích ai để lợi dụng họ không?', 'hard'),
+('truth_or_dare', 'truth', 'Điều tệ nhất bạn từng nói sau lưng ai trong nhóm này?', 'hard'),
+('truth_or_dare', 'truth', 'Bạn ghen tị điều gì nhất ở người ngồi đối diện?', 'medium'),
+('truth_or_dare', 'truth', 'Nếu phải đuổi 1 người khỏi nhóm, bạn chọn ai?', 'hard'),
+('truth_or_dare', 'truth', 'Ai trong nhóm bạn thấy annoying nhất? Vì sao?', 'hard'),
+('truth_or_dare', 'truth', 'Bạn có từng lợi dụng ai vì tiền không?', 'hard'),
+('truth_or_dare', 'truth', 'Điều gì bạn biết về người trong nhóm mà họ không muốn ai biết?', 'extreme'),
+('truth_or_dare', 'truth', 'Bạn đánh giá bản thân mấy điểm về ngoại hình? Thành thật đi', 'medium'),
+('truth_or_dare', 'truth', 'Ai trong nhóm bạn nghĩ sẽ chết già một mình?', 'hard'),
+('truth_or_dare', 'truth', 'Bạn có từng mơ thấy ai trong nhóm này trong giấc mơ 18+ không?', 'extreme'),
+
+-- Truth or Dare - EMBARRASSING TRUTHS
+('truth_or_dare', 'truth', 'Kể về lần bạn bị bắt gặp đang làm chuyện xấu hổ', 'medium'),
+('truth_or_dare', 'truth', 'Thói quen kỳ lạ nhất của bạn khi ở một mình?', 'medium'),
+('truth_or_dare', 'truth', 'Bạn có từng ngửi quần áo để check xem có mặc lại được không?', 'easy'),
+('truth_or_dare', 'truth', 'Lần cuối bạn tắm là khi nào? Thành thật nhé', 'easy'),
+('truth_or_dare', 'truth', 'Bạn có từng ị ra quần khi đã lớn chưa?', 'hard'),
+('truth_or_dare', 'truth', 'Điều gì bạn làm trong toilet lâu như vậy?', 'medium'),
+
+-- Truth or Dare - WILD DARES
+('truth_or_dare', 'dare', 'Liếm khuỷu tay người bên cạnh', 'medium'),
+('truth_or_dare', 'dare', 'Ngồi lên đùi người đối diện trong 1 vòng', 'hard'),
+('truth_or_dare', 'dare', 'Để người bên phải whisper vào tai bạn điều bẩn nhất họ nghĩ', 'hard'),
+('truth_or_dare', 'dare', 'Mô tả chi tiết cảm giác khi bạn "đến đỉnh"', 'extreme'),
+('truth_or_dare', 'dare', 'Làm tiếng rên giả trong 30 giây', 'extreme'),
+('truth_or_dare', 'dare', 'Gửi tin nhắn "Em đang nghĩ về anh" cho người cuối cùng trong danh bạ', 'hard'),
+('truth_or_dare', 'dare', 'Cắn môi người bên trái nhẹ nhàng', 'extreme'),
+('truth_or_dare', 'dare', 'Để ai đó trong nhóm slap mông bạn', 'hard'),
+('truth_or_dare', 'dare', 'Làm lap dance cho người được nhóm chọn', 'extreme'),
+('truth_or_dare', 'dare', 'Hôn cổ người bên phải', 'extreme'),
+('truth_or_dare', 'dare', 'Strip poker với người đối diện - thua cởi 1 món', 'extreme'),
+('truth_or_dare', 'dare', 'Để người khác vẽ lên người bạn (vùng cho phép)', 'hard'),
+('truth_or_dare', 'dare', 'Nhắn tin cho crush thật và nói "Em thích anh"', 'hard'),
+('truth_or_dare', 'dare', 'Post ảnh xấu nhất của bạn lên story', 'medium'),
+('truth_or_dare', 'dare', 'Gọi video cho bố mẹ ngay bây giờ', 'medium'),
+
+-- Never Have I Ever - SPICY
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ làm chuyện ấy khi say', 'hard'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ có crush với thầy/cô giáo', 'medium'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ xem phim 18+ ở nơi công cộng', 'hard'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ bị bắt gặp đang "tự sướng"', 'extreme'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ làm trong toilet công cộng', 'extreme'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ gửi nudes cho người yêu', 'hard'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ role-play trong phòng ngủ', 'hard'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ dùng đồ chơi người lớn', 'extreme'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ làm với người hơn 10 tuổi', 'extreme'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ bị caught đang xem phim 18+', 'hard'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ có friends with benefits', 'hard'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ làm vì tiền hoặc quà', 'extreme'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ quay video lúc làm', 'extreme'),
+
+-- Never Have I Ever - AWKWARD
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ nói "I love you" mà không thật lòng', 'medium'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ hack tài khoản của người yêu', 'hard'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ đọc trộm nhật ký/tin nhắn của người khác', 'medium'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ giả vờ bận để không gặp ai đó', 'easy'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ unfriend người ngồi đây', 'medium'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ screenshot chat để share với người khác', 'medium'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ gọi nhầm tên người yêu', 'hard'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ quên anniversary/sinh nhật người yêu', 'medium'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ so sánh người yêu với người khác', 'hard'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ nói xấu người ngồi đây sau lưng họ', 'hard'),
+
+-- Never Have I Ever - EMBARRASSING
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ té trước đám đông', 'easy'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ nói chuyện một mình', 'easy'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ đi nhầm toilet nam/nữ', 'easy'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ vẫy tay lại với người không vẫy tay với mình', 'easy'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ kéo cửa đẩy/đẩy cửa kéo', 'easy'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ gọi thầy/cô là mẹ/bố', 'easy'),
+('never_have_i_ever', 'question', 'Tôi chưa bao giờ ợ/xì hơi trước mặt crush', 'medium'),
+
+-- Challenges - DRINKING GAMES
+('challenge', 'action', 'Uống mỗi khi ai đó nói tên bạn trong 5 phút tới', 'medium'),
+('challenge', 'action', 'Mix 3 loại đồ uống và uống hết', 'hard'),
+('challenge', 'action', 'Chơi beer pong với người đối diện, thua uống đôi', 'hard'),
+('challenge', 'action', 'Uống không dùng tay, ai đỡ ly cho bạn', 'medium'),
+('challenge', 'action', 'Shot rượu với muối và chanh, không được nhăn mặt', 'hard'),
+('challenge', 'action', 'Rượu vòng - uống và truyền cho người tiếp theo trong 3 giây', 'medium'),
+
+-- Challenges - PHYSICAL
+('challenge', 'action', 'Cõng người nặng nhất nhóm đi 1 vòng', 'hard'),
+('challenge', 'action', 'Đứng bằng tay (handstand) hoặc uống 2 shot', 'hard'),
+('challenge', 'action', 'Nhảy dây 50 cái, mỗi lần miss = 1 shot', 'hard'),
+('challenge', 'action', 'Arm wrestling với 3 người, thua = 3 shot', 'medium'),
+('challenge', 'action', 'Squat 30 cái liên tục không nghỉ', 'hard'),
+('challenge', 'action', 'Balance 1 chai trên đầu đi 5 bước', 'medium'),
+
+-- Challenges - SOCIAL
+('challenge', 'action', 'Đi xin số điện thoại của 3 người lạ trong 10 phút', 'hard'),
+('challenge', 'action', 'Hát hết 1 bài karaoke bằng giọng opera', 'medium'),
+('challenge', 'action', 'Gọi điện random và giả vờ là người quen', 'hard'),
+('challenge', 'action', 'Thuyết trình 2 phút về chủ đề nhóm chọn', 'medium'),
+('challenge', 'action', 'Bắt chước influencer nổi tiếng làm video 30 giây', 'medium'),
+('challenge', 'action', 'Đọc rap diss 1 người trong nhóm (friendly)', 'medium'),
+('challenge', 'action', 'Gọi đặt pizza và order bằng giọng hát', 'hard'),
+
+-- Challenges - EMBARRASSING
+('challenge', 'action', 'Đi ra đường và hét to "Tôi là người đẹp nhất"', 'hard'),
+('challenge', 'action', 'Chạy vòng quanh quán/nhà 1 lần', 'medium'),
+('challenge', 'action', 'Tạo dáng như đang chụp ảnh thời trang 10 kiểu', 'medium'),
+('challenge', 'action', 'Giả vờ là waiter/waitress phục vụ nhóm trong 5 phút', 'medium'),
+('challenge', 'action', 'Nói bằng accent nước ngoài trong 3 phút', 'easy'),
+('challenge', 'action', 'Diễn lại scene phim nổi tiếng một mình', 'medium'),
+
+-- Challenges - EXTREME PARTY
+('challenge', 'action', 'Body shot từ rốn người được chọn', 'extreme'),
+('challenge', 'action', 'Để nhóm chọn outfit cho bạn từ đồ có sẵn', 'hard'),
+('challenge', 'action', 'Uống mà không nuốt trong 1 phút', 'hard'),
+('challenge', 'action', 'Kiss or Slap - chọn 1 người và họ chọn kiss hay slap', 'extreme'),
+('challenge', 'action', 'Truth or Shot - trả lời câu hỏi của nhóm hoặc uống', 'hard'),
+('challenge', 'action', 'Để người khác chọn và bạn phải làm dare tiếp theo không biết trước', 'extreme')
 ON CONFLICT DO NOTHING;
