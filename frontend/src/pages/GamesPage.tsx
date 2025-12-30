@@ -3,12 +3,13 @@ import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCircle, X, Skull, Zap, AlertCircle, Target, Hand, Volume2, VolumeX } from 'lucide-react'
+import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCircle, X, Skull, Zap, AlertCircle, Target, Hand, Volume2, VolumeX, Users, CircleDot, Crown, ThumbsUp, List, TrendingUp } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
 import { soundManager, vibrate, vibrationPatterns } from '@/utils/sounds'
 import type { ApiResponse } from '@/types/api'
+import { SpinWheel, DrinkingCounter, PlayerRotation, KingsCup, MostLikelyTo, CategoriesGame, HighOrLow } from '@/components/games'
 
-type GameType = 'truth_or_dare' | 'never_have_i_ever' | 'challenge' | 'dice'
+type GameType = 'truth_or_dare' | 'never_have_i_ever' | 'challenge' | 'dice' | 'wheel'
 
 const GAME_INFO: Record<GameType, { name: string; color: string; warning: string }> = {
   truth_or_dare: { 
@@ -30,6 +31,11 @@ const GAME_INFO: Record<GameType, { name: string; color: string; warning: string
     name: 'Tung xúc xắc', 
     color: 'purple',
     warning: 'Số phận sẽ quyết định! Ra đôi = Bạn là VƯƠNG!'
+  },
+  wheel: {
+    name: 'Vòng quay',
+    color: 'emerald',
+    warning: 'Ai sẽ là người được chọn? Quay để biết!'
   }
 }
 
@@ -47,6 +53,7 @@ const GameIcon = ({ type, className }: { type: GameType; className?: string }) =
     case 'never_have_i_ever': return <Hand className={className} />
     case 'challenge': return <Flame className={className} />
     case 'dice': return <Dices className={className} />
+    case 'wheel': return <CircleDot className={className} />
   }
 }
 
@@ -120,6 +127,29 @@ export default function GamesPage() {
   const [showRules, setShowRules] = useState<string | null>(null)
   const [soundEnabled, setSoundEnabled] = useState(() => soundManager.isEnabled())
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null)
+  
+  // Wheel state
+  const [showWheel, setShowWheel] = useState(false)
+  const [wheelParticipants, setWheelParticipants] = useState<{id: string, name: string}[]>([])
+  const [newParticipant, setNewParticipant] = useState('')
+  
+  // Drinking counter state
+  const [showDrinkingCounter, setShowDrinkingCounter] = useState(false)
+  
+  // Player rotation state
+  const [showPlayerRotation, setShowPlayerRotation] = useState(false)
+  
+  // Kings Cup state
+  const [showKingsCup, setShowKingsCup] = useState(false)
+  
+  // Most Likely To state
+  const [showMostLikelyTo, setShowMostLikelyTo] = useState(false)
+  
+  // Categories state
+  const [showCategories, setShowCategories] = useState(false)
+  
+  // High or Low state
+  const [showHighOrLow, setShowHighOrLow] = useState(false)
   
   // Unified game phase state - prevents overlay flickering
   const [gamePhase, setGamePhase] = useState<GamePhase>('idle')
@@ -306,6 +336,7 @@ export default function GamesPage() {
       case 'medium': return 'bg-yellow-100 text-yellow-800'
       case 'hard': return 'bg-red-100 text-red-800'
       case 'extreme': return 'bg-purple-100 text-purple-800'
+      case '18+': return 'bg-pink-100 text-pink-800 border border-pink-300'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -316,6 +347,7 @@ export default function GamesPage() {
       case 'medium': return 'Trung bình'
       case 'hard': return 'Khó'
       case 'extreme': return 'Cực khó'
+      case '18+': return '18+ 🔞'
       default: return 'Không xác định'
     }
   }
@@ -344,6 +376,7 @@ export default function GamesPage() {
             <option value="medium">🟡 Trung bình</option>
             <option value="hard">🔴 Khó</option>
             <option value="extreme">💀 Cực khó</option>
+            <option value="18+">🔞 18+ (Người lớn)</option>
           </select>
         </div>
 
@@ -393,7 +426,7 @@ export default function GamesPage() {
               <HelpCircle className="h-4 w-4 text-blue-400" />
             </button>
             <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-3xl">🙅</span>
+              <Hand className="h-8 w-8 text-blue-500" />
             </div>
             <h3 className="font-bold text-lg">Tôi chưa bao giờ</h3>
             <p className="text-sm text-muted-foreground mt-1">30 câu hỏi thú vị</p>
@@ -449,7 +482,252 @@ export default function GamesPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-emerald-400 group"
+          onClick={() => setShowWheel(true)}
+        >
+          <CardContent className="p-6 text-center relative">
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-emerald-100 to-teal-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <CircleDot className="h-8 w-8 text-emerald-500 group-hover:animate-spin" />
+            </div>
+            <h3 className="font-bold text-lg">Vòng quay may mắn</h3>
+            <p className="text-sm text-muted-foreground mt-1">Quay để chọn người!</p>
+            <div className="flex justify-center gap-1 mt-2">
+              <Users className="h-4 w-4 text-emerald-500" />
+              <span className="text-xs text-emerald-600">Chọn người ngẫu nhiên</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-yellow-400 group"
+          onClick={() => setShowKingsCup(true)}
+        >
+          <CardContent className="p-6 text-center relative">
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-100 to-amber-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Crown className="h-8 w-8 text-yellow-500" />
+            </div>
+            <h3 className="font-bold text-lg">King's Cup</h3>
+            <p className="text-sm text-muted-foreground mt-1">Mỗi lá bài 1 luật</p>
+            <div className="flex justify-center gap-1 mt-2">
+              <Beer className="h-4 w-4 text-yellow-500" />
+              <span className="text-xs text-yellow-600">Bốc K thứ 4 = Uống!</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-indigo-400 group"
+          onClick={() => setShowMostLikelyTo(true)}
+        >
+          <CardContent className="p-6 text-center relative">
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-indigo-100 to-purple-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <ThumbsUp className="h-8 w-8 text-indigo-500" />
+            </div>
+            <h3 className="font-bold text-lg">Ai có khả năng nhất?</h3>
+            <p className="text-sm text-muted-foreground mt-1">Đếm 3-2-1 rồi chỉ!</p>
+            <div className="flex justify-center gap-1 mt-2">
+              <Beer className="h-4 w-4 text-indigo-500" />
+              <span className="text-xs text-indigo-600">Bị chỉ nhiều = Uống!</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-teal-400 group"
+          onClick={() => setShowCategories(true)}
+        >
+          <CardContent className="p-6 text-center relative">
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-teal-100 to-cyan-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <List className="h-8 w-8 text-teal-500" />
+            </div>
+            <h3 className="font-bold text-lg">Categories</h3>
+            <p className="text-sm text-muted-foreground mt-1">Kể tên theo chủ đề</p>
+            <div className="flex justify-center gap-1 mt-2">
+              <Beer className="h-4 w-4 text-teal-500" />
+              <span className="text-xs text-teal-600">Hết ý = Uống!</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-rose-400 group"
+          onClick={() => setShowHighOrLow(true)}
+        >
+          <CardContent className="p-6 text-center relative">
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-rose-100 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <TrendingUp className="h-8 w-8 text-rose-500" />
+            </div>
+            <h3 className="font-bold text-lg">Cao hay Thấp?</h3>
+            <p className="text-sm text-muted-foreground mt-1">Đoán lá bài tiếp theo</p>
+            <div className="flex justify-center gap-1 mt-2">
+              <Zap className="h-4 w-4 text-rose-500" />
+              <span className="text-xs text-rose-600">Streak = số ly phạt!</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Kings Cup Modal */}
+      {showKingsCup && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <KingsCup onClose={() => setShowKingsCup(false)} />
+        </div>
+      )}
+
+      {/* Most Likely To Modal */}
+      {showMostLikelyTo && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <MostLikelyTo onClose={() => setShowMostLikelyTo(false)} />
+        </div>
+      )}
+
+      {/* Categories Modal */}
+      {showCategories && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <CategoriesGame onClose={() => setShowCategories(false)} />
+        </div>
+      )}
+
+      {/* High or Low Modal */}
+      {showHighOrLow && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <HighOrLow onClose={() => setShowHighOrLow(false)} />
+        </div>
+      )}
+
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-4 right-4 z-40 flex flex-col gap-2">
+        <Button
+          onClick={() => setShowPlayerRotation(true)}
+          className="rounded-full h-12 w-12 bg-blue-500 hover:bg-blue-600 shadow-lg"
+          title="Quản lý lượt chơi"
+        >
+          <Users className="h-5 w-5" />
+        </Button>
+        <Button
+          onClick={() => setShowDrinkingCounter(true)}
+          className="rounded-full h-14 w-14 bg-amber-500 hover:bg-amber-600 shadow-lg"
+          title="Đếm số ly"
+        >
+          <Beer className="h-6 w-6" />
+        </Button>
+      </div>
+
+      {/* Player Rotation Modal */}
+      {showPlayerRotation && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <PlayerRotation onClose={() => setShowPlayerRotation(false)} />
+        </div>
+      )}
+
+      {/* Drinking Counter Modal */}
+      {showDrinkingCounter && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <DrinkingCounter onClose={() => setShowDrinkingCounter(false)} />
+        </div>
+      )}
+
+      {/* Wheel Modal */}
+      {showWheel && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <Card className="max-w-md w-full mx-4 border-2 border-emerald-300 shadow-2xl max-h-[90vh] overflow-y-auto relative">
+            <CardHeader className="pb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowWheel(false)}
+                className="absolute right-2 top-2 z-10"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+              <CardTitle className="text-center flex items-center justify-center gap-2">
+                <CircleDot className="h-6 w-6 text-emerald-500" />
+                Vòng quay may mắn
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Add participants */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newParticipant}
+                  onChange={(e) => setNewParticipant(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newParticipant.trim()) {
+                      setWheelParticipants([...wheelParticipants, { id: Date.now().toString(), name: newParticipant.trim() }])
+                      setNewParticipant('')
+                    }
+                  }}
+                  placeholder="Nhập tên người chơi..."
+                  className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (newParticipant.trim()) {
+                      setWheelParticipants([...wheelParticipants, { id: Date.now().toString(), name: newParticipant.trim() }])
+                      setNewParticipant('')
+                    }
+                  }}
+                >
+                  Thêm
+                </Button>
+              </div>
+
+              {/* Participant list */}
+              {wheelParticipants.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {wheelParticipants.map((p) => (
+                    <span
+                      key={p.id}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm"
+                    >
+                      {p.name}
+                      <button
+                        onClick={() => setWheelParticipants(wheelParticipants.filter(x => x.id !== p.id))}
+                        className="hover:text-red-500"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Quick add buttons */}
+              <div className="flex flex-wrap gap-2 text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const names = ['Người 1', 'Người 2', 'Người 3', 'Người 4']
+                    setWheelParticipants(names.map((n, i) => ({ id: `demo-${i}`, name: n })))
+                  }}
+                >
+                  Demo 4 người
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWheelParticipants([])}
+                >
+                  Xóa tất cả
+                </Button>
+              </div>
+
+              {/* Spin Wheel */}
+              <div className="relative pt-4">
+                <SpinWheel
+                  participants={wheelParticipants}
+                  onResult={() => {}}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Game Result Overlay */}
       {gamePhase === 'revealed' && (gameContent || diceResult) && (
