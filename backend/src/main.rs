@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
-use axum::Router;
+use axum::{Router, response::Response, middleware::{self as axum_mw, Next}, extract::Request, body::Body};
+use axum::http::header;
 use sqlx::postgres::PgPoolOptions;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -20,6 +21,30 @@ mod repository;
 use config::Config;
 use openapi::ApiDoc;
 use sqlx::PgPool;
+
+// Middleware to add no-cache headers for HTML files (forces browser to check for updates)
+async fn add_cache_headers(request: Request, next: Next) -> Response<Body> {
+    let path = request.uri().path().to_string();
+    let mut response: Response<Body> = next.run(request).await;
+    
+    // For HTML files and root path, disable caching to ensure users get latest version
+    if path == "/" || path.ends_with(".html") || path.ends_with("/") || !path.contains('.') {
+        response.headers_mut().insert(
+            header::CACHE_CONTROL,
+            "no-cache, no-store, must-revalidate".parse().unwrap(),
+        );
+        response.headers_mut().insert(
+            header::PRAGMA,
+            "no-cache".parse().unwrap(),
+        );
+        response.headers_mut().insert(
+            header::EXPIRES,
+            "0".parse().unwrap(),
+        );
+    }
+    
+    response
+}
 
 async fn init_admin_user(pool: &PgPool) -> anyhow::Result<()> {
     use argon2::{
@@ -132,6 +157,7 @@ async fn main() -> anyhow::Result<()> {
         .nest_service("/uploads", uploads_service)
         .with_state(app_state)
         .fallback_service(static_service)
+        .layer(axum_mw::from_fn(add_cache_headers))
         .layer(cors)
         .layer(TraceLayer::new_for_http());
 
