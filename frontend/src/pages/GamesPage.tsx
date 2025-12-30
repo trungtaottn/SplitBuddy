@@ -337,7 +337,7 @@ export default function GamesPage() {
       case 'hard': return 'bg-red-100 text-red-800'
       case 'extreme': return 'bg-purple-100 text-purple-800'
       case '18+': return 'bg-pink-100 text-pink-800 border border-pink-300'
-      default: return 'bg-gray-100 text-gray-800'
+      default: return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
     }
   }
 
@@ -364,7 +364,7 @@ export default function GamesPage() {
             className="gap-1"
             title={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
           >
-            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-gray-400" />}
+            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-gray-400 dark:text-gray-500" />}
           </Button>
           <select
             value={selectedDifficulty || ''}
@@ -380,7 +380,7 @@ export default function GamesPage() {
           </select>
         </div>
 
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center justify-center gap-2">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 flex items-center justify-center gap-2">
           <Sparkles className="h-8 w-8 text-yellow-500 animate-pulse" />
           Trò chơi nhậu
         </h1>
@@ -789,7 +789,7 @@ export default function GamesPage() {
                       diceResult.severity === 'extreme' ? 'from-red-500 to-orange-500 text-white animate-pulse border-4 border-red-300' :
                       diceResult.severity === 'spicy' ? 'from-orange-400 to-yellow-400 text-white border-4 border-orange-300' :
                       diceResult.severity === 'mild' ? 'from-blue-400 to-cyan-400 text-white border-4 border-blue-300' :
-                      'from-gray-100 to-white text-gray-800 border-2 border-gray-200'
+                      'from-gray-100 dark:from-gray-800 to-white dark:to-gray-700 text-gray-800 dark:text-gray-200 border-2 border-gray-200 dark:border-gray-600'
                     }`}>
                       {diceResult.dice1}
                     </div>
@@ -797,7 +797,7 @@ export default function GamesPage() {
                       diceResult.severity === 'extreme' ? 'from-red-500 to-orange-500 text-white animate-pulse border-4 border-red-300' :
                       diceResult.severity === 'spicy' ? 'from-orange-400 to-yellow-400 text-white border-4 border-orange-300' :
                       diceResult.severity === 'mild' ? 'from-blue-400 to-cyan-400 text-white border-4 border-blue-300' :
-                      'from-gray-100 to-white text-gray-800 border-2 border-gray-200'
+                      'from-gray-100 dark:from-gray-800 to-white dark:to-gray-700 text-gray-800 dark:text-gray-200 border-2 border-gray-200 dark:border-gray-600'
                     }`}>
                       {diceResult.dice2}
                     </div>
@@ -810,7 +810,7 @@ export default function GamesPage() {
                         diceResult.severity === 'extreme' ? 'text-red-600' :
                         diceResult.severity === 'spicy' ? 'text-orange-600' :
                         diceResult.severity === 'mild' ? 'text-blue-600' :
-                        'text-gray-600'
+                        'text-gray-600 dark:text-gray-400'
                       }`}>
                         {diceResult.rule_name}
                       </span>
@@ -820,7 +820,7 @@ export default function GamesPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-gray-600 text-lg">{diceResult.rule_description}</p>
+                    <p className="text-gray-600 dark:text-gray-300 text-lg">{diceResult.rule_description}</p>
                   </div>
 
                   {/* Action Card */}
@@ -837,7 +837,7 @@ export default function GamesPage() {
                       {diceResult.severity === 'safe' && <Sparkles className="h-5 w-5 text-green-500" />}
                       {diceResult.action}
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                       {diceResult.target === 'self' && 'Bạn phải thực hiện'}
                       {diceResult.target === 'choose' && 'Chọn người thực hiện'}
                       {diceResult.target === 'all' && 'Tất cả cùng chơi'}
@@ -880,7 +880,7 @@ export default function GamesPage() {
                 <AlertCircle className="h-5 w-5" />
                 {GAME_INFO[pendingGame].warning}
               </p>
-              <div className="bg-gray-100 rounded-lg p-3 text-sm text-gray-600">
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 text-sm text-gray-600 dark:text-gray-300">
                 <p className="font-semibold mb-1 flex items-center justify-center gap-1">
                   <AlertCircle className="h-4 w-4" /> Nhớ luật chơi:
                 </p>
@@ -971,7 +971,7 @@ export default function GamesPage() {
                 </div>
                 
                 <p className="text-white text-2xl font-bold animate-pulse">{loadingMessage}</p>
-                <p className="text-gray-400">{GAME_INFO[activeGame].name}</p>
+                <p className="text-gray-400 dark:text-gray-500">{GAME_INFO[activeGame].name}</p>
                 <div className="flex justify-center gap-1">
                   {[...Array(3)].map((_, i) => (
                     <div 
@@ -1020,7 +1020,7 @@ export default function GamesPage() {
           <Card className="max-w-md w-full animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
             <CardHeader className="relative">
               <button 
-                className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100"
+                className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
                 onClick={() => setShowRules(null)}
               >
                 <X className="h-5 w-5" />
