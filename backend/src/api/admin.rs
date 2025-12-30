@@ -15,13 +15,11 @@ use crate::middleware::auth::AuthUser;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/users", get(list_users))
-        .route("/users", post(create_user))
+        .route("/users", get(list_users).post(create_user))
         .route("/users/:id/password", put(reset_password))
         .route("/features", get(list_features))
         .route("/features/:key", put(toggle_feature))
-        .route("/music", get(list_music))
-        .route("/music", post(upload_music))
+        .route("/music", get(list_music).post(upload_music))
         .route("/music/:id", delete(delete_music))
 }
 
