@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { RotateCcw, Volume2, VolumeX } from 'lucide-react'
 import { soundManager } from '@/utils/sounds'
@@ -14,28 +14,32 @@ interface SpinWheelProps {
   disabled?: boolean
 }
 
-// Vibrant colors for wheel segments
+// Soft gradient colors matching app theme (pink/rose tones)
 const SEGMENT_COLORS = [
-  '#FF6B6B', // Red
-  '#4ECDC4', // Teal
-  '#45B7D1', // Blue
-  '#96CEB4', // Green
-  '#FFEAA7', // Yellow
-  '#DDA0DD', // Plum
-  '#98D8C8', // Mint
-  '#F7DC6F', // Gold
-  '#BB8FCE', // Purple
-  '#85C1E9', // Light Blue
-  '#F8B500', // Orange
-  '#00CED1', // Dark Cyan
+  '#fecdd3', // rose-200
+  '#fda4af', // rose-300
+  '#fb7185', // rose-400
+  '#f472b6', // pink-400
+  '#f9a8d4', // pink-300
+  '#fbcfe8', // pink-200
+  '#fce7f3', // pink-100
+  '#ffe4e6', // rose-100
+  '#fecaca', // red-200
+  '#fca5a5', // red-300
+  '#fdba74', // orange-300
+  '#fed7aa', // orange-200
 ]
+
+// Animation duration in ms
+const SPIN_DURATION = 7000
 
 export function SpinWheel({ participants, onResult, disabled = false }: SpinWheelProps) {
   const [isSpinning, setIsSpinning] = useState(false)
   const [rotation, setRotation] = useState(0)
-  const [winner, setWinner] = useState<Participant | null>(null)
   const [soundEnabled, setSoundEnabled] = useState(() => soundManager.isEnabled())
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const animationRef = useRef<number | null>(null)
+  const lastTickRef = useRef<number>(0)
 
   const segmentAngle = 360 / participants.length
 
@@ -105,48 +109,83 @@ export function SpinWheel({ participants, onResult, disabled = false }: SpinWhee
 
   }, [participants, segmentAngle])
 
-  const spin = () => {
+  // Easing function - starts fast, slows down gradually
+  const easeOutCubic = (t: number): number => {
+    return 1 - Math.pow(1 - t, 3)
+  }
+
+  const spin = useCallback(() => {
     if (isSpinning || participants.length === 0 || disabled) return
 
     setIsSpinning(true)
-    setWinner(null)
 
     // Play spinning sound
     if (soundEnabled) {
       soundManager.playDiceRoll()
     }
 
-    // Random spin: 5-10 full rotations + random angle
-    const spins = 5 + Math.random() * 5
-    const randomAngle = Math.random() * 360
-    const totalRotation = rotation + spins * 360 + randomAngle
+    // Random spin: 8-12 full rotations + random angle
+    const totalSpinDegrees = (8 + Math.random() * 4) * 360 + Math.random() * 360
+    const startRotation = rotation
+    const targetRotation = startRotation + totalSpinDegrees
+    const startTime = performance.now()
 
-    setRotation(totalRotation)
+    // Animation loop
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime
+      const progress = Math.min(elapsed / SPIN_DURATION, 1)
+      
+      // Apply easing - wheel spins fast at start, slows down at end
+      const easedProgress = easeOutCubic(progress)
+      const currentRotation = startRotation + (totalSpinDegrees * easedProgress)
+      
+      setRotation(currentRotation)
 
-    // Calculate winner after spin
-    setTimeout(() => {
-      // Normalize rotation to 0-360
-      const normalizedRotation = totalRotation % 360
-      // Calculate which segment is at the top (pointer position)
-      // Pointer is at top (270 degrees in canvas coordinate)
-      const pointerAngle = (360 - normalizedRotation + 90) % 360
-      const winnerIndex = Math.floor(pointerAngle / segmentAngle) % participants.length
+      // Play tick sound - less frequent as wheel slows down
+      const tickThreshold = 50 + (progress * 300)
       
-      const selectedWinner = participants[winnerIndex]
-      setWinner(selectedWinner)
-      setIsSpinning(false)
-      
-      // Play reveal sound and vibrate
-      if (soundEnabled) {
-        soundManager.playReveal()
+      if (soundEnabled && currentTime - lastTickRef.current > tickThreshold && progress < 0.95) {
+        soundManager.playClick()
+        lastTickRef.current = currentTime
       }
-      if (navigator.vibrate) {
-        navigator.vibrate([100, 50, 100])
+
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate)
+      } else {
+        // Animation complete - calculate winner
+        // Simple: 360° / số người = góc mỗi segment
+        // Sau khi quay X độ, segment tại vị trí (360-X) là người thắng
+        const normalizedRotation = ((targetRotation % 360) + 360) % 360
+        const winnerIndex = Math.floor((360 - normalizedRotation) / segmentAngle) % participants.length
+        
+        const selectedWinner = participants[winnerIndex]
+        setIsSpinning(false)
+        
+        // Play reveal sound and vibrate
+        if (soundEnabled) {
+          soundManager.playReveal()
+        }
+        if (navigator.vibrate) {
+          navigator.vibrate([100, 50, 100])
+        }
+        
+        onResult(selectedWinner)
       }
-      
-      onResult(selectedWinner)
-    }, 4000) // Match CSS transition duration
-  }
+    }
+
+    // Start animation
+    lastTickRef.current = performance.now()
+    animationRef.current = requestAnimationFrame(animate)
+  }, [isSpinning, participants, disabled, soundEnabled, rotation, segmentAngle, onResult])
+
+  // Cleanup animation on unmount
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+    }
+  }, [])
 
   const toggleSound = () => {
     const newValue = !soundEnabled
@@ -190,10 +229,7 @@ export function SpinWheel({ participants, onResult, disabled = false }: SpinWhee
         </div>
 
         {/* Wheel */}
-        <div
-          className="transition-transform duration-[4000ms] ease-out"
-          style={{ transform: `rotate(${rotation}deg)` }}
-        >
+        <div style={{ transform: `rotate(${rotation}deg)` }}>
           <canvas
             ref={canvasRef}
             width={300}
@@ -213,14 +249,6 @@ export function SpinWheel({ participants, onResult, disabled = false }: SpinWhee
         <RotateCcw className={`h-5 w-5 ${isSpinning ? 'animate-spin' : ''}`} />
         {isSpinning ? 'Đang quay...' : 'QUAY!'}
       </Button>
-
-      {/* Winner announcement */}
-      {winner && !isSpinning && (
-        <div className="text-center animate-bounce">
-          <p className="text-sm text-muted-foreground">Người được chọn:</p>
-          <p className="text-2xl font-bold text-primary">{winner.name}</p>
-        </div>
-      )}
     </div>
   )
 }

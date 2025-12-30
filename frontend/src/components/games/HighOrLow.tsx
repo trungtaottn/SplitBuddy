@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowUp, ArrowDown, RotateCcw, X, Beer, Zap } from 'lucide-react'
+import { ArrowUp, ArrowDown, RotateCcw, X, Beer, Zap, Layers, CheckCircle, XCircle } from 'lucide-react'
 import { soundManager } from '@/utils/sounds'
 
 const SUITS = ['hearts', 'diamonds', 'clubs', 'spades'] as const
@@ -177,7 +177,7 @@ export function HighOrLow({ onClose }: HighOrLowProps) {
             </>
           ) : (
             <div className="text-center">
-              <div className="text-6xl mb-4">🃏</div>
+              <Layers className="h-16 w-16 mx-auto text-rose-300 mb-4" />
               <p className="text-muted-foreground">Bấm bắt đầu để chơi!</p>
             </div>
           )}
@@ -191,11 +191,17 @@ export function HighOrLow({ onClose }: HighOrLowProps) {
               : 'bg-red-50 border border-red-200'
           }`}>
             {result === 'correct' ? (
-              <p className="text-green-700 font-bold">✅ Đúng rồi! Streak +1</p>
+              <div className="flex items-center justify-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <p className="text-green-700 font-bold">Đúng rồi! Streak +1</p>
+              </div>
             ) : (
-              <p className="text-red-700 font-bold">
-                ❌ Sai! Uống {Math.max(1, streak)} ly! 🍺
-              </p>
+              <div className="flex items-center justify-center gap-2">
+                <XCircle className="h-5 w-5 text-red-600" />
+                <p className="text-red-700 font-bold">
+                  Sai! Uống {Math.max(1, streak)} ly!
+                </p>
+              </div>
             )}
           </div>
         )}

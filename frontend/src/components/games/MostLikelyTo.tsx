@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ThumbsUp, RotateCcw, X, Beer, Shuffle } from 'lucide-react'
+import { ThumbsUp, RotateCcw, X, Beer, Shuffle, HelpCircle } from 'lucide-react'
 import { soundManager } from '@/utils/sounds'
 
 const QUESTIONS = [
@@ -154,14 +154,14 @@ export function MostLikelyTo({ onClose }: MostLikelyToProps) {
                 </p>
               </div>
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <span>👆</span>
+                <ThumbsUp className="h-4 w-4" />
                 <span>Đếm 3-2-1 rồi chỉ!</span>
-                <span>👆</span>
+                <ThumbsUp className="h-4 w-4" />
               </div>
             </div>
           ) : (
             <div className="text-center space-y-4">
-              <div className="text-6xl">🤔</div>
+              <HelpCircle className="h-16 w-16 mx-auto text-indigo-300" />
               <p className="text-muted-foreground">Bấm nút để bắt đầu!</p>
             </div>
           )}

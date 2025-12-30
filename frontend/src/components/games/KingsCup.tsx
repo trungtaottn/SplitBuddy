@@ -182,7 +182,7 @@ export function KingsCup({ onClose }: KingsCupProps) {
               }`}
             >
               <div className="w-32 h-48 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl shadow-xl flex items-center justify-center border-4 border-white">
-                <div className="text-4xl">🎴</div>
+                <Crown className="h-12 w-12 text-white/80" />
               </div>
               <p className="text-center text-sm text-muted-foreground mt-2">Bấm để bốc bài</p>
             </div>
@@ -219,7 +219,10 @@ export function KingsCup({ onClose }: KingsCupProps) {
           {/* Game Over */}
           {gameOver && (
             <div className="text-center space-y-4">
-              <div className="text-6xl animate-bounce">👑🍺</div>
+              <div className="flex justify-center gap-2">
+                <Crown className="h-16 w-16 text-yellow-500 animate-bounce" />
+                <Beer className="h-16 w-16 text-amber-500 animate-bounce" />
+              </div>
               <p className="text-xl font-bold text-yellow-600">UỐNG LY KING!</p>
               <Button onClick={shuffleDeck} className="gap-2">
                 <RotateCcw className="h-4 w-4" />

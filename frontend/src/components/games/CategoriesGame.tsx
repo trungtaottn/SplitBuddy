@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { List, RotateCcw, X, Beer, Play, Pause } from 'lucide-react'
+import { List, RotateCcw, X, Beer, Play, Pause, Shuffle, AlertTriangle } from 'lucide-react'
 import { soundManager } from '@/utils/sounds'
 
 const CATEGORIES = [
@@ -137,8 +137,11 @@ export function CategoriesGame({ onClose }: CategoriesGameProps) {
         {/* Round Over Message */}
         {roundOver && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-center animate-bounce">
-            <p className="text-lg font-bold text-red-600">⏰ HẾT GIỜ!</p>
-            <p className="text-sm text-red-500">Người này phải uống! 🍺</p>
+            <div className="flex items-center justify-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <p className="text-lg font-bold text-red-600">HẾT GIỞ!</p>
+            </div>
+            <p className="text-sm text-red-500">Người này phải uống!</p>
           </div>
         )}
 
@@ -171,7 +174,8 @@ export function CategoriesGame({ onClose }: CategoriesGameProps) {
 
         {/* New Category Button */}
         <Button onClick={nextCategory} className="w-full gap-2" variant="outline">
-          🎲 Chủ đề mới
+          <Shuffle className="h-4 w-4" />
+          Chủ đề mới
         </Button>
 
         {/* Rules */}

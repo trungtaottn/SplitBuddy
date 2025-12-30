@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCircle, X, Skull, Zap, AlertCircle, Target, Hand, Volume2, VolumeX, Users, CircleDot } from 'lucide-react'
+import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCircle, X, Skull, Zap, AlertCircle, Target, Hand, Volume2, VolumeX, Users, CircleDot, Crown, ThumbsUp, List, TrendingUp } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
 import { soundManager, vibrate, vibrationPatterns } from '@/utils/sounds'
 import type { ApiResponse } from '@/types/api'
@@ -132,7 +132,6 @@ export default function GamesPage() {
   const [showWheel, setShowWheel] = useState(false)
   const [wheelParticipants, setWheelParticipants] = useState<{id: string, name: string}[]>([])
   const [newParticipant, setNewParticipant] = useState('')
-  const [wheelWinner, setWheelWinner] = useState<{id: string, name: string} | null>(null)
   
   // Drinking counter state
   const [showDrinkingCounter, setShowDrinkingCounter] = useState(false)
@@ -427,7 +426,7 @@ export default function GamesPage() {
               <HelpCircle className="h-4 w-4 text-blue-400" />
             </button>
             <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-3xl">🙅</span>
+              <Hand className="h-8 w-8 text-blue-500" />
             </div>
             <h3 className="font-bold text-lg">Tôi chưa bao giờ</h3>
             <p className="text-sm text-muted-foreground mt-1">30 câu hỏi thú vị</p>
@@ -485,52 +484,52 @@ export default function GamesPage() {
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-emerald-400 group sm:col-span-2 lg:col-span-4"
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-emerald-400 group"
           onClick={() => setShowWheel(true)}
         >
           <CardContent className="p-6 text-center relative">
             <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-emerald-100 to-teal-200 flex items-center justify-center group-hover:scale-110 transition-transform">
               <CircleDot className="h-8 w-8 text-emerald-500 group-hover:animate-spin" />
             </div>
-            <h3 className="font-bold text-lg">🎡 Vòng quay may mắn</h3>
-            <p className="text-sm text-muted-foreground mt-1">Quay để chọn người thực hiện!</p>
+            <h3 className="font-bold text-lg">Vòng quay may mắn</h3>
+            <p className="text-sm text-muted-foreground mt-1">Quay để chọn người!</p>
             <div className="flex justify-center gap-1 mt-2">
               <Users className="h-4 w-4 text-emerald-500" />
-              <span className="text-xs text-emerald-600">Thêm tên → Quay → Chọn người!</span>
+              <span className="text-xs text-emerald-600">Chọn người ngẫu nhiên</span>
             </div>
           </CardContent>
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-yellow-400 group sm:col-span-2 lg:col-span-4"
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-yellow-400 group"
           onClick={() => setShowKingsCup(true)}
         >
           <CardContent className="p-6 text-center relative">
             <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-100 to-amber-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-3xl">👑</span>
+              <Crown className="h-8 w-8 text-yellow-500" />
             </div>
-            <h3 className="font-bold text-lg">👑 King's Cup</h3>
-            <p className="text-sm text-muted-foreground mt-1">Game bài kinh điển - Mỗi lá 1 luật!</p>
+            <h3 className="font-bold text-lg">King's Cup</h3>
+            <p className="text-sm text-muted-foreground mt-1">Mỗi lá bài 1 luật</p>
             <div className="flex justify-center gap-1 mt-2">
               <Beer className="h-4 w-4 text-yellow-500" />
-              <span className="text-xs text-yellow-600">52 lá bài → Bốc K thứ 4 = Uống ly King!</span>
+              <span className="text-xs text-yellow-600">Bốc K thứ 4 = Uống!</span>
             </div>
           </CardContent>
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-indigo-400 group sm:col-span-2 lg:col-span-2"
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-indigo-400 group"
           onClick={() => setShowMostLikelyTo(true)}
         >
           <CardContent className="p-6 text-center relative">
             <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-indigo-100 to-purple-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-3xl">👆</span>
+              <ThumbsUp className="h-8 w-8 text-indigo-500" />
             </div>
-            <h3 className="font-bold text-lg">👆 Ai có khả năng nhất?</h3>
+            <h3 className="font-bold text-lg">Ai có khả năng nhất?</h3>
             <p className="text-sm text-muted-foreground mt-1">Đếm 3-2-1 rồi chỉ!</p>
             <div className="flex justify-center gap-1 mt-2">
               <Beer className="h-4 w-4 text-indigo-500" />
-              <span className="text-xs text-indigo-600">Bị chỉ nhiều nhất = Uống!</span>
+              <span className="text-xs text-indigo-600">Bị chỉ nhiều = Uống!</span>
             </div>
           </CardContent>
         </Card>
@@ -541,10 +540,10 @@ export default function GamesPage() {
         >
           <CardContent className="p-6 text-center relative">
             <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-teal-100 to-cyan-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-3xl">📝</span>
+              <List className="h-8 w-8 text-teal-500" />
             </div>
-            <h3 className="font-bold text-lg">📝 Categories</h3>
-            <p className="text-sm text-muted-foreground mt-1">Kể tên theo chủ đề!</p>
+            <h3 className="font-bold text-lg">Categories</h3>
+            <p className="text-sm text-muted-foreground mt-1">Kể tên theo chủ đề</p>
             <div className="flex justify-center gap-1 mt-2">
               <Beer className="h-4 w-4 text-teal-500" />
               <span className="text-xs text-teal-600">Hết ý = Uống!</span>
@@ -553,18 +552,18 @@ export default function GamesPage() {
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-orange-400 group"
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-rose-400 group"
           onClick={() => setShowHighOrLow(true)}
         >
           <CardContent className="p-6 text-center relative">
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-orange-100 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-3xl">🃏</span>
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-rose-100 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <TrendingUp className="h-8 w-8 text-rose-500" />
             </div>
-            <h3 className="font-bold text-lg">🃏 Cao hay Thấp?</h3>
-            <p className="text-sm text-muted-foreground mt-1">Đoán lá bài tiếp theo!</p>
+            <h3 className="font-bold text-lg">Cao hay Thấp?</h3>
+            <p className="text-sm text-muted-foreground mt-1">Đoán lá bài tiếp theo</p>
             <div className="flex justify-center gap-1 mt-2">
-              <Zap className="h-4 w-4 text-orange-500" />
-              <span className="text-xs text-orange-600">Streak càng cao, phạt càng nặng!</span>
+              <Zap className="h-4 w-4 text-rose-500" />
+              <span className="text-xs text-rose-600">Streak = số ly phạt!</span>
             </div>
           </CardContent>
         </Card>
@@ -633,19 +632,19 @@ export default function GamesPage() {
       {/* Wheel Modal */}
       {showWheel && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
-          <Card className="max-w-md w-full mx-4 border-2 border-emerald-300 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <Card className="max-w-md w-full mx-4 border-2 border-emerald-300 shadow-2xl max-h-[90vh] overflow-y-auto relative">
             <CardHeader className="pb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowWheel(false)}
+                className="absolute right-2 top-2 z-10"
+              >
+                <X className="h-5 w-5" />
+              </Button>
               <CardTitle className="text-center flex items-center justify-center gap-2">
                 <CircleDot className="h-6 w-6 text-emerald-500" />
                 Vòng quay may mắn
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setShowWheel(false); setWheelWinner(null) }}
-                  className="absolute right-2 top-2"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -722,17 +721,9 @@ export default function GamesPage() {
               <div className="relative pt-4">
                 <SpinWheel
                   participants={wheelParticipants}
-                  onResult={(winner) => setWheelWinner(winner)}
+                  onResult={() => {}}
                 />
               </div>
-
-              {/* Winner display */}
-              {wheelWinner && (
-                <div className="text-center p-4 bg-gradient-to-r from-yellow-100 to-amber-100 rounded-xl border-2 border-yellow-300">
-                  <p className="text-sm text-yellow-700">🎉 Người được chọn:</p>
-                  <p className="text-2xl font-bold text-yellow-800">{wheelWinner.name}</p>
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>

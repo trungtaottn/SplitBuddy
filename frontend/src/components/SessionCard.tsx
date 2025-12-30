@@ -92,14 +92,14 @@ export function SessionCard({
     >
       <div className="rounded-xl border bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/50 space-y-3">
         {/* Header */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0 overflow-hidden">
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-primary transition-colors">
               🍺 {name}
             </h3>
-            <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-2 mt-1 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
               {location && (
-                <span className="flex items-center gap-1 truncate">
+                <span className="flex items-center gap-1 max-w-[120px]">
                   <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
                   <span className="truncate">{location}</span>
                 </span>
@@ -110,7 +110,7 @@ export function SessionCard({
               </span>
             </div>
           </div>
-          <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0', statusConfig.className)}>
+          <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap', statusConfig.className)}>
             {statusConfig.label}
           </span>
         </div>
