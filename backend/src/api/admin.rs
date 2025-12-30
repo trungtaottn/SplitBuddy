@@ -19,9 +19,9 @@ pub fn routes() -> Router<AppState> {
         .route("/users/:id/password", put(reset_password))
         .route("/features", get(list_features))
         .route("/features/:key", put(toggle_feature))
-        .route("/music", get(list_music).post(upload_music).layer(DefaultBodyLimit::max(50 * 1024 * 1024))) // 50MB limit
-        .route("/music/url", post(add_music_url))
+        .route("/music/url", post(add_music_url)) // Must be before /music/:id
         .route("/music/:id", delete(delete_music))
+        .route("/music", get(list_music).post(upload_music).layer(DefaultBodyLimit::max(50 * 1024 * 1024))) // 50MB limit
 }
 
 #[derive(Serialize, sqlx::FromRow)]
