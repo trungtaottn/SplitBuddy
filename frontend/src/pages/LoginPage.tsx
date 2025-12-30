@@ -1,19 +1,45 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Beer } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
+
+const FUN_MESSAGES = [
+  "Nhậu đi, lo gì! 🍻",
+  "Chia tiền công bằng, ai cũng vui! 💸",
+  "Không say không về! 🚗",
+  "Một người vì mọi người, mọi người vì bia! 🍺",
+  "Cuộc đời ngắn lắm, nhậu đi đừng ngại! 🌟",
+  "Bia lạnh, bạn bè ấm! ❤️",
+  "Đăng nhập đi rồi nhậu! 😎",
+  "Hôm nay uống gì? 🤔",
+  "Cạn ly đi, chuyện đời tính sau! 🥃",
+  "Tiền chia đều, vui chia đôi! 🎉",
+  "Bạn nhậu tốt, bạn đời tốt hơn! 💕",
+  "Nhậu hôm nay, lo ngày mai! 📅",
+  "Ai nợ ai, app này biết hết! 👀",
+  "Bia chảy về đâu, tiền chảy về đó! 💰",
+  "Đừng để bạn bè chờ lâu! ⏰",
+]
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [funMessage, setFunMessage] = useState('')
   const { login } = useAuth()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    setFunMessage(FUN_MESSAGES[Math.floor(Math.random() * FUN_MESSAGES.length)])
+    const interval = setInterval(() => {
+      setFunMessage(FUN_MESSAGES[Math.floor(Math.random() * FUN_MESSAGES.length)])
+    }, 4000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,11 +60,11 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white">
-            <Beer className="h-6 w-6" />
+          <div className="mx-auto mb-4 text-5xl animate-bounce">
+            🍻
           </div>
-          <CardTitle className="text-2xl">SplitBuddy</CardTitle>
-          <CardDescription>Đăng nhập để tiếp tục</CardDescription>
+          <CardTitle className="text-2xl gradient-text">SplitBuddy</CardTitle>
+          <CardDescription className="transition-all duration-500">{funMessage}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -69,7 +95,8 @@ export default function LoginPage() {
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            Liên hệ quản trị viên để được cấp tài khoản
+            Liên hệ quản trị viên để được cấp tài khoản <br />
+            Cụ thể là ai thì chưa biết... hẹ hẹ..
           </p>
         </CardContent>
       </Card>
