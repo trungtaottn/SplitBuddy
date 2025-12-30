@@ -20,6 +20,7 @@ pub fn routes() -> Router<AppState> {
         .route("/features", get(list_features))
         .route("/features/:key", put(toggle_feature))
         .route("/music", get(list_music).post(upload_music).layer(DefaultBodyLimit::max(50 * 1024 * 1024))) // 50MB limit
+        .route("/music/url", post(add_music_url))
         .route("/music/:id", delete(delete_music))
 }
 
@@ -255,7 +256,12 @@ async fn list_music(
         .map(|t| MusicTrackResponse {
             id: t.id,
             name: t.name,
-            src: format!("/uploads/music/{}", t.filename),
+            // If filename starts with http, it's a URL - return as-is
+            src: if t.filename.starts_with("http") {
+                t.filename
+            } else {
+                format!("/uploads/music/{}", t.filename)
+            },
         })
         .collect();
 
@@ -435,4 +441,58 @@ fn sanitize_filename(filename: &str) -> String {
         .chars()
         .take(50)
         .collect()
+}
+
+// Add music track via URL (streaming)
+#[derive(Deserialize)]
+pub struct AddMusicUrlRequest {
+    pub name: String,
+    pub url: String,
+}
+
+async fn add_music_url(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Json(payload): Json<AddMusicUrlRequest>,
+) -> Result<Json<ApiResponse<MusicTrackResponse>>, AppError> {
+    require_admin(&auth_user)?;
+
+    if payload.name.trim().is_empty() {
+        return Err(AppError::Validation {
+            field: "name".to_string(),
+            message: "Tên bài hát không được để trống".to_string(),
+        });
+    }
+
+    if payload.url.trim().is_empty() {
+        return Err(AppError::Validation {
+            field: "url".to_string(),
+            message: "URL không được để trống".to_string(),
+        });
+    }
+
+    // Save to database with URL as the source
+    let track: MusicTrack = sqlx::query_as(
+        r#"
+        INSERT INTO music_tracks (name, filename, file_path, file_size, uploaded_by)
+        VALUES ($1, $2, $3, 0, $4)
+        RETURNING id, name, filename, file_path, file_size, duration_seconds, uploaded_by, created_at
+        "#
+    )
+    .bind(payload.name.trim())
+    .bind(&payload.url) // Store URL in filename field
+    .bind(&payload.url) // Store URL in file_path field
+    .bind(auth_user.user_id)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to save music URL to database: {:?}", e);
+        AppError::Internal(anyhow::anyhow!("Database error: {}", e))
+    })?;
+
+    Ok(ok(MusicTrackResponse {
+        id: track.id,
+        name: track.name,
+        src: track.filename, // URL is stored in filename
+    }))
 }

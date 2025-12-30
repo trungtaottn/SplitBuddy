@@ -37,7 +37,9 @@ export default function AdminPage() {
   const [resetPassword, setResetPassword] = useState('')
   
   const [musicName, setMusicName] = useState('')
+  const [musicUrl, setMusicUrl] = useState('')
   const [isUploading, setIsUploading] = useState(false)
+  const [isAddingUrl, setIsAddingUrl] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { refresh: refreshFeatureFlags } = useFeatureFlags()
@@ -115,6 +117,30 @@ export default function AdminPage() {
       toast.error('Có lỗi xảy ra khi tải lên')
     } finally {
       setIsUploading(false)
+    }
+  }
+
+  const handleAddMusicUrl = async () => {
+    if (!musicName.trim() || !musicUrl.trim()) {
+      toast.error('Vui lòng nhập tên bài hát và URL')
+      return
+    }
+
+    setIsAddingUrl(true)
+    try {
+      await api.post('/admin/music/url', {
+        name: musicName.trim(),
+        url: musicUrl.trim(),
+      })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'music'] })
+      refreshTracks()
+      setMusicName('')
+      setMusicUrl('')
+      toast.success('Thêm nhạc từ URL thành công!')
+    } catch {
+      toast.error('Có lỗi xảy ra khi thêm URL')
+    } finally {
+      setIsAddingUrl(false)
     }
   }
 
@@ -324,40 +350,68 @@ export default function AdminPage() {
             Tải lên các file nhạc nền cho ứng dụng. Chỉ admin mới có thể quản lý.
           </p>
           
-          {/* Upload Section */}
-          <div className="mb-6 p-4 border rounded-lg bg-muted/30">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1">
-                <Label htmlFor="musicName" className="text-sm mb-1 block">Tên bài hát (tùy chọn)</Label>
+          {/* Add Music Section */}
+          <div className="mb-6 p-4 border rounded-lg bg-muted/30 space-y-4">
+            {/* Track Name */}
+            <div>
+              <Label htmlFor="musicName" className="text-sm mb-1 block">Tên bài hát</Label>
+              <Input
+                id="musicName"
+                value={musicName}
+                onChange={(e) => setMusicName(e.target.value)}
+                placeholder="Nhập tên bài hát"
+              />
+            </div>
+
+            {/* URL Input */}
+            <div>
+              <Label htmlFor="musicUrl" className="text-sm mb-1 block">URL nhạc (stream từ internet)</Label>
+              <div className="flex gap-2">
                 <Input
-                  id="musicName"
-                  value={musicName}
-                  onChange={(e) => setMusicName(e.target.value)}
-                  placeholder="Để trống sẽ dùng tên file"
-                />
-              </div>
-              <div className="flex items-end">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="audio/*"
-                  onChange={handleUploadMusic}
-                  className="hidden"
-                  id="musicFile"
+                  id="musicUrl"
+                  value={musicUrl}
+                  onChange={(e) => setMusicUrl(e.target.value)}
+                  placeholder="https://example.com/music.mp3"
+                  className="flex-1"
                 />
                 <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="gap-2 w-full sm:w-auto"
+                  onClick={handleAddMusicUrl}
+                  disabled={isAddingUrl || !musicName.trim() || !musicUrl.trim()}
+                  className="gap-2"
                 >
-                  <Upload className="h-4 w-4" />
-                  {isUploading ? 'Đang tải...' : 'Chọn file nhạc'}
+                  {isAddingUrl ? 'Đang thêm...' : 'Thêm URL'}
                 </Button>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Hỗ trợ: MP3, M4A, WAV, OGG (tối đa 50MB)
-            </p>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-border"></div>
+              <span className="text-xs text-muted-foreground">hoặc</span>
+              <div className="flex-1 h-px bg-border"></div>
+            </div>
+
+            {/* File Upload */}
+            <div>
+              <Label className="text-sm mb-1 block">Upload file nhạc</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={handleUploadMusic}
+                className="hidden"
+                id="musicFile"
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="gap-2 w-full"
+              >
+                <Upload className="h-4 w-4" />
+                {isUploading ? 'Đang tải...' : 'Chọn file từ máy (MP3, M4A, WAV - max 50MB)'}
+              </Button>
+            </div>
           </div>
 
           {/* Track List */}
