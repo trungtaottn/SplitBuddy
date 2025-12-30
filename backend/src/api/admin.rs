@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Multipart, Path, State},
+    extract::{DefaultBodyLimit, Multipart, Path, State},
     routing::{delete, get, post, put},
     Json, Router,
 };
@@ -19,7 +19,7 @@ pub fn routes() -> Router<AppState> {
         .route("/users/:id/password", put(reset_password))
         .route("/features", get(list_features))
         .route("/features/:key", put(toggle_feature))
-        .route("/music", get(list_music).post(upload_music))
+        .route("/music", get(list_music).post(upload_music).layer(DefaultBodyLimit::max(50 * 1024 * 1024))) // 50MB limit
         .route("/music/:id", delete(delete_music))
 }
 
