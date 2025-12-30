@@ -1,9 +1,11 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
+import { isYouTubeUrl, extractYouTubeVideoId, loadYouTubeAPI, YTPlayer, YTPlayerState } from '@/lib/youtube'
 
 export interface Track {
   id: string
   name: string
   src: string
+  isYouTube?: boolean
 }
 
 interface MusicContextType {
@@ -35,6 +37,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   })
   
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const ytPlayerRef = useRef<YTPlayer | null>(null)
+  const ytContainerRef = useRef<HTMLDivElement | null>(null)
+  const [ytReady, setYtReady] = useState(false)
 
   const currentTrack = tracks.length > 0 ? tracks[currentTrackIndex] : null
 
@@ -46,7 +51,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         const data = await response.json()
         if (data.data && Array.isArray(data.data)) {
-          setTracks(data.data)
+          // Mark YouTube tracks
+          const tracksWithType = data.data.map((t: Track) => ({
+            ...t,
+            isYouTube: isYouTubeUrl(t.src)
+          }))
+          setTracks(tracksWithType)
         }
       }
     } catch (error) {
@@ -59,6 +69,46 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   // Load tracks on mount
   useEffect(() => {
     refreshTracks()
+  }, [])
+
+  // Initialize YouTube API
+  useEffect(() => {
+    loadYouTubeAPI().then(() => {
+      setYtReady(true)
+    })
+  }, [])
+
+  // Create hidden YouTube container
+  useEffect(() => {
+    if (!ytContainerRef.current) {
+      const container = document.createElement('div')
+      container.id = 'yt-player-container'
+      container.style.position = 'fixed'
+      container.style.top = '-9999px'
+      container.style.left = '-9999px'
+      container.style.width = '1px'
+      container.style.height = '1px'
+      container.style.opacity = '0'
+      container.style.pointerEvents = 'none'
+      document.body.appendChild(container)
+      
+      const playerDiv = document.createElement('div')
+      playerDiv.id = 'yt-music-player'
+      container.appendChild(playerDiv)
+      
+      ytContainerRef.current = container
+    }
+
+    return () => {
+      if (ytPlayerRef.current) {
+        ytPlayerRef.current.destroy()
+        ytPlayerRef.current = null
+      }
+      if (ytContainerRef.current) {
+        ytContainerRef.current.remove()
+        ytContainerRef.current = null
+      }
+    }
   }, [])
 
   // Initialize audio element
@@ -88,31 +138,104 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Update audio source when track changes
+  // Update source when track changes
   useEffect(() => {
-    if (audioRef.current && currentTrack) {
-      const wasPlaying = isPlaying
-      audioRef.current.src = currentTrack.src
-      audioRef.current.load()
-      if (wasPlaying) {
-        audioRef.current.play().catch(() => {
-          // Auto-play might be blocked, user needs to interact first
-          setIsPlaying(false)
-        })
+    if (!currentTrack) return
+    
+    const wasPlaying = isPlaying
+    const isYT = isYouTubeUrl(currentTrack.src)
+    
+    if (isYT) {
+      // Stop HTML audio
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.src = ''
+      }
+      
+      // Handle YouTube
+      if (ytReady && window.YT) {
+        const videoId = extractYouTubeVideoId(currentTrack.src)
+        if (!videoId) return
+        
+        if (ytPlayerRef.current) {
+          ytPlayerRef.current.loadVideoById(videoId)
+          ytPlayerRef.current.setVolume(volume * 100)
+          if (!wasPlaying) {
+            ytPlayerRef.current.pauseVideo()
+          }
+        } else {
+          // Create new player
+          ytPlayerRef.current = new window.YT.Player('yt-music-player', {
+            videoId,
+            playerVars: {
+              autoplay: wasPlaying ? 1 : 0,
+              controls: 0,
+              disablekb: 1,
+              fs: 0,
+              modestbranding: 1,
+              rel: 0,
+            },
+            events: {
+              onReady: (event) => {
+                event.target.setVolume(volume * 100)
+                if (wasPlaying) {
+                  event.target.playVideo()
+                }
+              },
+              onStateChange: (event) => {
+                if (event.data === YTPlayerState.ENDED) {
+                  nextTrack()
+                }
+              },
+              onError: () => {
+                console.warn('YouTube player error, trying next track...')
+                if (tracks.length > 1) {
+                  nextTrack()
+                }
+              },
+            },
+          })
+        }
+      }
+    } else {
+      // Stop YouTube player
+      if (ytPlayerRef.current) {
+        ytPlayerRef.current.pauseVideo()
+      }
+      
+      // Handle regular audio
+      if (audioRef.current) {
+        audioRef.current.src = currentTrack.src
+        audioRef.current.load()
+        if (wasPlaying) {
+          audioRef.current.play().catch(() => {
+            setIsPlaying(false)
+          })
+        }
       }
     }
-  }, [currentTrack?.id])
+  }, [currentTrack?.id, ytReady])
 
   // Update volume
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume
     }
+    if (ytPlayerRef.current) {
+      ytPlayerRef.current.setVolume(volume * 100)
+    }
     localStorage.setItem('musicVolume', volume.toString())
   }, [volume])
 
   const play = () => {
-    if (audioRef.current && currentTrack) {
+    if (!currentTrack) return
+    
+    const isYT = isYouTubeUrl(currentTrack.src)
+    
+    if (isYT && ytPlayerRef.current) {
+      ytPlayerRef.current.playVideo()
+      setIsPlaying(true)
+    } else if (audioRef.current) {
       audioRef.current.play().then(() => {
         setIsPlaying(true)
       }).catch((err) => {
@@ -122,10 +245,13 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   }
 
   const pause = () => {
+    if (currentTrack && isYouTubeUrl(currentTrack.src) && ytPlayerRef.current) {
+      ytPlayerRef.current.pauseVideo()
+    }
     if (audioRef.current) {
       audioRef.current.pause()
-      setIsPlaying(false)
     }
+    setIsPlaying(false)
   }
 
   const toggle = () => {
