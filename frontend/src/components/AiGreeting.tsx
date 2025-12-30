@@ -31,7 +31,7 @@ const MOOD_BUTTON_CLASSES: Record<MoodType, string> = {
   tired: 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-md scale-105',
   stressed: 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md scale-105',
   excited: 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md scale-105',
-  neutral: 'bg-gray-100 text-gray-800',
+  neutral: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200',
 }
 
 const MOODS = [
@@ -119,7 +119,7 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
       <CardContent className="p-5">
         {/* Slogan */}
         <p 
-          className="text-center text-xl md:text-2xl lg:text-3xl font-bold text-orange-500 mb-4 pb-4 border-b border-gray-100"
+          className="text-center text-xl md:text-2xl lg:text-3xl font-bold text-orange-500 mb-4 pb-4 border-b border-gray-100 dark:border-gray-800"
           style={{ fontFamily: '"Dancing Script", cursive' }}
         >
           {currentSlogan}
@@ -145,7 +145,7 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
                   className={`flex flex-col items-center gap-1 rounded-xl px-4 py-2 transition-all ${
                     mood === moodItem.id
                       ? MOOD_BUTTON_CLASSES[moodItem.id]
-                      : 'bg-gray-50 hover:bg-gray-100 border border-gray-200 hover:scale-105'
+                      : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:scale-105'
                   }`}
                 >
                   <moodItem.icon className="h-6 w-6" />
@@ -165,7 +165,7 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <span className="text-2xl">{MOOD_CONFIGS[mood].emoji}</span>
-                <span className="text-sm font-medium text-gray-500">
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
                   Tâm trạng: {MOOD_CONFIGS[mood].nameVi}
                 </span>
                 <button
@@ -173,7 +173,7 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
                     setShowMoodSelector(true)
                     setGreeting(null)
                   }}
-                  className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                  className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   title="Đổi tâm trạng"
                 >
                   <RefreshCw className="h-4 w-4 text-gray-400" />

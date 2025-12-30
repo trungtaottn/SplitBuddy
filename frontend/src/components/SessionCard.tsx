@@ -174,7 +174,7 @@ export function SessionCardCompact({
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{name}</p>
-          <p className="text-xs text-gray-500">{formattedDate}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{formattedDate}</p>
         </div>
         <div className="text-right">
           <p className="font-semibold text-sm">{formatCurrency(total_amount)}</p>
