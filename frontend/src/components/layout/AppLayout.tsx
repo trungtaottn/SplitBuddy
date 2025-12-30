@@ -4,6 +4,7 @@ import { useMood } from '@/contexts/MoodContext'
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
 import { LogOut, User, Wallet, Home, Users, Shield, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { InteractiveBackground } from '@/components/ui/InteractiveBackground'
 
 export default function AppLayout() {
   const { user, logout } = useAuth()
@@ -28,6 +29,7 @@ export default function AppLayout() {
 
   return (
     <div className={`min-h-screen bg-gradient-to-b ${moodConfig.theme.background} dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 pb-16 md:pb-0 transition-colors duration-500`}>
+      <InteractiveBackground />
       {/* Desktop Header */}
       <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/90 backdrop-blur-md shadow-sm">
         <div className="container mx-auto flex h-14 items-center justify-between px-4 md:h-16">
