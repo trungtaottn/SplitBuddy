@@ -27,8 +27,18 @@ export default function AppLayout() {
 
   const isActive = (path: string) => location.pathname === path
 
+  // Dark mode backgrounds per mood (Tailwind needs to see full class names)
+  const darkBgMap: Record<string, string> = {
+    happy: 'dark:from-orange-950 dark:via-amber-950 dark:to-yellow-950',
+    sad: 'dark:from-blue-950 dark:via-slate-950 dark:to-gray-950',
+    tired: 'dark:from-violet-950 dark:via-purple-950 dark:to-indigo-950',
+    stressed: 'dark:from-emerald-950 dark:via-teal-950 dark:to-cyan-950',
+    excited: 'dark:from-pink-950 dark:via-rose-950 dark:to-red-950',
+    neutral: 'dark:from-gray-950 dark:via-slate-950 dark:to-zinc-950',
+  }
+
   return (
-    <div className={`min-h-screen bg-gradient-to-b ${moodConfig.theme.background} dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 pb-16 md:pb-0 transition-colors duration-500`}>
+    <div className={`min-h-screen bg-gradient-to-b ${moodConfig.theme.background} ${darkBgMap[moodConfig.name] || darkBgMap.neutral} pb-16 md:pb-0 transition-colors duration-500`}>
       <InteractiveBackground />
       {/* Desktop Header */}
       <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/90 backdrop-blur-md shadow-sm">

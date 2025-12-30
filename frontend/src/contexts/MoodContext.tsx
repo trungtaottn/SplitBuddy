@@ -7,6 +7,7 @@ interface MoodTheme {
   secondary: string
   accent: string
   background: string
+  darkBackground: string
   gradient: string
   textColor: string
   cardBg: string
@@ -33,6 +34,7 @@ export const MOOD_CONFIGS: Record<MoodType, MoodConfig> = {
       secondary: '#fbbf24', // amber-400
       accent: '#fb923c', // orange-400
       background: 'from-orange-50 via-amber-50 to-yellow-50',
+      darkBackground: 'from-orange-950 via-amber-950 to-yellow-950',
       gradient: 'from-orange-500 to-amber-500',
       textColor: 'text-orange-900',
       cardBg: 'bg-gradient-to-br from-orange-50 to-amber-50',
@@ -55,6 +57,7 @@ export const MOOD_CONFIGS: Record<MoodType, MoodConfig> = {
       secondary: '#60a5fa', // blue-400
       accent: '#93c5fd', // blue-300
       background: 'from-blue-50 via-slate-50 to-gray-100',
+      darkBackground: 'from-blue-950 via-slate-950 to-gray-950',
       gradient: 'from-blue-500 to-slate-500',
       textColor: 'text-blue-900',
       cardBg: 'bg-gradient-to-br from-blue-50 to-slate-50',
@@ -77,6 +80,7 @@ export const MOOD_CONFIGS: Record<MoodType, MoodConfig> = {
       secondary: '#a78bfa', // violet-400
       accent: '#c4b5fd', // violet-300
       background: 'from-violet-50 via-purple-50 to-indigo-50',
+      darkBackground: 'from-violet-950 via-purple-950 to-indigo-950',
       gradient: 'from-violet-500 to-purple-500',
       textColor: 'text-violet-900',
       cardBg: 'bg-gradient-to-br from-violet-50 to-purple-50',
@@ -99,6 +103,7 @@ export const MOOD_CONFIGS: Record<MoodType, MoodConfig> = {
       secondary: '#34d399', // emerald-400
       accent: '#6ee7b7', // emerald-300
       background: 'from-emerald-50 via-teal-50 to-cyan-50',
+      darkBackground: 'from-emerald-950 via-teal-950 to-cyan-950',
       gradient: 'from-emerald-500 to-teal-500',
       textColor: 'text-emerald-900',
       cardBg: 'bg-gradient-to-br from-emerald-50 to-teal-50',
@@ -121,6 +126,7 @@ export const MOOD_CONFIGS: Record<MoodType, MoodConfig> = {
       secondary: '#f472b6', // pink-400
       accent: '#f9a8d4', // pink-300
       background: 'from-pink-50 via-rose-50 to-red-50',
+      darkBackground: 'from-pink-950 via-rose-950 to-red-950',
       gradient: 'from-pink-500 to-rose-500',
       textColor: 'text-pink-900',
       cardBg: 'bg-gradient-to-br from-pink-50 to-rose-50',
@@ -143,6 +149,7 @@ export const MOOD_CONFIGS: Record<MoodType, MoodConfig> = {
       secondary: '#9ca3af', // gray-400
       accent: '#d1d5db', // gray-300
       background: 'from-gray-50 via-slate-50 to-zinc-50',
+      darkBackground: 'from-gray-950 via-slate-950 to-zinc-950',
       gradient: 'from-gray-500 to-slate-500',
       textColor: 'text-gray-900',
       cardBg: 'bg-gradient-to-br from-gray-50 to-slate-50',
