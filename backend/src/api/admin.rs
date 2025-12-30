@@ -311,11 +311,14 @@ async fn upload_music(
             // Generate unique filename
             let filename = format!("{}_{}.{}", Uuid::new_v4(), sanitize_filename(&original_filename), ext);
             let filepath = upload_dir.join(&filename);
+            tracing::debug!("Will save to: {:?}", filepath);
 
             // Read file data
             let data = field.bytes().await.map_err(|e| {
+                tracing::error!("Failed to read file bytes: {:?}", e);
                 AppError::Internal(anyhow::anyhow!("Failed to read file data: {}", e))
             })?;
+            tracing::debug!("Read {} bytes", data.len());
 
             // Limit file size (50MB for audio)
             if data.len() > 50 * 1024 * 1024 {
@@ -329,8 +332,10 @@ async fn upload_music(
 
             // Save file
             fs::write(&filepath, &data).await.map_err(|e| {
+                tracing::error!("Failed to write file: {:?}", e);
                 AppError::Internal(anyhow::anyhow!("Failed to save file: {}", e))
             })?;
+            tracing::debug!("File saved successfully");
 
             saved_filename = filename;
 
