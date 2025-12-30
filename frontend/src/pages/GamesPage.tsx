@@ -127,6 +127,8 @@ export default function GamesPage() {
   const [showRules, setShowRules] = useState<string | null>(null)
   const [soundEnabled, setSoundEnabled] = useState(() => soundManager.isEnabled())
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null)
+  const [adultContentEnabled, setAdultContentEnabled] = useState(false)
+  const [showAdultWarning, setShowAdultWarning] = useState(false)
   
   // Wheel state
   const [showWheel, setShowWheel] = useState(false)
@@ -208,9 +210,10 @@ export default function GamesPage() {
     await new Promise(resolve => setTimeout(resolve, 3500))
     
     // Fetch and reveal - phase stays as countdown until data arrives
-    if (gameType === 'truth_or_dare') truthOrDare.mutate()
-    else if (gameType === 'never_have_i_ever') neverHaveIEver.mutate()
-    else if (gameType === 'challenge') challenge.mutate()
+    const mutationParams = { difficulty: selectedDifficulty, includeAdult: adultContentEnabled }
+    if (gameType === 'truth_or_dare') truthOrDare.mutate(mutationParams)
+    else if (gameType === 'never_have_i_ever') neverHaveIEver.mutate(mutationParams)
+    else if (gameType === 'challenge') challenge.mutate(mutationParams)
     else if (gameType === 'dice') rollDice.mutate()
   }
 
@@ -233,8 +236,11 @@ export default function GamesPage() {
   }
 
   const truthOrDare = useMutation({
-    mutationFn: async () => {
-      const res = await api.get<ApiResponse<GameContent>>('/games/truth-or-dare')
+    mutationFn: async ({ difficulty, includeAdult }: { difficulty: string | null, includeAdult: boolean }) => {
+      const params = new URLSearchParams()
+      if (difficulty) params.append('difficulty', difficulty)
+      if (includeAdult) params.append('include_adult', 'true')
+      const res = await api.get<ApiResponse<GameContent>>(`/games/truth-or-dare?${params.toString()}`)
       return res.data.data
     },
     onSuccess: (data) => {
@@ -253,8 +259,11 @@ export default function GamesPage() {
   })
 
   const neverHaveIEver = useMutation({
-    mutationFn: async () => {
-      const res = await api.get<ApiResponse<GameContent>>('/games/never-have-i-ever')
+    mutationFn: async ({ difficulty, includeAdult }: { difficulty: string | null, includeAdult: boolean }) => {
+      const params = new URLSearchParams()
+      if (difficulty) params.append('difficulty', difficulty)
+      if (includeAdult) params.append('include_adult', 'true')
+      const res = await api.get<ApiResponse<GameContent>>(`/games/never-have-i-ever?${params.toString()}`)
       return res.data.data
     },
     onSuccess: (data) => {
@@ -272,8 +281,11 @@ export default function GamesPage() {
   })
 
   const challenge = useMutation({
-    mutationFn: async () => {
-      const res = await api.get<ApiResponse<GameContent>>('/games/challenges')
+    mutationFn: async ({ difficulty, includeAdult }: { difficulty: string | null, includeAdult: boolean }) => {
+      const params = new URLSearchParams()
+      if (difficulty) params.append('difficulty', difficulty)
+      if (includeAdult) params.append('include_adult', 'true')
+      const res = await api.get<ApiResponse<GameContent>>(`/games/challenges?${params.toString()}`)
       return res.data.data
     },
     onSuccess: (data) => {
@@ -337,7 +349,7 @@ export default function GamesPage() {
       case 'hard': return 'bg-red-100 text-red-800'
       case 'extreme': return 'bg-purple-100 text-purple-800'
       case '18+': return 'bg-pink-100 text-pink-800 border border-pink-300'
-      default: return 'bg-gray-100 text-gray-800'
+      default: return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
     }
   }
 
@@ -364,23 +376,33 @@ export default function GamesPage() {
             className="gap-1"
             title={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
           >
-            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-gray-400" />}
+            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-gray-400 dark:text-gray-500" />}
           </Button>
           <select
             value={selectedDifficulty || ''}
             onChange={(e) => setSelectedDifficulty(e.target.value || null)}
-            className="text-xs border rounded-lg px-2 py-1.5 bg-white"
+            className="text-xs border rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200"
           >
             <option value="">Tất cả độ khó</option>
-            <option value="easy">🟢 Dễ</option>
-            <option value="medium">🟡 Trung bình</option>
-            <option value="hard">🔴 Khó</option>
-            <option value="extreme">💀 Cực khó</option>
-            <option value="18+">🔞 18+ (Người lớn)</option>
+            <option value="easy">Dễ</option>
+            <option value="medium">Trung bình</option>
+            <option value="hard">Khó</option>
+            <option value="extreme">Cực khó</option>
           </select>
+          <button
+            onClick={() => adultContentEnabled ? setAdultContentEnabled(false) : setShowAdultWarning(true)}
+            className={`text-xs px-2 py-1.5 rounded-lg border transition-all ${
+              adultContentEnabled 
+                ? 'bg-pink-100 dark:bg-pink-900/30 border-pink-300 dark:border-pink-700 text-pink-700 dark:text-pink-300' 
+                : 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400'
+            }`}
+            title={adultContentEnabled ? 'Tắt nội dung 18+' : 'Bật nội dung 18+'}
+          >
+            🔞 18+
+          </button>
         </div>
 
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center justify-center gap-2">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 flex items-center justify-center gap-2">
           <Sparkles className="h-8 w-8 text-yellow-500 animate-pulse" />
           Trò chơi nhậu
         </h1>
@@ -789,7 +811,7 @@ export default function GamesPage() {
                       diceResult.severity === 'extreme' ? 'from-red-500 to-orange-500 text-white animate-pulse border-4 border-red-300' :
                       diceResult.severity === 'spicy' ? 'from-orange-400 to-yellow-400 text-white border-4 border-orange-300' :
                       diceResult.severity === 'mild' ? 'from-blue-400 to-cyan-400 text-white border-4 border-blue-300' :
-                      'from-gray-100 to-white text-gray-800 border-2 border-gray-200'
+                      'from-gray-100 dark:from-gray-800 to-white dark:to-gray-700 text-gray-800 dark:text-gray-200 border-2 border-gray-200 dark:border-gray-600'
                     }`}>
                       {diceResult.dice1}
                     </div>
@@ -797,7 +819,7 @@ export default function GamesPage() {
                       diceResult.severity === 'extreme' ? 'from-red-500 to-orange-500 text-white animate-pulse border-4 border-red-300' :
                       diceResult.severity === 'spicy' ? 'from-orange-400 to-yellow-400 text-white border-4 border-orange-300' :
                       diceResult.severity === 'mild' ? 'from-blue-400 to-cyan-400 text-white border-4 border-blue-300' :
-                      'from-gray-100 to-white text-gray-800 border-2 border-gray-200'
+                      'from-gray-100 dark:from-gray-800 to-white dark:to-gray-700 text-gray-800 dark:text-gray-200 border-2 border-gray-200 dark:border-gray-600'
                     }`}>
                       {diceResult.dice2}
                     </div>
@@ -810,7 +832,7 @@ export default function GamesPage() {
                         diceResult.severity === 'extreme' ? 'text-red-600' :
                         diceResult.severity === 'spicy' ? 'text-orange-600' :
                         diceResult.severity === 'mild' ? 'text-blue-600' :
-                        'text-gray-600'
+                        'text-gray-600 dark:text-gray-400'
                       }`}>
                         {diceResult.rule_name}
                       </span>
@@ -820,7 +842,7 @@ export default function GamesPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-gray-600 text-lg">{diceResult.rule_description}</p>
+                    <p className="text-gray-600 dark:text-gray-300 text-lg">{diceResult.rule_description}</p>
                   </div>
 
                   {/* Action Card */}
@@ -837,7 +859,7 @@ export default function GamesPage() {
                       {diceResult.severity === 'safe' && <Sparkles className="h-5 w-5 text-green-500" />}
                       {diceResult.action}
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                       {diceResult.target === 'self' && 'Bạn phải thực hiện'}
                       {diceResult.target === 'choose' && 'Chọn người thực hiện'}
                       {diceResult.target === 'all' && 'Tất cả cùng chơi'}
@@ -880,7 +902,7 @@ export default function GamesPage() {
                 <AlertCircle className="h-5 w-5" />
                 {GAME_INFO[pendingGame].warning}
               </p>
-              <div className="bg-gray-100 rounded-lg p-3 text-sm text-gray-600">
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 text-sm text-gray-600 dark:text-gray-300">
                 <p className="font-semibold mb-1 flex items-center justify-center gap-1">
                   <AlertCircle className="h-4 w-4" /> Nhớ luật chơi:
                 </p>
@@ -971,7 +993,7 @@ export default function GamesPage() {
                 </div>
                 
                 <p className="text-white text-2xl font-bold animate-pulse">{loadingMessage}</p>
-                <p className="text-gray-400">{GAME_INFO[activeGame].name}</p>
+                <p className="text-gray-400 dark:text-gray-500">{GAME_INFO[activeGame].name}</p>
                 <div className="flex justify-center gap-1">
                   {[...Array(3)].map((_, i) => (
                     <div 
@@ -1020,7 +1042,7 @@ export default function GamesPage() {
           <Card className="max-w-md w-full animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
             <CardHeader className="relative">
               <button 
-                className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100"
+                className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
                 onClick={() => setShowRules(null)}
               >
                 <X className="h-5 w-5" />
@@ -1041,6 +1063,55 @@ export default function GamesPage() {
               <Button className="w-full mt-4" onClick={() => setShowRules(null)}>
                 Đã hiểu! 🍻
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Adult Content Warning Modal */}
+      {showAdultWarning && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowAdultWarning(false)}>
+          <Card className="max-w-md w-full animate-in zoom-in-95 border-2 border-pink-300 dark:border-pink-700" onClick={e => e.stopPropagation()}>
+            <CardHeader className="text-center">
+              <div className="mx-auto h-16 w-16 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center mb-2">
+                <span className="text-3xl">🔞</span>
+              </div>
+              <CardTitle className="text-pink-600 dark:text-pink-400">Cảnh báo nội dung người lớn</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-4 text-sm text-pink-800 dark:text-pink-300">
+                <p className="font-semibold mb-2 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" /> Lưu ý quan trọng:
+                </p>
+                <ul className="space-y-1 list-disc list-inside">
+                  <li>Nội dung 18+ chỉ dành cho người trưởng thành</li>
+                  <li>Các câu hỏi có thể nhạy cảm hoặc khiêu khích</li>
+                  <li>Chỉ chơi khi tất cả người tham gia đều đồng ý</li>
+                  <li>Tôn trọng giới hạn của mọi người</li>
+                </ul>
+              </div>
+              <p className="text-center text-sm text-muted-foreground">
+                Bạn xác nhận rằng bạn đã đủ 18 tuổi và đồng ý xem nội dung này?
+              </p>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setShowAdultWarning(false)}
+                >
+                  Không, cảm ơn
+                </Button>
+                <Button 
+                  className="flex-1 bg-pink-500 hover:bg-pink-600"
+                  onClick={() => {
+                    setAdultContentEnabled(true)
+                    setShowAdultWarning(false)
+                    toast.success('Đã bật nội dung 18+')
+                  }}
+                >
+                  Tôi đồng ý
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

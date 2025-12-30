@@ -314,7 +314,7 @@ export default function SessionDetailPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Beer className="h-6 w-6 text-orange-500" /> {session.name}
             {session.status === 'closed' && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
                 <Lock className="h-3 w-3" /> Đã đóng
               </span>
             )}
@@ -432,7 +432,7 @@ export default function SessionDetailPage() {
                 <div
                   key={p.id}
                   className={`flex items-center gap-2 rounded-full px-3 py-2 ${
-                    p.role === 'owner' ? 'bg-primary/10 text-primary' : 'bg-gray-100'
+                    p.role === 'owner' ? 'bg-primary/10 text-primary' : 'bg-gray-100 dark:bg-gray-800'
                   }`}
                 >
                   {editingParticipant?.id === p.id ? (
@@ -600,7 +600,7 @@ export default function SessionDetailPage() {
                             {session.participants.map((p) => (
                               <label
                                 key={p.id}
-                                className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-gray-50"
+                                className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
                               >
                                 <input
                                   type="checkbox"
@@ -789,7 +789,7 @@ export default function SessionDetailPage() {
                           {session.participants.map((p) => {
                             const data = participantTotals[p.id] || { owed: 0, paid: 0 }
                             return (
-                              <div key={p.id} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                              <div key={p.id} className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2">
                                 <div className="flex items-center gap-2">
                                   <span>{p.user_id ? '👤' : '👻'}</span>
                                   <span className="font-medium">{p.display_name}</span>
@@ -928,7 +928,7 @@ export default function SessionDetailPage() {
                     {session.participants.map((p) => (
                       <label
                         key={p.id}
-                        className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-gray-50"
+                        className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
                         <input
                           type="checkbox"

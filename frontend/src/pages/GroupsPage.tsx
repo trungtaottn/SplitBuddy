@@ -184,8 +184,8 @@ export default function GroupsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">👥 Nhóm bạn nhậu</h1>
-          <p className="text-muted-foreground">Quản lý các nhóm bạn bè của bạn</p>
+          <h1 className="text-2xl font-bold">Nhóm nhậu</h1>
+          <p className="text-muted-foreground">Đây là nơi chứa các con me men</p>
         </div>
         <Button onClick={() => setShowCreateModal(true)} className="gap-2">
           <Plus className="h-4 w-4" />
@@ -196,9 +196,9 @@ export default function GroupsPage() {
       {groups?.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Users className="mx-auto h-12 w-12 text-gray-400" />
+            <Users className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
             <p className="mt-4 text-lg font-medium">Chưa có nhóm nào</p>
-            <p className="text-muted-foreground">Tạo nhóm để quản lý bạn nhậu dễ dàng hơn</p>
+            <p className="text-muted-foreground">Tạo nhóm để quản lý nơi chứa các con me men dễ dàng hơn</p>
             <Button onClick={() => setShowCreateModal(true)} className="mt-4 gap-2">
               <Plus className="h-4 w-4" />
               Tạo nhóm đầu tiên

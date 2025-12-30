@@ -155,7 +155,7 @@ export default function GroupDebtsPage() {
               className={`relative rounded-xl p-3 transition-all hover:scale-[1.02] ${
                 isFirst ? 'ranking-glow-gold bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 shadow-md' :
                 isLast ? 'ranking-glow-red bg-gradient-to-r from-red-50 via-orange-50 to-red-50' :
-                'bg-gray-50 hover:bg-gray-100'
+                'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -164,7 +164,7 @@ export default function GroupDebtsPage() {
                   isTop && index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400' :
                   isTop && index === 2 ? 'bg-gradient-to-br from-amber-500 to-amber-600' :
                   isLast ? 'bg-gradient-to-br from-red-400 to-red-500' :
-                  'bg-gray-200'
+                  'bg-gray-200 dark:bg-gray-700'
                 }`}>
                   {isFirst ? (
                     <Crown className="h-5 w-5 text-white" />
@@ -226,7 +226,7 @@ export default function GroupDebtsPage() {
                   <div className="rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 p-4 border border-green-200">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-green-600 font-medium">💰 Tổng chi tiêu</p>
+                        <p className="text-xs text-green-600 font-medium">Tổng chi tiêu</p>
                         <p className="text-2xl font-bold text-green-700">{formatCurrency(totalAmount.toFixed(0))}</p>
                       </div>
                       <div className="text-3xl">💸</div>
@@ -237,12 +237,12 @@ export default function GroupDebtsPage() {
                 {/* Average Stats */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-blue-50 p-3 border border-blue-100 text-center hover:shadow-md transition-shadow">
-                    <p className="text-2xl">📊</p>
+                    <p className="text-2xl"></p>
                     <p className="text-lg font-bold text-blue-600">{formatCurrency(avgPerSession.toFixed(0))}</p>
                     <p className="text-xs text-muted-foreground">TB/cuộc</p>
                   </div>
                   <div className="rounded-xl bg-purple-50 p-3 border border-purple-100 text-center hover:shadow-md transition-shadow">
-                    <p className="text-2xl">👤</p>
+                    <p className="text-2xl"></p>
                     <p className="text-lg font-bold text-purple-600">{formatCurrency(avgPerPerson.toFixed(0))}</p>
                     <p className="text-xs text-muted-foreground">TB/người</p>
                   </div>
@@ -407,8 +407,8 @@ export default function GroupDebtsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b bg-gray-50">
-                        <th className="py-3 px-2 text-left font-medium sticky left-0 bg-gray-50">
+                      <tr className="border-b bg-gray-50 dark:bg-gray-800">
+                        <th className="py-3 px-2 text-left font-medium sticky left-0 bg-gray-50 dark:bg-gray-800">
                           Cuộc nhậu
                         </th>
                         <th className="py-3 px-2 text-right font-medium">Tổng</th>
@@ -421,8 +421,8 @@ export default function GroupDebtsPage() {
                     </thead>
                     <tbody>
                       {filteredTableSessions.map((session) => (
-                        <tr key={session.session_id} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-2 sticky left-0 bg-white">
+                        <tr key={session.session_id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <td className="py-3 px-2 sticky left-0 bg-white dark:bg-gray-900">
                             <div>
                               <p className="font-medium">{session.session_name}</p>
                               <p className="text-xs text-muted-foreground">
@@ -447,7 +447,7 @@ export default function GroupDebtsPage() {
                         return (
                           <td
                             key={member.user_id}
-                            className={`py-3 px-2 text-right ${hasAmount ? '' : 'text-gray-300'}`}
+                            className={`py-3 px-2 text-right ${hasAmount ? '' : 'text-gray-300 dark:text-gray-600'}`}
                           >
                             {hasAmount ? formatCurrency(amount) : '-'}
                           </td>
@@ -457,8 +457,8 @@ export default function GroupDebtsPage() {
                   ))}
                 </tbody>
                     <tfoot>
-                      <tr className="border-t-2 bg-gray-100 font-bold">
-                        <td className="py-3 px-2 sticky left-0 bg-gray-100">Tổng tháng này</td>
+                      <tr className="border-t-2 bg-gray-100 dark:bg-gray-800 font-bold">
+                        <td className="py-3 px-2 sticky left-0 bg-gray-100 dark:bg-gray-800">Tổng tháng này</td>
                         <td className="py-3 px-2 text-right text-primary">
                           {formatCurrency(
                             filteredTableSessions
@@ -490,8 +490,8 @@ export default function GroupDebtsPage() {
 
       {/* Legend */}
       <div className="text-sm text-muted-foreground">
-        <p>💡 <strong>Số dư dương (+)</strong>: Được nhận lại tiền từ nhóm</p>
-        <p>💡 <strong>Số dư âm (-)</strong>: Cần trả thêm cho nhóm</p>
+        <p><strong>Số dư dương (+)</strong>: Được nhận lại tiền từ nhóm</p>
+        <p><strong>Số dư âm (-)</strong>: Cần trả thêm cho nhóm</p>
       </div>
     </div>
   )

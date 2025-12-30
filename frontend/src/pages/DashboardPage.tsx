@@ -156,7 +156,7 @@ export default function DashboardPage() {
         <FunTooltip messages={FUN_MESSAGES.debtOwed}>
           <Card className="border shadow-sm hover:shadow-md transition-shadow cursor-pointer hover-pulse">
             <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/30">
                 <TrendingDown className="h-6 w-6 text-red-500" />
               </div>
               <div>
@@ -171,7 +171,7 @@ export default function DashboardPage() {
         <FunTooltip messages={FUN_MESSAGES.debtOwing}>
           <Card className="border shadow-sm hover:shadow-md transition-shadow cursor-pointer hover-pulse">
             <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-50">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-50 dark:bg-green-900/30">
                 <TrendingUp className="h-6 w-6 text-green-500" />
               </div>
               <div>
@@ -186,13 +186,13 @@ export default function DashboardPage() {
       </div>
 
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
           <Beer className="h-5 w-5" /> Cuộc nhậu của tôi
         </h2>
         <FunTooltip messages={FUN_MESSAGES.createSession}>
           <Button onClick={() => setShowCreateModal(true)} className="gap-2 bg-orange-500 hover:bg-orange-600 rounded-lg hover-wiggle font-bold">
             <Plus className="h-4 w-4" />
-            Nhậu đê! Nhìn cái giề hả...
+            Nhậu đê...
           </Button>
         </FunTooltip>
       </div>
@@ -215,8 +215,8 @@ export default function DashboardPage() {
             className="rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="">Tất cả</option>
-            <option value="active">Đang hoạt động</option>
-            <option value="closed">Đã đóng</option>
+            <option value="active">Đang diễn ra</option>
+            <option value="closed">Đã xong</option>
           </select>
         </div>
         {pagination && (
@@ -242,11 +242,11 @@ export default function DashboardPage() {
           <EmptyState
             type="sessions"
             action={{
-              label: 'Tạo buổi nhậu đầu tiên',
+              label: 'Book lịch nhậu đi chứ',
               onClick: () => setShowCreateModal(true),
             }}
             secondaryAction={{
-              label: 'Tạo nhóm bạn nhậu',
+              label: 'Tìm anh em cùng nhau nhậu',
               onClick: () => navigate('/groups'),
             }}
           />
@@ -379,7 +379,7 @@ export default function DashboardPage() {
                       {groupDetail.members.map((member) => (
                         <label
                           key={member.user_id}
-                          className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-gray-50"
+                          className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
                         >
                           <input
                             type="checkbox"
@@ -424,7 +424,7 @@ export default function DashboardPage() {
                       {guestNames.map((name, index) => (
                         <div
                           key={index}
-                          className="flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-sm text-orange-700"
+                          className="flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/30 px-3 py-1 text-sm text-orange-700 dark:text-orange-300"
                         >
                           <span>👤 {name}</span>
                           <button

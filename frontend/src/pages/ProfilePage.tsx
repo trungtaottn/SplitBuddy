@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/toaster'
-import { User, Lock, Camera, Save, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { User, Lock, Camera, Save, Eye, EyeOff, Loader2, Palette } from 'lucide-react'
 import type { ApiResponse } from '@/types/api'
 
 interface UserProfile {
@@ -180,18 +181,18 @@ export default function ProfilePage() {
                   <img
                     src={avatarPreview || avatarUrl}
                     alt="Avatar"
-                    className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                    className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
                   />
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center text-white text-2xl font-bold">
                     {getInitials(fullName || user?.full_name || 'U')}
                   </div>
                 )}
-                <label className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center cursor-pointer hover:bg-gray-50 border">
+                <label className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-gray-700 rounded-full shadow-md flex items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600">
                   {uploadAvatar.isPending ? (
-                    <Loader2 className="h-4 w-4 text-gray-600 animate-spin" />
+                    <Loader2 className="h-4 w-4 text-gray-600 dark:text-gray-400 animate-spin" />
                   ) : (
-                    <Camera className="h-4 w-4 text-gray-600" />
+                    <Camera className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                   )}
                   <input
                     ref={fileInputRef}
@@ -205,8 +206,8 @@ export default function ProfilePage() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium mb-1">Ảnh đại diện</p>
-                <p className="text-xs text-gray-500">Click vào icon camera để upload ảnh</p>
-                <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF tối đa 5MB</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Click vào icon camera để upload ảnh</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PNG, JPG, GIF tối đa 5MB</p>
               </div>
             </div>
 
@@ -229,9 +230,9 @@ export default function ProfilePage() {
                 id="email"
                 value={profile?.email || user?.email || ''}
                 disabled
-                className="mt-1 bg-gray-50"
+                className="mt-1 bg-gray-50 dark:bg-gray-800"
               />
-              <p className="text-xs text-gray-500 mt-1">Email không thể thay đổi</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Email không thể thay đổi</p>
             </div>
 
             <Button 
@@ -243,6 +244,19 @@ export default function ProfilePage() {
               {updateProfile.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Theme Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Palette className="h-5 w-5" />
+            Giao diện
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ThemeToggle />
         </CardContent>
       </Card>
 

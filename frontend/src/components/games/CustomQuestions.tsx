@@ -15,10 +15,10 @@ const GAME_OPTIONS = [
 ]
 
 const DIFFICULTY_OPTIONS = [
-  { value: 'easy', label: '🟢 Dễ' },
-  { value: 'medium', label: '🟡 Trung bình' },
-  { value: 'hard', label: '🔴 Khó' },
-  { value: 'extreme', label: '💀 Cực khó' },
+  { value: 'easy', label: 'Dễ' },
+  { value: 'medium', label: 'Trung bình' },
+  { value: 'hard', label: 'Khó' },
+  { value: 'extreme', label: 'Cực khó' },
 ]
 
 export function CustomQuestions() {

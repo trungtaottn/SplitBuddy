@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, game_type, content_type, content, difficulty\n        FROM game_content\n        WHERE game_type = 'never_have_i_ever' AND is_active = true\n        ORDER BY RANDOM()\n        LIMIT 1\n        ",
+  "query": "\n            SELECT id, game_type, content_type, content, difficulty\n            FROM game_content\n            WHERE game_type = 'never_have_i_ever' AND is_active = true AND difficulty = $1\n            ORDER BY RANDOM()\n            LIMIT 1\n            ",
   "describe": {
     "columns": [
       {
@@ -30,7 +30,9 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Text"
+      ]
     },
     "nullable": [
       false,
@@ -40,5 +42,5 @@
       true
     ]
   },
-  "hash": "f5417ff8bddbcb0b2e7b6e3d4c9637bd55d83c302b5104ecc9663f3aef7db635"
+  "hash": "d5416486a3ca75ba805c6dee6f43a611ef4fb96fb7f0caff5de4a6c64cfa078c"
 }

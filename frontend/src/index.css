@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -24,6 +26,31 @@
     --input: 20 5.9% 90%;
     --ring: 24 95% 50%;
     --radius: 0.75rem;
+    --success: 142 76% 36%;
+    --warning: 38 92% 50%;
+    --info: 199 89% 48%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 13%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 13%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 24 95% 53%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 24 95% 53%;
   }
 }
 
@@ -38,8 +65,12 @@
 }
 
 @layer utilities {
+  .font-logo {
+    font-family: 'Pacifico', cursive;
+  }
+  
   .glass {
-    @apply bg-white/80 backdrop-blur-md;
+    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-md;
   }
   
   .card-hover {
@@ -123,5 +154,67 @@
   @keyframes hoverPulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.05); }
+  }
+  
+  .animate-blob {
+    animation: blob ease-in-out infinite;
+  }
+  
+  @keyframes blob {
+    0%, 100% { 
+      transform: translate(0, 0) scale(1); 
+    }
+    25% { 
+      transform: translate(30px, -50px) scale(1.1); 
+    }
+    50% { 
+      transform: translate(-20px, 20px) scale(0.9); 
+    }
+    75% { 
+      transform: translate(20px, 50px) scale(1.05); 
+    }
+  }
+  
+  .animate-rise {
+    animation: rise linear infinite;
+  }
+  
+  @keyframes rise {
+    0% { 
+      transform: translateY(100vh) scale(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.6;
+      transform: translateY(90vh) scale(1);
+    }
+    90% {
+      opacity: 0.4;
+    }
+    100% { 
+      transform: translateY(-100px) scale(0.5);
+      opacity: 0;
+    }
+  }
+  
+  .animate-ripple {
+    animation: ripple 1s ease-out forwards;
+  }
+  
+  @keyframes ripple {
+    0% {
+      width: 0;
+      height: 0;
+      opacity: 0.8;
+    }
+    100% {
+      width: 200px;
+      height: 200px;
+      opacity: 0;
+    }
+  }
+  
+  .bg-gradient-radial {
+    background: radial-gradient(circle, var(--tw-gradient-stops));
   }
 }
