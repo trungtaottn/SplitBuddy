@@ -7,7 +7,7 @@ import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCir
 import { toast } from '@/components/ui/toaster'
 import { soundManager, vibrate, vibrationPatterns } from '@/utils/sounds'
 import type { ApiResponse } from '@/types/api'
-import { SpinWheel, DrinkingCounter, PlayerRotation } from '@/components/games'
+import { SpinWheel, DrinkingCounter, PlayerRotation, KingsCup, MostLikelyTo } from '@/components/games'
 
 type GameType = 'truth_or_dare' | 'never_have_i_ever' | 'challenge' | 'dice' | 'wheel'
 
@@ -139,6 +139,12 @@ export default function GamesPage() {
   
   // Player rotation state
   const [showPlayerRotation, setShowPlayerRotation] = useState(false)
+  
+  // Kings Cup state
+  const [showKingsCup, setShowKingsCup] = useState(false)
+  
+  // Most Likely To state
+  const [showMostLikelyTo, setShowMostLikelyTo] = useState(false)
   
   // Unified game phase state - prevents overlay flickering
   const [gamePhase, setGamePhase] = useState<GamePhase>('idle')
@@ -488,7 +494,55 @@ export default function GamesPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-yellow-400 group sm:col-span-2 lg:col-span-4"
+          onClick={() => setShowKingsCup(true)}
+        >
+          <CardContent className="p-6 text-center relative">
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-100 to-amber-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <span className="text-3xl">👑</span>
+            </div>
+            <h3 className="font-bold text-lg">👑 King's Cup</h3>
+            <p className="text-sm text-muted-foreground mt-1">Game bài kinh điển - Mỗi lá 1 luật!</p>
+            <div className="flex justify-center gap-1 mt-2">
+              <Beer className="h-4 w-4 text-yellow-500" />
+              <span className="text-xs text-yellow-600">52 lá bài → Bốc K thứ 4 = Uống ly King!</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-indigo-400 group sm:col-span-2 lg:col-span-2"
+          onClick={() => setShowMostLikelyTo(true)}
+        >
+          <CardContent className="p-6 text-center relative">
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-indigo-100 to-purple-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <span className="text-3xl">👆</span>
+            </div>
+            <h3 className="font-bold text-lg">👆 Ai có khả năng nhất?</h3>
+            <p className="text-sm text-muted-foreground mt-1">Đếm 3-2-1 rồi chỉ!</p>
+            <div className="flex justify-center gap-1 mt-2">
+              <Beer className="h-4 w-4 text-indigo-500" />
+              <span className="text-xs text-indigo-600">Bị chỉ nhiều nhất = Uống!</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Kings Cup Modal */}
+      {showKingsCup && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <KingsCup onClose={() => setShowKingsCup(false)} />
+        </div>
+      )}
+
+      {/* Most Likely To Modal */}
+      {showMostLikelyTo && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <MostLikelyTo onClose={() => setShowMostLikelyTo(false)} />
+        </div>
+      )}
 
       {/* Floating Action Buttons */}
       <div className="fixed bottom-4 right-4 z-40 flex flex-col gap-2">
