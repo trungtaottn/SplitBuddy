@@ -1109,7 +1109,7 @@ export default function GamesPage() {
                     toast.success('Đã bật nội dung 18+')
                   }}
                 >
-                  Tôi đồng ý 🔞
+                  Tôi đồng ý
                 </Button>
               </div>
             </CardContent>

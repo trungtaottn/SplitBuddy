@@ -5,6 +5,7 @@ import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
 import { LogOut, User, Wallet, Home, Users, Shield, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { InteractiveBackground } from '@/components/ui/InteractiveBackground'
+import { MusicPlayer } from '@/components/ui/MusicPlayer'
 
 export default function AppLayout() {
   const { user, logout } = useAuth()
@@ -185,6 +186,9 @@ export default function AppLayout() {
           </div>
         </nav>
       )}
+      
+      {/* Background Music Player */}
+      <MusicPlayer />
     </div>
   )
 }

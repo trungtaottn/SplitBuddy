@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import { MoodProvider } from './contexts/MoodContext'
+import { MusicProvider } from './contexts/MusicContext'
 import { FeatureFlagsProvider } from './contexts/FeatureFlagsContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { Toaster } from './components/ui/toaster'
@@ -50,6 +51,7 @@ function App() {
     <ThemeProvider>
       <FeatureFlagsProvider>
         <MoodProvider>
+          <MusicProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route
@@ -72,6 +74,7 @@ function App() {
           </Routes>
           <MoodEffects />
           <Toaster />
+          </MusicProvider>
         </MoodProvider>
       </FeatureFlagsProvider>
     </ThemeProvider>
