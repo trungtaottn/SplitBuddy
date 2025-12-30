@@ -188,7 +188,7 @@ export default function ProfilePage() {
                     {getInitials(fullName || user?.full_name || 'U')}
                   </div>
                 )}
-                <label className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-gray-800 rounded-full shadow-md flex items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 border dark:border-gray-700">
+                <label className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-gray-700 rounded-full shadow-md flex items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600">
                   {uploadAvatar.isPending ? (
                     <Loader2 className="h-4 w-4 text-gray-600 dark:text-gray-400 animate-spin" />
                   ) : (

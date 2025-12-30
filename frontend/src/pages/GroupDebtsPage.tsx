@@ -422,7 +422,7 @@ export default function GroupDebtsPage() {
                     <tbody>
                       {filteredTableSessions.map((session) => (
                         <tr key={session.session_id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
-                          <td className="py-3 px-2 sticky left-0 bg-white">
+                          <td className="py-3 px-2 sticky left-0 bg-white dark:bg-gray-900">
                             <div>
                               <p className="font-medium">{session.session_name}</p>
                               <p className="text-xs text-muted-foreground">

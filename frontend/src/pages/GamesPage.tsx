@@ -369,7 +369,7 @@ export default function GamesPage() {
           <select
             value={selectedDifficulty || ''}
             onChange={(e) => setSelectedDifficulty(e.target.value || null)}
-            className="text-xs border rounded-lg px-2 py-1.5 bg-white"
+            className="text-xs border rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200"
           >
             <option value="">Tất cả độ khó</option>
             <option value="easy">🟢 Dễ</option>
