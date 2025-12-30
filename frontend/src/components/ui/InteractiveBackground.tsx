@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useMood } from '@/contexts/MoodContext'
 
 interface Particle {
@@ -8,6 +8,13 @@ interface Particle {
   size: number
   color: string
   life: number
+}
+
+interface MousePos {
+  x: number
+  y: number
+  targetX: number
+  targetY: number
 }
 
 const MOOD_COLORS: Record<string, string[]> = {
@@ -54,9 +61,13 @@ const MOOD_BLOB_COLORS: Record<string, string[]> = {
 
 export function InteractiveBackground() {
   const { mood } = useMood()
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [particles, setParticles] = useState<Particle[]>([])
   const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([])
+  
+  const glowRef = useRef<HTMLDivElement>(null)
+  const mouseRef = useRef<MousePos>({ x: 0, y: 0, targetX: 0, targetY: 0 })
+  const animationRef = useRef<number>()
+  const lastParticleTime = useRef(0)
 
   const colors = MOOD_COLORS[mood] || MOOD_COLORS.neutral
   const blobColors = MOOD_BLOB_COLORS[mood] || MOOD_BLOB_COLORS.neutral
@@ -73,19 +84,44 @@ export function InteractiveBackground() {
     }))
   }, [mood])
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    setMousePos({ x: e.clientX, y: e.clientY })
+  // Smooth animation loop using requestAnimationFrame
+  useEffect(() => {
+    const animate = () => {
+      const mouse = mouseRef.current
+      // Smooth interpolation (lerp) - adjust 0.15 for speed
+      mouse.x += (mouse.targetX - mouse.x) * 0.12
+      mouse.y += (mouse.targetY - mouse.y) * 0.12
+      
+      if (glowRef.current) {
+        glowRef.current.style.transform = `translate(${mouse.x - 125}px, ${mouse.y - 125}px)`
+      }
+      
+      animationRef.current = requestAnimationFrame(animate)
+    }
     
-    if (Math.random() > 0.85) {
+    animationRef.current = requestAnimationFrame(animate)
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current)
+    }
+  }, [])
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    mouseRef.current.targetX = e.clientX
+    mouseRef.current.targetY = e.clientY
+    
+    // Throttle particle creation
+    const now = Date.now()
+    if (now - lastParticleTime.current > 80 && Math.random() > 0.6) {
+      lastParticleTime.current = now
       const newParticle: Particle = {
-        id: Date.now() + Math.random(),
+        id: now + Math.random(),
         x: e.clientX,
         y: e.clientY,
-        size: 3 + Math.random() * 6,
+        size: 3 + Math.random() * 5,
         color: colors[Math.floor(Math.random() * colors.length)],
         life: 100,
       }
-      setParticles(prev => [...prev.slice(-15), newParticle])
+      setParticles(prev => [...prev.slice(-12), newParticle])
     }
   }, [colors])
 
@@ -101,19 +137,19 @@ export function InteractiveBackground() {
       setRipples(prev => prev.filter(r => r.id !== newRipple.id))
     }, 800)
 
-    const burst = Array.from({ length: 6 }, (_, i) => ({
+    const burst = Array.from({ length: 5 }, (_, i) => ({
       id: Date.now() + i,
-      x: e.clientX + (Math.random() - 0.5) * 40,
-      y: e.clientY + (Math.random() - 0.5) * 40,
-      size: 5 + Math.random() * 8,
+      x: e.clientX + (Math.random() - 0.5) * 30,
+      y: e.clientY + (Math.random() - 0.5) * 30,
+      size: 4 + Math.random() * 6,
       color: colors[Math.floor(Math.random() * colors.length)],
       life: 100,
     }))
-    setParticles(prev => [...prev.slice(-10), ...burst])
+    setParticles(prev => [...prev.slice(-8), ...burst])
   }, [colors])
 
   useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mousemove', handleMouseMove, { passive: true })
     window.addEventListener('click', handleClick)
     return () => {
       window.removeEventListener('mousemove', handleMouseMove)
@@ -125,10 +161,10 @@ export function InteractiveBackground() {
     const interval = setInterval(() => {
       setParticles(prev => 
         prev
-          .map(p => ({ ...p, life: p.life - 6 }))
+          .map(p => ({ ...p, life: p.life - 8 }))
           .filter(p => p.life > 0)
       )
-    }, 50)
+    }, 60)
     return () => clearInterval(interval)
   }, [])
 
@@ -150,15 +186,16 @@ export function InteractiveBackground() {
         />
       ))}
 
-      {/* Mouse glow */}
+      {/* Mouse glow - using ref for smooth animation */}
       <div
-        className="absolute rounded-full blur-3xl transition-all duration-150"
+        ref={glowRef}
+        className="absolute rounded-full blur-3xl will-change-transform"
         style={{
           width: '250px',
           height: '250px',
-          left: mousePos.x - 125,
-          top: mousePos.y - 125,
-          background: `radial-gradient(circle, ${colors[0]}15 0%, transparent 70%)`,
+          left: 0,
+          top: 0,
+          background: `radial-gradient(circle, ${colors[0]}20 0%, transparent 70%)`,
         }}
       />
 
