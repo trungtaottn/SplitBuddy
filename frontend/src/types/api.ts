@@ -298,3 +298,18 @@ export interface LeaderboardEntry {
   total_games: number
   rank: number | null
 }
+
+export interface FeatureFlag {
+  id: string
+  key: string
+  name: string
+  description: string | null
+  enabled: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface FeatureFlagPublic {
+  key: string
+  enabled: boolean
+}
