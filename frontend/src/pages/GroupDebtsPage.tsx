@@ -226,7 +226,7 @@ export default function GroupDebtsPage() {
                   <div className="rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 p-4 border border-green-200">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-green-600 font-medium">💰 Tổng chi tiêu</p>
+                        <p className="text-xs text-green-600 font-medium">Tổng chi tiêu</p>
                         <p className="text-2xl font-bold text-green-700">{formatCurrency(totalAmount.toFixed(0))}</p>
                       </div>
                       <div className="text-3xl">💸</div>
@@ -237,12 +237,12 @@ export default function GroupDebtsPage() {
                 {/* Average Stats */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-blue-50 p-3 border border-blue-100 text-center hover:shadow-md transition-shadow">
-                    <p className="text-2xl">📊</p>
+                    <p className="text-2xl"></p>
                     <p className="text-lg font-bold text-blue-600">{formatCurrency(avgPerSession.toFixed(0))}</p>
                     <p className="text-xs text-muted-foreground">TB/cuộc</p>
                   </div>
                   <div className="rounded-xl bg-purple-50 p-3 border border-purple-100 text-center hover:shadow-md transition-shadow">
-                    <p className="text-2xl">👤</p>
+                    <p className="text-2xl"></p>
                     <p className="text-lg font-bold text-purple-600">{formatCurrency(avgPerPerson.toFixed(0))}</p>
                     <p className="text-xs text-muted-foreground">TB/người</p>
                   </div>
@@ -490,8 +490,8 @@ export default function GroupDebtsPage() {
 
       {/* Legend */}
       <div className="text-sm text-muted-foreground">
-        <p>💡 <strong>Số dư dương (+)</strong>: Được nhận lại tiền từ nhóm</p>
-        <p>💡 <strong>Số dư âm (-)</strong>: Cần trả thêm cho nhóm</p>
+        <p><strong>Số dư dương (+)</strong>: Được nhận lại tiền từ nhóm</p>
+        <p><strong>Số dư âm (-)</strong>: Cần trả thêm cho nhóm</p>
       </div>
     </div>
   )

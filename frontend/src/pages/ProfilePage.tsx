@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/toaster'
-import { User, Lock, Camera, Save, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { User, Lock, Camera, Save, Eye, EyeOff, Loader2, Palette } from 'lucide-react'
 import type { ApiResponse } from '@/types/api'
 
 interface UserProfile {
@@ -243,6 +244,19 @@ export default function ProfilePage() {
               {updateProfile.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Theme Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Palette className="h-5 w-5" />
+            Giao diện
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ThemeToggle />
         </CardContent>
       </Card>
 
