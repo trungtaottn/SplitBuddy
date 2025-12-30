@@ -1,14 +1,21 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { UserPlus, Key, Users, ToggleLeft, ToggleRight, Settings } from 'lucide-react'
+import { UserPlus, Key, Users, ToggleLeft, ToggleRight, Settings, Music, Upload, Trash2 } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
+import { useMusic } from '@/contexts/MusicContext'
 import type { ApiResponse, FeatureFlag } from '@/types/api'
+
+interface MusicTrack {
+  id: string
+  name: string
+  src: string
+}
 
 interface AdminUser {
   id: string
@@ -28,8 +35,13 @@ export default function AdminPage() {
   const [newName, setNewName] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [resetPassword, setResetPassword] = useState('')
+  
+  const [musicName, setMusicName] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { refresh: refreshFeatureFlags } = useFeatureFlags()
+  const { refreshTracks } = useMusic()
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin', 'users'],
@@ -46,6 +58,65 @@ export default function AdminPage() {
       return res.data.data
     },
   })
+
+  const { data: musicTracks, isLoading: musicLoading } = useQuery({
+    queryKey: ['admin', 'music'],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<MusicTrack[]>>('/admin/music')
+      return res.data.data
+    },
+  })
+
+  const deleteMusic = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/admin/music/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'music'] })
+      refreshTracks()
+      toast.success('Đã xóa bài nhạc!')
+    },
+    onError: () => {
+      toast.error('Có lỗi xảy ra khi xóa')
+    },
+  })
+
+  const handleUploadMusic = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('audio/')) {
+      toast.error('Vui lòng chọn file âm thanh (mp3, m4a, ...)')
+      return
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('File quá lớn. Giới hạn 50MB')
+      return
+    }
+
+    setIsUploading(true)
+    const formData = new FormData()
+    formData.append('file', file)
+    if (musicName.trim()) {
+      formData.append('name', musicName.trim())
+    }
+
+    try {
+      await api.post('/admin/music', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'music'] })
+      refreshTracks()
+      setMusicName('')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      toast.success('Tải nhạc lên thành công!')
+    } catch {
+      toast.error('Có lỗi xảy ra khi tải lên')
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
   const toggleFeature = useMutation({
     mutationFn: async ({ key, enabled }: { key: string; enabled: boolean }) => {
@@ -118,7 +189,7 @@ export default function AdminPage() {
     })
   }
 
-  if (isLoading || featuresLoading) {
+  if (isLoading || featuresLoading || musicLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -237,6 +308,96 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Music Management Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Music className="h-5 w-5" />
+            Quản lý nhạc nền ({musicTracks?.length || 0})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Tải lên các file nhạc nền cho ứng dụng. Chỉ admin mới có thể quản lý.
+          </p>
+          
+          {/* Upload Section */}
+          <div className="mb-6 p-4 border rounded-lg bg-muted/30">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <Label htmlFor="musicName" className="text-sm mb-1 block">Tên bài hát (tùy chọn)</Label>
+                <Input
+                  id="musicName"
+                  value={musicName}
+                  onChange={(e) => setMusicName(e.target.value)}
+                  placeholder="Để trống sẽ dùng tên file"
+                />
+              </div>
+              <div className="flex items-end">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleUploadMusic}
+                  className="hidden"
+                  id="musicFile"
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="gap-2 w-full sm:w-auto"
+                >
+                  <Upload className="h-4 w-4" />
+                  {isUploading ? 'Đang tải...' : 'Chọn file nhạc'}
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Hỗ trợ: MP3, M4A, WAV, OGG (tối đa 50MB)
+            </p>
+          </div>
+
+          {/* Track List */}
+          {musicTracks?.length === 0 ? (
+            <p className="py-8 text-center text-muted-foreground">
+              Chưa có bài nhạc nào. Tải lên bài đầu tiên!
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {musicTracks?.map((track, index) => (
+                <div
+                  key={track.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-medium">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="font-medium">{track.name}</p>
+                      <p className="text-xs text-muted-foreground">{track.src}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      if (confirm(`Xóa bài "${track.name}"?`)) {
+                        deleteMusic.mutate(track.id)
+                      }
+                    }}
+                    disabled={deleteMusic.isPending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

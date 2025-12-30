@@ -11,6 +11,7 @@ interface MusicContextType {
   currentTrack: Track | null
   tracks: Track[]
   volume: number
+  isLoading: boolean
   play: () => void
   pause: () => void
   toggle: () => void
@@ -18,22 +19,16 @@ interface MusicContextType {
   nextTrack: () => void
   prevTrack: () => void
   selectTrack: (track: Track) => void
-  addTracks: (newTracks: Track[]) => void
+  refreshTracks: () => Promise<void>
 }
 
 const MusicContext = createContext<MusicContextType | null>(null)
 
-// Default tracks - users can add more
-const DEFAULT_TRACKS: Track[] = [
-  { id: '1', name: 'Nhạc nền 1', src: '/music/track1.mp3' },
-  { id: '2', name: 'Nhạc nền 2', src: '/music/track2.mp3' },
-  { id: '3', name: 'Nhạc nền 3', src: '/music/track3.mp3' },
-]
-
 export function MusicProvider({ children }: { children: ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false)
-  const [tracks, setTracks] = useState<Track[]>(DEFAULT_TRACKS)
+  const [tracks, setTracks] = useState<Track[]>([])
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
   const [volume, setVolumeState] = useState(() => {
     const saved = localStorage.getItem('musicVolume')
     return saved ? parseFloat(saved) : 0.3
@@ -42,6 +37,29 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const currentTrack = tracks.length > 0 ? tracks[currentTrackIndex] : null
+
+  // Load tracks from API
+  const refreshTracks = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/admin/music')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.data && Array.isArray(data.data)) {
+          setTracks(data.data)
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load music tracks:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Load tracks on mount
+  useEffect(() => {
+    refreshTracks()
+  }, [])
 
   // Initialize audio element
   useEffect(() => {
@@ -141,10 +159,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const addTracks = (newTracks: Track[]) => {
-    setTracks((prev) => [...prev, ...newTracks])
-  }
-
   return (
     <MusicContext.Provider
       value={{
@@ -152,6 +166,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         currentTrack,
         tracks,
         volume,
+        isLoading,
         play,
         pause,
         toggle,
@@ -159,7 +174,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         nextTrack,
         prevTrack,
         selectTrack,
-        addTracks,
+        refreshTracks,
       }}
     >
       {children}
