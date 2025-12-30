@@ -62,26 +62,26 @@ export function FloatingChat() {
 
   // Minimalist chat window
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden border">
+    <div className="fixed bottom-6 right-6 z-50 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border dark:border-gray-700">
       {/* Simple Header */}
       <div className="px-4 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-lg">{moodConfig.emoji}</span>
           <span className="font-medium">SplitBuddy</span>
         </div>
-        <button onClick={closeChat} className="p-1 hover:bg-white/20 rounded-full">
+        <button onClick={closeChat} className="p-1 hover:bg-white/20 dark:hover:bg-black/20 rounded-full">
           <X className="h-5 w-5" />
         </button>
       </div>
 
       {/* Messages - Clean & Simple */}
-      <div className="h-72 overflow-y-auto p-3 space-y-3 bg-gray-50">
+      <div className="h-72 overflow-y-auto p-3 space-y-3 bg-gray-50 dark:bg-gray-900">
         {chatHistory.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm ${
               msg.role === 'user'
                 ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-br-sm'
-                : 'bg-white shadow-sm rounded-bl-sm'
+                : 'bg-gray-100 dark:bg-gray-700 shadow-sm rounded-bl-sm'
             }`}>
               {msg.content}
             </div>
@@ -89,7 +89,7 @@ export function FloatingChat() {
         ))}
         {chatMutation.isPending && (
           <div className="flex justify-start">
-            <div className="bg-white shadow-sm px-3 py-2 rounded-2xl rounded-bl-sm">
+            <div className="bg-gray-100 dark:bg-gray-700 shadow-sm px-3 py-2 rounded-2xl rounded-bl-sm">
               <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
             </div>
           </div>
@@ -98,7 +98,7 @@ export function FloatingChat() {
       </div>
 
       {/* Simple Input */}
-      <div className="p-3 border-t bg-white">
+      <div className="p-3 border-t dark:border-gray-700 bg-white dark:bg-gray-800">
         <div className="flex gap-2">
           <input
             ref={inputRef}
@@ -107,7 +107,7 @@ export function FloatingChat() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Nhắn gì đó..."
-            className="flex-1 px-3 py-2 text-sm rounded-full border focus:outline-none focus:border-orange-400"
+            className="flex-1 px-3 py-2 text-sm rounded-full border dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:border-orange-400"
             disabled={chatMutation.isPending}
           />
           <button
