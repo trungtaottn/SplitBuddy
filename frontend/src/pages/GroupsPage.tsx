@@ -196,7 +196,7 @@ export default function GroupsPage() {
       {groups?.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Users className="mx-auto h-12 w-12 text-gray-400" />
+            <Users className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
             <p className="mt-4 text-lg font-medium">Chưa có nhóm nào</p>
             <p className="text-muted-foreground">Tạo nhóm để quản lý bạn nhậu dễ dàng hơn</p>
             <Button onClick={() => setShowCreateModal(true)} className="mt-4 gap-2">
