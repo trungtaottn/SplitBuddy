@@ -210,9 +210,10 @@ export default function GamesPage() {
     await new Promise(resolve => setTimeout(resolve, 3500))
     
     // Fetch and reveal - phase stays as countdown until data arrives
-    if (gameType === 'truth_or_dare') truthOrDare.mutate()
-    else if (gameType === 'never_have_i_ever') neverHaveIEver.mutate()
-    else if (gameType === 'challenge') challenge.mutate()
+    const mutationParams = { difficulty: selectedDifficulty, includeAdult: adultContentEnabled }
+    if (gameType === 'truth_or_dare') truthOrDare.mutate(mutationParams)
+    else if (gameType === 'never_have_i_ever') neverHaveIEver.mutate(mutationParams)
+    else if (gameType === 'challenge') challenge.mutate(mutationParams)
     else if (gameType === 'dice') rollDice.mutate()
   }
 
@@ -235,10 +236,10 @@ export default function GamesPage() {
   }
 
   const truthOrDare = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ difficulty, includeAdult }: { difficulty: string | null, includeAdult: boolean }) => {
       const params = new URLSearchParams()
-      if (selectedDifficulty) params.append('difficulty', selectedDifficulty)
-      if (adultContentEnabled) params.append('include_adult', 'true')
+      if (difficulty) params.append('difficulty', difficulty)
+      if (includeAdult) params.append('include_adult', 'true')
       const res = await api.get<ApiResponse<GameContent>>(`/games/truth-or-dare?${params.toString()}`)
       return res.data.data
     },
@@ -258,10 +259,10 @@ export default function GamesPage() {
   })
 
   const neverHaveIEver = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ difficulty, includeAdult }: { difficulty: string | null, includeAdult: boolean }) => {
       const params = new URLSearchParams()
-      if (selectedDifficulty) params.append('difficulty', selectedDifficulty)
-      if (adultContentEnabled) params.append('include_adult', 'true')
+      if (difficulty) params.append('difficulty', difficulty)
+      if (includeAdult) params.append('include_adult', 'true')
       const res = await api.get<ApiResponse<GameContent>>(`/games/never-have-i-ever?${params.toString()}`)
       return res.data.data
     },
@@ -280,10 +281,10 @@ export default function GamesPage() {
   })
 
   const challenge = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ difficulty, includeAdult }: { difficulty: string | null, includeAdult: boolean }) => {
       const params = new URLSearchParams()
-      if (selectedDifficulty) params.append('difficulty', selectedDifficulty)
-      if (adultContentEnabled) params.append('include_adult', 'true')
+      if (difficulty) params.append('difficulty', difficulty)
+      if (includeAdult) params.append('include_adult', 'true')
       const res = await api.get<ApiResponse<GameContent>>(`/games/challenges?${params.toString()}`)
       return res.data.data
     },
