@@ -127,6 +127,8 @@ export default function GamesPage() {
   const [showRules, setShowRules] = useState<string | null>(null)
   const [soundEnabled, setSoundEnabled] = useState(() => soundManager.isEnabled())
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null)
+  const [adultContentEnabled, setAdultContentEnabled] = useState(false)
+  const [showAdultWarning, setShowAdultWarning] = useState(false)
   
   // Wheel state
   const [showWheel, setShowWheel] = useState(false)
@@ -234,7 +236,10 @@ export default function GamesPage() {
 
   const truthOrDare = useMutation({
     mutationFn: async () => {
-      const res = await api.get<ApiResponse<GameContent>>('/games/truth-or-dare')
+      const params = new URLSearchParams()
+      if (selectedDifficulty) params.append('difficulty', selectedDifficulty)
+      if (adultContentEnabled) params.append('include_adult', 'true')
+      const res = await api.get<ApiResponse<GameContent>>(`/games/truth-or-dare?${params.toString()}`)
       return res.data.data
     },
     onSuccess: (data) => {
@@ -254,7 +259,10 @@ export default function GamesPage() {
 
   const neverHaveIEver = useMutation({
     mutationFn: async () => {
-      const res = await api.get<ApiResponse<GameContent>>('/games/never-have-i-ever')
+      const params = new URLSearchParams()
+      if (selectedDifficulty) params.append('difficulty', selectedDifficulty)
+      if (adultContentEnabled) params.append('include_adult', 'true')
+      const res = await api.get<ApiResponse<GameContent>>(`/games/never-have-i-ever?${params.toString()}`)
       return res.data.data
     },
     onSuccess: (data) => {
@@ -273,7 +281,10 @@ export default function GamesPage() {
 
   const challenge = useMutation({
     mutationFn: async () => {
-      const res = await api.get<ApiResponse<GameContent>>('/games/challenges')
+      const params = new URLSearchParams()
+      if (selectedDifficulty) params.append('difficulty', selectedDifficulty)
+      if (adultContentEnabled) params.append('include_adult', 'true')
+      const res = await api.get<ApiResponse<GameContent>>(`/games/challenges?${params.toString()}`)
       return res.data.data
     },
     onSuccess: (data) => {
@@ -372,12 +383,22 @@ export default function GamesPage() {
             className="text-xs border rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200"
           >
             <option value="">Tất cả độ khó</option>
-            <option value="easy">🟢 Dễ</option>
-            <option value="medium">🟡 Trung bình</option>
-            <option value="hard">🔴 Khó</option>
-            <option value="extreme">💀 Cực khó</option>
-            <option value="18+">🔞 18+ (Người lớn)</option>
+            <option value="easy">Dễ</option>
+            <option value="medium">Trung bình</option>
+            <option value="hard">Khó</option>
+            <option value="extreme">Cực khó</option>
           </select>
+          <button
+            onClick={() => adultContentEnabled ? setAdultContentEnabled(false) : setShowAdultWarning(true)}
+            className={`text-xs px-2 py-1.5 rounded-lg border transition-all ${
+              adultContentEnabled 
+                ? 'bg-pink-100 dark:bg-pink-900/30 border-pink-300 dark:border-pink-700 text-pink-700 dark:text-pink-300' 
+                : 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400'
+            }`}
+            title={adultContentEnabled ? 'Tắt nội dung 18+' : 'Bật nội dung 18+'}
+          >
+            🔞 18+
+          </button>
         </div>
 
         <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 flex items-center justify-center gap-2">
@@ -1041,6 +1062,55 @@ export default function GamesPage() {
               <Button className="w-full mt-4" onClick={() => setShowRules(null)}>
                 Đã hiểu! 🍻
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Adult Content Warning Modal */}
+      {showAdultWarning && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowAdultWarning(false)}>
+          <Card className="max-w-md w-full animate-in zoom-in-95 border-2 border-pink-300 dark:border-pink-700" onClick={e => e.stopPropagation()}>
+            <CardHeader className="text-center">
+              <div className="mx-auto h-16 w-16 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center mb-2">
+                <span className="text-3xl">🔞</span>
+              </div>
+              <CardTitle className="text-pink-600 dark:text-pink-400">Cảnh báo nội dung người lớn</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-4 text-sm text-pink-800 dark:text-pink-300">
+                <p className="font-semibold mb-2 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" /> Lưu ý quan trọng:
+                </p>
+                <ul className="space-y-1 list-disc list-inside">
+                  <li>Nội dung 18+ chỉ dành cho người trưởng thành</li>
+                  <li>Các câu hỏi có thể nhạy cảm hoặc khiêu khích</li>
+                  <li>Chỉ chơi khi tất cả người tham gia đều đồng ý</li>
+                  <li>Tôn trọng giới hạn của mọi người</li>
+                </ul>
+              </div>
+              <p className="text-center text-sm text-muted-foreground">
+                Bạn xác nhận rằng bạn đã đủ 18 tuổi và đồng ý xem nội dung này?
+              </p>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setShowAdultWarning(false)}
+                >
+                  Không, cảm ơn
+                </Button>
+                <Button 
+                  className="flex-1 bg-pink-500 hover:bg-pink-600"
+                  onClick={() => {
+                    setAdultContentEnabled(true)
+                    setShowAdultWarning(false)
+                    toast.success('Đã bật nội dung 18+')
+                  }}
+                >
+                  Tôi đồng ý 🔞
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
