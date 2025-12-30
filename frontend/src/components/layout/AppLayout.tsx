@@ -27,14 +27,14 @@ export default function AppLayout() {
 
   const isActive = (path: string) => location.pathname === path
 
-  // Dark mode backgrounds per mood (Tailwind needs to see full class names)
+  // Dark mode backgrounds per mood (lighter colors for better visibility)
   const darkBgMap: Record<string, string> = {
-    happy: 'dark:from-orange-950 dark:via-amber-950 dark:to-yellow-950',
-    sad: 'dark:from-blue-950 dark:via-slate-950 dark:to-gray-950',
-    tired: 'dark:from-violet-950 dark:via-purple-950 dark:to-indigo-950',
-    stressed: 'dark:from-emerald-950 dark:via-teal-950 dark:to-cyan-950',
-    excited: 'dark:from-pink-950 dark:via-rose-950 dark:to-red-950',
-    neutral: 'dark:from-gray-950 dark:via-slate-950 dark:to-zinc-950',
+    happy: 'dark:from-orange-950/50 dark:via-amber-950/50 dark:to-yellow-950/50',
+    sad: 'dark:from-blue-950/50 dark:via-slate-950/50 dark:to-gray-950/50',
+    tired: 'dark:from-violet-950/50 dark:via-purple-950/50 dark:to-indigo-950/50',
+    stressed: 'dark:from-emerald-950/50 dark:via-teal-950/50 dark:to-cyan-950/50',
+    excited: 'dark:from-pink-950/50 dark:via-rose-950/50 dark:to-red-950/50',
+    neutral: 'dark:from-gray-950/50 dark:via-slate-950/50 dark:to-zinc-950/50',
   }
 
   return (
@@ -43,9 +43,9 @@ export default function AppLayout() {
       {/* Desktop Header */}
       <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/90 backdrop-blur-md shadow-sm">
         <div className="container mx-auto flex h-14 items-center justify-between px-4 md:h-16">
-          <Link to={isAdmin ? "/admin" : "/"} className="flex items-center gap-2 text-lg font-bold md:text-xl group">
+          <Link to={isAdmin ? "/admin" : "/"} className="flex items-center gap-2 text-lg md:text-xl group">
             <span className="text-2xl md:text-3xl animate-bounce">🍻</span>
-            <span className="hidden sm:inline gradient-text">SplitBuddy</span>
+            <span className="hidden sm:inline font-logo text-2xl gradient-text">SplitBuddy</span>
           </Link>
 
           {/* Desktop Nav */}

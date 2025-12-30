@@ -1,11 +1,13 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/toaster'
+import { Moon, Sun } from 'lucide-react'
 
 interface Particle {
   id: number
@@ -16,71 +18,105 @@ interface Particle {
   life: number
 }
 
+interface MousePos {
+  x: number
+  y: number
+  targetX: number
+  targetY: number
+}
+
 function InteractiveBackground() {
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [particles, setParticles] = useState<Particle[]>([])
   const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([])
+  
+  const glowRef = useRef<HTMLDivElement>(null)
+  const mouseRef = useRef<MousePos>({ x: 0, y: 0, targetX: 0, targetY: 0 })
+  const animationRef = useRef<number>()
+  const lastParticleTime = useRef(0)
 
   const colors = ['#f97316', '#ec4899', '#ef4444', '#f59e0b', '#fb7185']
 
   const blobs = useMemo(() => {
     const blobColors = [
-      'from-orange-400/30 to-pink-400/30',
-      'from-pink-400/30 to-red-400/30',
-      'from-red-400/30 to-orange-400/30',
-      'from-amber-400/30 to-orange-400/30',
-      'from-rose-400/30 to-pink-400/30',
+      'from-orange-400/20 to-pink-400/20',
+      'from-pink-400/20 to-red-400/20',
+      'from-red-400/20 to-orange-400/20',
+      'from-amber-400/20 to-orange-400/20',
+      'from-rose-400/20 to-pink-400/20',
     ]
-    return Array.from({ length: 6 }, (_, i) => ({
+    return Array.from({ length: 5 }, (_, i) => ({
       id: i,
       color: blobColors[i % blobColors.length],
-      size: 200 + Math.random() * 150,
+      size: 250 + Math.random() * 150,
       left: Math.random() * 100,
       top: Math.random() * 100,
       delay: Math.random() * 5,
-      duration: 20 + Math.random() * 10,
+      duration: 25 + Math.random() * 15,
     }))
   }, [])
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    setMousePos({ x: e.clientX, y: e.clientY })
+  // Smooth animation loop
+  useEffect(() => {
+    const animate = () => {
+      const mouse = mouseRef.current
+      mouse.x += (mouse.targetX - mouse.x) * 0.12
+      mouse.y += (mouse.targetY - mouse.y) * 0.12
+      
+      if (glowRef.current) {
+        glowRef.current.style.transform = `translate(${mouse.x - 150}px, ${mouse.y - 150}px)`
+      }
+      
+      animationRef.current = requestAnimationFrame(animate)
+    }
     
-    // Add trail particles occasionally
-    if (Math.random() > 0.7) {
+    animationRef.current = requestAnimationFrame(animate)
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current)
+    }
+  }, [])
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    mouseRef.current.targetX = e.clientX
+    mouseRef.current.targetY = e.clientY
+    
+    const now = Date.now()
+    if (now - lastParticleTime.current > 80 && Math.random() > 0.6) {
+      lastParticleTime.current = now
       const newParticle: Particle = {
-        id: Date.now() + Math.random(),
+        id: now + Math.random(),
         x: e.clientX,
         y: e.clientY,
-        size: 4 + Math.random() * 8,
+        size: 3 + Math.random() * 5,
         color: colors[Math.floor(Math.random() * colors.length)],
         life: 100,
       }
-      setParticles(prev => [...prev.slice(-20), newParticle])
+      setParticles(prev => [...prev.slice(-12), newParticle])
     }
   }, [])
 
   const handleClick = useCallback((e: MouseEvent) => {
-    // Add ripple effect on click
+    const target = e.target as HTMLElement
+    if (target.closest('button, a, input, select, textarea')) return
+
     const newRipple = { id: Date.now(), x: e.clientX, y: e.clientY }
     setRipples(prev => [...prev, newRipple])
     setTimeout(() => {
       setRipples(prev => prev.filter(r => r.id !== newRipple.id))
-    }, 1000)
+    }, 800)
 
-    // Burst of particles
-    const burst = Array.from({ length: 8 }, (_, i) => ({
+    const burst = Array.from({ length: 5 }, (_, i) => ({
       id: Date.now() + i,
-      x: e.clientX + (Math.random() - 0.5) * 50,
-      y: e.clientY + (Math.random() - 0.5) * 50,
-      size: 6 + Math.random() * 10,
+      x: e.clientX + (Math.random() - 0.5) * 30,
+      y: e.clientY + (Math.random() - 0.5) * 30,
+      size: 4 + Math.random() * 6,
       color: colors[Math.floor(Math.random() * colors.length)],
       life: 100,
     }))
-    setParticles(prev => [...prev.slice(-15), ...burst])
+    setParticles(prev => [...prev.slice(-8), ...burst])
   }, [])
 
   useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mousemove', handleMouseMove, { passive: true })
     window.addEventListener('click', handleClick)
     return () => {
       window.removeEventListener('mousemove', handleMouseMove)
@@ -88,25 +124,21 @@ function InteractiveBackground() {
     }
   }, [handleMouseMove, handleClick])
 
-  // Fade out particles
   useEffect(() => {
     const interval = setInterval(() => {
       setParticles(prev => 
-        prev
-          .map(p => ({ ...p, life: p.life - 5 }))
-          .filter(p => p.life > 0)
+        prev.map(p => ({ ...p, life: p.life - 8 })).filter(p => p.life > 0)
       )
-    }, 50)
+    }, 60)
     return () => clearInterval(interval)
   }, [])
 
   return (
-    <div className="fixed inset-0 overflow-hidden z-0">
-      {/* Gradient blobs */}
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
       {blobs.map((blob) => (
         <div
           key={blob.id}
-          className={`absolute rounded-full bg-gradient-to-br ${blob.color} blur-3xl animate-blob pointer-events-none`}
+          className={`absolute rounded-full bg-gradient-to-br ${blob.color} blur-3xl animate-blob`}
           style={{
             width: `${blob.size}px`,
             height: `${blob.size}px`,
@@ -118,40 +150,39 @@ function InteractiveBackground() {
         />
       ))}
 
-      {/* Mouse glow effect */}
       <div
-        className="absolute rounded-full bg-gradient-radial from-orange-400/20 via-pink-400/10 to-transparent blur-2xl pointer-events-none transition-all duration-100"
+        ref={glowRef}
+        className="absolute rounded-full blur-3xl will-change-transform"
         style={{
           width: '300px',
           height: '300px',
-          left: mousePos.x - 150,
-          top: mousePos.y - 150,
+          left: 0,
+          top: 0,
+          background: 'radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%)',
         }}
       />
 
-      {/* Trail particles */}
       {particles.map((p) => (
         <div
           key={p.id}
-          className="absolute rounded-full pointer-events-none transition-all duration-300"
+          className="absolute rounded-full"
           style={{
             width: `${p.size}px`,
             height: `${p.size}px`,
             left: p.x - p.size / 2,
             top: p.y - p.size / 2,
             backgroundColor: p.color,
-            opacity: p.life / 100,
+            opacity: p.life / 100 * 0.7,
             transform: `scale(${p.life / 100})`,
             filter: 'blur(1px)',
           }}
         />
       ))}
 
-      {/* Click ripples */}
       {ripples.map((r) => (
         <div
           key={r.id}
-          className="absolute rounded-full border-2 border-orange-400/50 pointer-events-none animate-ripple"
+          className="absolute rounded-full border-2 border-orange-400/40 animate-ripple"
           style={{
             left: r.x,
             top: r.y,
@@ -187,6 +218,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [funMessage, setFunMessage] = useState('')
   const { login } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -213,14 +245,28 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-orange-50 via-pink-50 to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 px-4 overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-orange-50 via-pink-50 to-red-50 dark:from-orange-950/50 dark:via-pink-950/50 dark:to-red-950/50 px-4 overflow-hidden">
       <InteractiveBackground />
+      
+      {/* Dark mode toggle */}
+      <button
+        onClick={toggleTheme}
+        className="absolute top-4 right-4 z-20 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:scale-110 transition-transform"
+        title={theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
+      >
+        {theme === 'dark' ? (
+          <Sun className="h-5 w-5 text-yellow-500" />
+        ) : (
+          <Moon className="h-5 w-5 text-gray-700" />
+        )}
+      </button>
+
       <Card className="w-full max-w-md relative z-10 shadow-xl">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 text-5xl animate-bounce">
+          <div className="mx-auto mb-2 text-5xl animate-bounce">
             🍻
           </div>
-          <CardTitle className="text-2xl gradient-text">SplitBuddy</CardTitle>
+          <CardTitle className="text-3xl font-logo gradient-text">SplitBuddy</CardTitle>
           <CardDescription className="transition-all duration-500">{funMessage}</CardDescription>
         </CardHeader>
         <CardContent>

@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+
 @layer base {
   :root {
     --background: 30 50% 98%;
@@ -63,6 +65,10 @@
 }
 
 @layer utilities {
+  .font-logo {
+    font-family: 'Pacifico', cursive;
+  }
+  
   .glass {
     @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-md;
   }
