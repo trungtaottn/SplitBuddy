@@ -5,7 +5,11 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './contexts/AuthContext'
 import { queryClient } from './lib/queryClient'
+import { startVersionChecker } from './lib/versionChecker'
 import './index.css'
+
+// Start checking for new versions - will force reload if new version detected
+startVersionChecker()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
