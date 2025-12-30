@@ -3,12 +3,13 @@ import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCircle, X, Skull, Zap, AlertCircle, Target, Hand, Volume2, VolumeX } from 'lucide-react'
+import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCircle, X, Skull, Zap, AlertCircle, Target, Hand, Volume2, VolumeX, Users, CircleDot } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
 import { soundManager, vibrate, vibrationPatterns } from '@/utils/sounds'
 import type { ApiResponse } from '@/types/api'
+import { SpinWheel, DrinkingCounter, PlayerRotation } from '@/components/games'
 
-type GameType = 'truth_or_dare' | 'never_have_i_ever' | 'challenge' | 'dice'
+type GameType = 'truth_or_dare' | 'never_have_i_ever' | 'challenge' | 'dice' | 'wheel'
 
 const GAME_INFO: Record<GameType, { name: string; color: string; warning: string }> = {
   truth_or_dare: { 
@@ -30,6 +31,11 @@ const GAME_INFO: Record<GameType, { name: string; color: string; warning: string
     name: 'Tung xúc xắc', 
     color: 'purple',
     warning: 'Số phận sẽ quyết định! Ra đôi = Bạn là VƯƠNG!'
+  },
+  wheel: {
+    name: 'Vòng quay',
+    color: 'emerald',
+    warning: 'Ai sẽ là người được chọn? Quay để biết!'
   }
 }
 
@@ -47,6 +53,7 @@ const GameIcon = ({ type, className }: { type: GameType; className?: string }) =
     case 'never_have_i_ever': return <Hand className={className} />
     case 'challenge': return <Flame className={className} />
     case 'dice': return <Dices className={className} />
+    case 'wheel': return <CircleDot className={className} />
   }
 }
 
@@ -120,6 +127,18 @@ export default function GamesPage() {
   const [showRules, setShowRules] = useState<string | null>(null)
   const [soundEnabled, setSoundEnabled] = useState(() => soundManager.isEnabled())
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null)
+  
+  // Wheel state
+  const [showWheel, setShowWheel] = useState(false)
+  const [wheelParticipants, setWheelParticipants] = useState<{id: string, name: string}[]>([])
+  const [newParticipant, setNewParticipant] = useState('')
+  const [wheelWinner, setWheelWinner] = useState<{id: string, name: string} | null>(null)
+  
+  // Drinking counter state
+  const [showDrinkingCounter, setShowDrinkingCounter] = useState(false)
+  
+  // Player rotation state
+  const [showPlayerRotation, setShowPlayerRotation] = useState(false)
   
   // Unified game phase state - prevents overlay flickering
   const [gamePhase, setGamePhase] = useState<GamePhase>('idle')
@@ -449,7 +468,164 @@ export default function GamesPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-emerald-400 group sm:col-span-2 lg:col-span-4"
+          onClick={() => setShowWheel(true)}
+        >
+          <CardContent className="p-6 text-center relative">
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-emerald-100 to-teal-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <CircleDot className="h-8 w-8 text-emerald-500 group-hover:animate-spin" />
+            </div>
+            <h3 className="font-bold text-lg">🎡 Vòng quay may mắn</h3>
+            <p className="text-sm text-muted-foreground mt-1">Quay để chọn người thực hiện!</p>
+            <div className="flex justify-center gap-1 mt-2">
+              <Users className="h-4 w-4 text-emerald-500" />
+              <span className="text-xs text-emerald-600">Thêm tên → Quay → Chọn người!</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-4 right-4 z-40 flex flex-col gap-2">
+        <Button
+          onClick={() => setShowPlayerRotation(true)}
+          className="rounded-full h-12 w-12 bg-blue-500 hover:bg-blue-600 shadow-lg"
+          title="Quản lý lượt chơi"
+        >
+          <Users className="h-5 w-5" />
+        </Button>
+        <Button
+          onClick={() => setShowDrinkingCounter(true)}
+          className="rounded-full h-14 w-14 bg-amber-500 hover:bg-amber-600 shadow-lg"
+          title="Đếm số ly"
+        >
+          <Beer className="h-6 w-6" />
+        </Button>
+      </div>
+
+      {/* Player Rotation Modal */}
+      {showPlayerRotation && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <PlayerRotation onClose={() => setShowPlayerRotation(false)} />
+        </div>
+      )}
+
+      {/* Drinking Counter Modal */}
+      {showDrinkingCounter && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <DrinkingCounter onClose={() => setShowDrinkingCounter(false)} />
+        </div>
+      )}
+
+      {/* Wheel Modal */}
+      {showWheel && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <Card className="max-w-md w-full mx-4 border-2 border-emerald-300 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-center flex items-center justify-center gap-2">
+                <CircleDot className="h-6 w-6 text-emerald-500" />
+                Vòng quay may mắn
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setShowWheel(false); setWheelWinner(null) }}
+                  className="absolute right-2 top-2"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Add participants */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newParticipant}
+                  onChange={(e) => setNewParticipant(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newParticipant.trim()) {
+                      setWheelParticipants([...wheelParticipants, { id: Date.now().toString(), name: newParticipant.trim() }])
+                      setNewParticipant('')
+                    }
+                  }}
+                  placeholder="Nhập tên người chơi..."
+                  className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (newParticipant.trim()) {
+                      setWheelParticipants([...wheelParticipants, { id: Date.now().toString(), name: newParticipant.trim() }])
+                      setNewParticipant('')
+                    }
+                  }}
+                >
+                  Thêm
+                </Button>
+              </div>
+
+              {/* Participant list */}
+              {wheelParticipants.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {wheelParticipants.map((p) => (
+                    <span
+                      key={p.id}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm"
+                    >
+                      {p.name}
+                      <button
+                        onClick={() => setWheelParticipants(wheelParticipants.filter(x => x.id !== p.id))}
+                        className="hover:text-red-500"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Quick add buttons */}
+              <div className="flex flex-wrap gap-2 text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const names = ['Người 1', 'Người 2', 'Người 3', 'Người 4']
+                    setWheelParticipants(names.map((n, i) => ({ id: `demo-${i}`, name: n })))
+                  }}
+                >
+                  Demo 4 người
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWheelParticipants([])}
+                >
+                  Xóa tất cả
+                </Button>
+              </div>
+
+              {/* Spin Wheel */}
+              <div className="relative pt-4">
+                <SpinWheel
+                  participants={wheelParticipants}
+                  onResult={(winner) => setWheelWinner(winner)}
+                />
+              </div>
+
+              {/* Winner display */}
+              {wheelWinner && (
+                <div className="text-center p-4 bg-gradient-to-r from-yellow-100 to-amber-100 rounded-xl border-2 border-yellow-300">
+                  <p className="text-sm text-yellow-700">🎉 Người được chọn:</p>
+                  <p className="text-2xl font-bold text-yellow-800">{wheelWinner.name}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Game Result Overlay */}
       {gamePhase === 'revealed' && (gameContent || diceResult) && (

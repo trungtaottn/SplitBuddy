@@ -1,3 +1,6 @@
 export { GameHistory } from './GameHistory'
 export { CustomQuestions } from './CustomQuestions'
 export { SessionDrinkingStats, GlobalLeaderboard } from './DrinkingStats'
+export { SpinWheel } from './SpinWheel'
+export { DrinkingCounter } from './DrinkingCounter'
+export { PlayerRotation } from './PlayerRotation'
