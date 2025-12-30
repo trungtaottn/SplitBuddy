@@ -10,14 +10,21 @@
 | Tôi chưa bao giờ | ✅ Live | Random "Never have I ever" |
 | Thử thách | ✅ Live | Random challenge với độ khó |
 | Tung xúc xắc | ✅ Live | 2 dice với rules đặc biệt |
+| Vòng quay may mắn | ✅ Live | Spin wheel chọn người |
+| Đếm số shot | ✅ Live | Track drinking per person |
+| Lượt chơi | ✅ Live | Player rotation system |
+| King's Cup | ✅ Live | Card game với 52 lá |
+| Ai có khả năng nhất | ✅ Live | Most likely to voting |
+| Kể tên theo chủ đề | ✅ Live | Categories game |
+| Cao hay Thấp | ✅ Live | High/Low card guessing |
 
 ---
 
-## 🚀 Phase 1: Quick Wins (Ưu tiên cao)
+## 🚀 Phase 1: Quick Wins ✅ COMPLETED
 
 ### 1.1 Vòng quay chọn người (Wheel of Fortune)
 - **Priority:** 🔴 High
-- **Status:** 🟡 Pending
+- **Status:** ✅ Completed (2025-12-30)
 - **Effort:** Medium (2-3 days)
 - **Description:**
   - Vòng quay với tên người chơi từ session
@@ -26,17 +33,17 @@
   - Có thể customize số ô và nội dung
 
 **Tasks:**
-- [ ] Design UI component vòng quay
-- [ ] Implement spinning animation (CSS/Canvas)
-- [ ] Integrate với session participants
-- [ ] Add sound effects khi quay
-- [ ] Random weighted selection logic
+- [x] Design UI component vòng quay
+- [x] Implement spinning animation (requestAnimationFrame + easing)
+- [x] Integrate với session participants
+- [x] Add sound effects khi quay
+- [x] Random weighted selection logic
 
 ---
 
 ### 1.2 Drinking Counter & Stats
 - **Priority:** 🔴 High
-- **Status:** 🟡 Pending
+- **Status:** ✅ Completed (2025-12-29)
 - **Effort:** Low (1 day)
 - **Description:**
   - Track số shot mỗi người trong session
@@ -45,16 +52,16 @@
   - Tích hợp với drinking_stats table (đã có)
 
 **Tasks:**
-- [ ] UI component hiển thị drink count
-- [ ] Real-time update khi +1 drink
-- [ ] Leaderboard widget
-- [ ] Safety warning threshold
+- [x] UI component hiển thị drink count
+- [x] Real-time update khi +1 drink
+- [x] Leaderboard widget
+- [x] Safety warning threshold
 
 ---
 
 ### 1.3 Player Rotation System
 - **Priority:** 🔴 High
-- **Status:** 🟡 Pending
+- **Status:** ✅ Completed (2025-12-29)
 - **Effort:** Low (0.5 day)
 - **Description:**
   - Fair rotation giữa người chơi
@@ -63,19 +70,18 @@
   - Reset rotation khi hết vòng
 
 **Tasks:**
-- [ ] Rotation state management
-- [ ] UI indicator "Lượt của ai"
-- [ ] Skip/Pass functionality
-- [ ] History tracking
+- [x] Rotation state management
+- [x] UI indicator "Lượt của ai"
+- [x] Skip/Pass functionality
+- [x] History tracking
 
 ---
 
-## 🎯 Phase 2: New Games (Ưu tiên trung bình)
+## 🎯 Phase 2: New Games ✅ COMPLETED
 
 ### 2.1 King's Cup / Vua Bia
 - **Priority:** 🟡 Medium
-- **Status:** 🟡 Pending
-- **Effort:** Medium (2-3 days)
+- **Status:** ✅ Completed (2025-12-29)
 - **Description:**
   - Bốc bài từ 52 lá
   - Mỗi lá có rule riêng (A-K)
