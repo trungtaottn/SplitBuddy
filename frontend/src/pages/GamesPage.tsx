@@ -325,6 +325,7 @@ export default function GamesPage() {
       case 'medium': return 'bg-yellow-100 text-yellow-800'
       case 'hard': return 'bg-red-100 text-red-800'
       case 'extreme': return 'bg-purple-100 text-purple-800'
+      case '18+': return 'bg-pink-100 text-pink-800 border border-pink-300'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -335,6 +336,7 @@ export default function GamesPage() {
       case 'medium': return 'Trung bình'
       case 'hard': return 'Khó'
       case 'extreme': return 'Cực khó'
+      case '18+': return '18+ 🔞'
       default: return 'Không xác định'
     }
   }
@@ -363,6 +365,7 @@ export default function GamesPage() {
             <option value="medium">🟡 Trung bình</option>
             <option value="hard">🔴 Khó</option>
             <option value="extreme">💀 Cực khó</option>
+            <option value="18+">🔞 18+ (Người lớn)</option>
           </select>
         </div>
 
