@@ -215,8 +215,8 @@ export default function DashboardPage() {
             className="rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="">Tất cả</option>
-            <option value="active">Đang hoạt động</option>
-            <option value="closed">Đã đóng</option>
+            <option value="active">Đang diễn ra</option>
+            <option value="closed">Đã xong</option>
           </select>
         </div>
         {pagination && (
@@ -242,7 +242,7 @@ export default function DashboardPage() {
           <EmptyState
             type="sessions"
             action={{
-              label: 'Tạo buổi nhậu đầu tiên',
+              label: 'Book lịch nhậu đi chứ',
               onClick: () => setShowCreateModal(true),
             }}
             secondaryAction={{
