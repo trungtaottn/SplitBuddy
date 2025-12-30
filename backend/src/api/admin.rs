@@ -289,20 +289,24 @@ async fn upload_music(
         } else if field_name == "file" {
             let original_filename = field.file_name().unwrap_or("track.mp3").to_string();
             let content_type = field.content_type().unwrap_or("").to_string();
-
-            // Validate file type
-            if !content_type.starts_with("audio/") {
-                return Err(AppError::Validation {
-                    field: "file".to_string(),
-                    message: "File must be an audio file (mp3, m4a, etc.)".to_string(),
-                });
-            }
+            
+            tracing::debug!("Uploading file: {} with content-type: {}", original_filename, content_type);
 
             // Get file extension
             let ext = original_filename
                 .rsplit('.')
                 .next()
-                .unwrap_or("mp3");
+                .unwrap_or("mp3")
+                .to_lowercase();
+
+            // Validate file type by extension (more reliable than content-type)
+            let valid_extensions = ["mp3", "m4a", "wav", "ogg", "flac", "aac", "wma"];
+            if !valid_extensions.contains(&ext.as_str()) && !content_type.starts_with("audio/") {
+                return Err(AppError::Validation {
+                    field: "file".to_string(),
+                    message: format!("File must be an audio file. Got: {} ({})", ext, content_type),
+                });
+            }
 
             // Generate unique filename
             let filename = format!("{}_{}.{}", Uuid::new_v4(), sanitize_filename(&original_filename), ext);
@@ -359,6 +363,8 @@ async fn upload_music(
 
     // Save to database
     let file_path = format!("uploads/music/{}", saved_filename);
+    tracing::debug!("Saving track to DB: name={}, filename={}, size={}", track_name, saved_filename, file_size);
+    
     let track: MusicTrack = sqlx::query_as(
         r#"
         INSERT INTO music_tracks (name, filename, file_path, file_size, uploaded_by)
@@ -372,7 +378,11 @@ async fn upload_music(
     .bind(file_size)
     .bind(auth_user.user_id)
     .fetch_one(&state.pool)
-    .await?;
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to save music track to database: {:?}", e);
+        AppError::Internal(anyhow::anyhow!("Database error: {}", e))
+    })?;
 
     Ok(ok(MusicTrackResponse {
         id: track.id,
