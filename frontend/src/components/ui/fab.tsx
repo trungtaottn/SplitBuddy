@@ -52,7 +52,7 @@ export function Fab({ actions, className }: FabProps) {
               className="flex items-center gap-3 animate-in slide-in-from-bottom duration-200"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <span className="bg-white px-3 py-1.5 rounded-lg shadow-md text-sm font-medium whitespace-nowrap">
+              <span className="bg-white dark:bg-gray-800 dark:text-gray-200 px-3 py-1.5 rounded-lg shadow-md text-sm font-medium whitespace-nowrap">
                 {action.label}
               </span>
               <button

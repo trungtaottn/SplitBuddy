@@ -96,7 +96,7 @@ export function PullToRefresh({
         }}
       >
         <div className={cn(
-          'flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-lg',
+          'flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg',
           shouldTrigger && !isRefreshing && 'bg-primary/10'
         )}>
           <RefreshCw 
