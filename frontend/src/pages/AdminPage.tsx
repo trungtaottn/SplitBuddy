@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { UserPlus, Key, Users } from 'lucide-react'
+import { UserPlus, Key, Users, ToggleLeft, ToggleRight, Settings } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
-import type { ApiResponse } from '@/types/api'
+import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
+import type { ApiResponse, FeatureFlag } from '@/types/api'
 
 interface AdminUser {
   id: string
@@ -28,11 +29,35 @@ export default function AdminPage() {
   const [newPassword, setNewPassword] = useState('')
   const [resetPassword, setResetPassword] = useState('')
 
+  const { refresh: refreshFeatureFlags } = useFeatureFlags()
+
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: async () => {
       const res = await api.get<ApiResponse<AdminUser[]>>('/admin/users')
       return res.data.data
+    },
+  })
+
+  const { data: features, isLoading: featuresLoading } = useQuery({
+    queryKey: ['admin', 'features'],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<FeatureFlag[]>>('/admin/features')
+      return res.data.data
+    },
+  })
+
+  const toggleFeature = useMutation({
+    mutationFn: async ({ key, enabled }: { key: string; enabled: boolean }) => {
+      await api.put(`/admin/features/${key}`, { enabled })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'features'] })
+      refreshFeatureFlags()
+      toast.success('Cập nhật thành công!')
+    },
+    onError: () => {
+      toast.error('Có lỗi xảy ra')
     },
   })
 
@@ -93,7 +118,7 @@ export default function AdminPage() {
     })
   }
 
-  if (isLoading) {
+  if (isLoading || featuresLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -162,6 +187,56 @@ export default function AdminPage() {
               </table>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Feature Flags Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Quản lý tính năng ({features?.length || 0})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Bật/tắt các tính năng cho tất cả người dùng. Tính năng bị tắt sẽ không hiển thị trên ứng dụng.
+          </p>
+          <div className="grid gap-3">
+            {features?.map((feature) => (
+              <div
+                key={feature.id}
+                className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex-1">
+                  <div className="font-medium">{feature.name}</div>
+                  {feature.description && (
+                    <div className="text-sm text-muted-foreground">{feature.description}</div>
+                  )}
+                  <div className="text-xs text-muted-foreground mt-1">Key: {feature.key}</div>
+                </div>
+                <Button
+                  variant={feature.enabled ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => toggleFeature.mutate({ key: feature.key, enabled: !feature.enabled })}
+                  disabled={toggleFeature.isPending}
+                  className="gap-2 min-w-[100px]"
+                >
+                  {feature.enabled ? (
+                    <>
+                      <ToggleRight className="h-4 w-4" />
+                      Bật
+                    </>
+                  ) : (
+                    <>
+                      <ToggleLeft className="h-4 w-4" />
+                      Tắt
+                    </>
+                  )}
+                </Button>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

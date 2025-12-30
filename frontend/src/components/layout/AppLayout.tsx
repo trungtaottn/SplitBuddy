@@ -1,16 +1,23 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useMood } from '@/contexts/MoodContext'
+import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
 import { LogOut, User, Wallet, Home, Users, Shield, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function AppLayout() {
   const { user, logout } = useAuth()
   const { moodConfig } = useMood()
+  const { isEnabled } = useFeatureFlags()
   const navigate = useNavigate()
   const location = useLocation()
 
   const isAdmin = user?.role === 'admin'
+  
+  // Check feature flags
+  const showGroups = isEnabled('groups')
+  const showDebts = isEnabled('debts')
+  const showGames = isEnabled('games')
 
   const handleLogout = () => {
     logout()
@@ -40,24 +47,30 @@ export default function AppLayout() {
               </Link>
             ) : (
               <>
-                <Link to="/groups">
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <Users className="h-4 w-4" />
-                    Nhóm
-                  </Button>
-                </Link>
-                <Link to="/debts">
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <Wallet className="h-4 w-4" />
-                    Công nợ
-                  </Button>
-                </Link>
-                <Link to="/games">
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    Trò chơi
-                  </Button>
-                </Link>
+                {showGroups && (
+                  <Link to="/groups">
+                    <Button variant="ghost" size="sm" className="gap-2">
+                      <Users className="h-4 w-4" />
+                      Nhóm
+                    </Button>
+                  </Link>
+                )}
+                {showDebts && (
+                  <Link to="/debts">
+                    <Button variant="ghost" size="sm" className="gap-2">
+                      <Wallet className="h-4 w-4" />
+                      Công nợ
+                    </Button>
+                  </Link>
+                )}
+                {showGames && (
+                  <Link to="/games">
+                    <Button variant="ghost" size="sm" className="gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      Trò chơi
+                    </Button>
+                  </Link>
+                )}
               </>
             )}
 
@@ -118,39 +131,45 @@ export default function AppLayout() {
               <Home className="h-5 w-5" />
               <span className="text-xs font-medium">Trang chủ</span>
             </Link>
-            <Link
-              to="/groups"
-              className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
-                isActive('/groups') 
-                  ? 'text-primary bg-primary/10 scale-105' 
-                  : 'text-gray-500 hover:text-primary'
-              }`}
-            >
-              <Users className="h-5 w-5" />
-              <span className="text-xs font-medium">Nhóm</span>
-            </Link>
-            <Link
-              to="/debts"
-              className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
-                isActive('/debts') 
-                  ? 'text-primary bg-primary/10 scale-105' 
-                  : 'text-gray-500 hover:text-primary'
-              }`}
-            >
-              <Wallet className="h-5 w-5" />
-              <span className="text-xs font-medium">Công nợ</span>
-            </Link>
-            <Link
-              to="/games"
-              className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
-                isActive('/games') 
-                  ? 'text-primary bg-primary/10 scale-105' 
-                  : 'text-gray-500 hover:text-primary'
-              }`}
-            >
-              <Sparkles className="h-5 w-5" />
-              <span className="text-xs font-medium">Trò chơi</span>
-            </Link>
+            {showGroups && (
+              <Link
+                to="/groups"
+                className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
+                  isActive('/groups') 
+                    ? 'text-primary bg-primary/10 scale-105' 
+                    : 'text-gray-500 hover:text-primary'
+                }`}
+              >
+                <Users className="h-5 w-5" />
+                <span className="text-xs font-medium">Nhóm</span>
+              </Link>
+            )}
+            {showDebts && (
+              <Link
+                to="/debts"
+                className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
+                  isActive('/debts') 
+                    ? 'text-primary bg-primary/10 scale-105' 
+                    : 'text-gray-500 hover:text-primary'
+                }`}
+              >
+                <Wallet className="h-5 w-5" />
+                <span className="text-xs font-medium">Công nợ</span>
+              </Link>
+            )}
+            {showGames && (
+              <Link
+                to="/games"
+                className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
+                  isActive('/games') 
+                    ? 'text-primary bg-primary/10 scale-105' 
+                    : 'text-gray-500 hover:text-primary'
+                }`}
+              >
+                <Sparkles className="h-5 w-5" />
+                <span className="text-xs font-medium">Trò chơi</span>
+              </Link>
+            )}
           </div>
         </nav>
       )}

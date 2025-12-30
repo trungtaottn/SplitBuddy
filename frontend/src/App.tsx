@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import { MoodProvider } from './contexts/MoodContext'
+import { FeatureFlagsProvider } from './contexts/FeatureFlagsContext'
 import { Toaster } from './components/ui/toaster'
 import { MoodEffects } from './components/MoodEffects'
 
@@ -45,30 +46,32 @@ function AdminRedirect() {
 
 function App() {
   return (
-    <MoodProvider>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <AppLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<AdminRedirect />} />
-          <Route path="sessions/:id" element={<SessionDetailPage />} />
-          <Route path="debts" element={<DebtsPage />} />
-          <Route path="groups" element={<GroupsPage />} />
-          <Route path="groups/:groupId/debts" element={<GroupDebtsPage />} />
-          <Route path="games" element={<GamesPage />} />
-          <Route path="profile" element={<ProfilePage />} />
-          <Route path="admin" element={<AdminPage />} />
-        </Route>
-      </Routes>
-      <MoodEffects />
-      <Toaster />
-    </MoodProvider>
+    <FeatureFlagsProvider>
+      <MoodProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <AppLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<AdminRedirect />} />
+            <Route path="sessions/:id" element={<SessionDetailPage />} />
+            <Route path="debts" element={<DebtsPage />} />
+            <Route path="groups" element={<GroupsPage />} />
+            <Route path="groups/:groupId/debts" element={<GroupDebtsPage />} />
+            <Route path="games" element={<GamesPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="admin" element={<AdminPage />} />
+          </Route>
+        </Routes>
+        <MoodEffects />
+        <Toaster />
+      </MoodProvider>
+    </FeatureFlagsProvider>
   )
 }
 

@@ -1,4 +1,4 @@
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{extract::State, routing::{get, post}, Json, Router};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -15,6 +15,7 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/register", post(register))
         .route("/login", post(login))
+        .route("/features", get(get_features))
 }
 
 #[derive(Deserialize, Validate, ToSchema)]
@@ -166,4 +167,23 @@ fn verify_password(password: &str, hash: &str) -> Result<bool, AppError> {
     Ok(Argon2::default()
         .verify_password(password.as_bytes(), &parsed_hash)
         .is_ok())
+}
+
+// Feature flags - public endpoint (no auth required)
+#[derive(Serialize, sqlx::FromRow)]
+pub struct FeatureFlagPublic {
+    pub key: String,
+    pub enabled: bool,
+}
+
+async fn get_features(
+    State(state): State<AppState>,
+) -> Result<Json<ApiResponse<Vec<FeatureFlagPublic>>>, AppError> {
+    let features: Vec<FeatureFlagPublic> = sqlx::query_as(
+        r#"SELECT key, enabled FROM feature_flags ORDER BY key ASC"#
+    )
+    .fetch_all(&state.pool)
+    .await?;
+
+    Ok(ok(features))
 }

@@ -16,6 +16,8 @@ pub fn routes() -> Router<AppState> {
         .route("/users", get(list_users))
         .route("/users", post(create_user))
         .route("/users/:id/password", put(reset_password))
+        .route("/features", get(list_features))
+        .route("/features/:key", put(toggle_feature))
 }
 
 #[derive(Serialize, sqlx::FromRow)]
@@ -148,4 +150,65 @@ async fn reset_password(
     .await?;
 
     Ok(ok(()))
+}
+
+// Feature Flags
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct FeatureFlag {
+    pub id: Uuid,
+    pub key: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub enabled: bool,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Deserialize)]
+pub struct ToggleFeatureRequest {
+    pub enabled: bool,
+}
+
+async fn list_features(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+) -> Result<Json<ApiResponse<Vec<FeatureFlag>>>, AppError> {
+    require_admin(&auth_user)?;
+
+    let features: Vec<FeatureFlag> = sqlx::query_as(
+        r#"
+        SELECT id, key, name, description, enabled, created_at, updated_at
+        FROM feature_flags
+        ORDER BY key ASC
+        "#
+    )
+    .fetch_all(&state.pool)
+    .await?;
+
+    Ok(ok(features))
+}
+
+async fn toggle_feature(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(key): Path<String>,
+    Json(payload): Json<ToggleFeatureRequest>,
+) -> Result<Json<ApiResponse<FeatureFlag>>, AppError> {
+    require_admin(&auth_user)?;
+
+    let feature: FeatureFlag = sqlx::query_as(
+        r#"
+        UPDATE feature_flags 
+        SET enabled = $1, updated_at = NOW()
+        WHERE key = $2
+        RETURNING id, key, name, description, enabled, created_at, updated_at
+        "#
+    )
+    .bind(payload.enabled)
+    .bind(&key)
+    .fetch_one(&state.pool)
+    .await?;
+
+    Ok(ok(feature))
 }
