@@ -122,11 +122,14 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       nextTrack()
     })
 
-    // Handle errors gracefully
+    // Handle errors gracefully (ignore YouTube URLs as they use YT player)
     audioRef.current.addEventListener('error', () => {
-      console.warn('Failed to load track, trying next...')
-      if (tracks.length > 1) {
-        nextTrack()
+      const src = audioRef.current?.src || ''
+      if (!src.includes('youtube') && !src.includes('youtu.be') && src !== '') {
+        console.warn('Failed to load track, trying next...')
+        if (tracks.length > 1) {
+          nextTrack()
+        }
       }
     })
 
