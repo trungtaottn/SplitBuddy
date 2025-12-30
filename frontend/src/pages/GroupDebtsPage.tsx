@@ -153,8 +153,8 @@ export default function GroupDebtsPage() {
           return (
             <div
               className={`relative rounded-xl p-3 transition-all hover:scale-[1.02] ${
-                isFirst ? 'ranking-glow-gold bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 shadow-md' :
-                isLast ? 'ranking-glow-red bg-gradient-to-r from-red-50 via-orange-50 to-red-50' :
+                isFirst ? 'ranking-glow-gold bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-100 dark:from-amber-900/50 dark:via-yellow-900/50 dark:to-amber-900/50 shadow-md' :
+                isLast ? 'ranking-glow-red bg-gradient-to-r from-red-100 via-orange-100 to-red-100 dark:from-red-900/50 dark:via-orange-900/50 dark:to-red-900/50' :
                 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
@@ -202,7 +202,7 @@ export default function GroupDebtsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             {/* Summary Card - Enhanced */}
             <Card className="overflow-hidden">
-              <CardHeader className="pb-2 bg-gradient-to-r from-orange-50 to-amber-50">
+              <CardHeader className="pb-2 bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Beer className="h-5 w-5 text-orange-500 animate-bounce" /> 
                   Tổng quan - {monthName}
@@ -223,7 +223,7 @@ export default function GroupDebtsPage() {
 
                 {/* Money Stats */}
                 <div className="grid grid-cols-1 gap-3">
-                  <div className="rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 p-4 border border-green-200">
+                  <div className="rounded-xl bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/40 dark:to-emerald-900/40 p-4 border border-green-200 dark:border-green-800">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs text-green-600 font-medium">Tổng chi tiêu</p>
@@ -236,12 +236,12 @@ export default function GroupDebtsPage() {
 
                 {/* Average Stats */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-blue-50 p-3 border border-blue-100 text-center hover:shadow-md transition-shadow">
+                  <div className="rounded-xl bg-blue-100 dark:bg-blue-900/40 p-3 border border-blue-200 dark:border-blue-800 text-center hover:shadow-md transition-shadow">
                     <p className="text-2xl"></p>
                     <p className="text-lg font-bold text-blue-600">{formatCurrency(avgPerSession.toFixed(0))}</p>
                     <p className="text-xs text-muted-foreground">TB/cuộc</p>
                   </div>
-                  <div className="rounded-xl bg-purple-50 p-3 border border-purple-100 text-center hover:shadow-md transition-shadow">
+                  <div className="rounded-xl bg-purple-100 dark:bg-purple-900/40 p-3 border border-purple-200 dark:border-purple-800 text-center hover:shadow-md transition-shadow">
                     <p className="text-2xl"></p>
                     <p className="text-lg font-bold text-purple-600">{formatCurrency(avgPerPerson.toFixed(0))}</p>
                     <p className="text-xs text-muted-foreground">TB/người</p>
@@ -264,7 +264,7 @@ export default function GroupDebtsPage() {
             <div className="space-y-4">
               {/* Top performers */}
               <Card className="overflow-hidden">
-                <CardHeader className="pb-2 bg-gradient-to-r from-yellow-50 to-amber-50">
+                <CardHeader className="pb-2 bg-gradient-to-r from-yellow-100 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/30">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Trophy className="h-5 w-5 text-yellow-600" />
                     🔥 Top tham gia ({topList.length})
@@ -281,7 +281,7 @@ export default function GroupDebtsPage() {
 
               {/* Bottom performers - always show */}
               <Card className="overflow-hidden">
-                <CardHeader className="pb-2 bg-gradient-to-r from-red-50 to-orange-50">
+                <CardHeader className="pb-2 bg-gradient-to-r from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/30">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Skull className="h-5 w-5 text-red-500" />
                     Dưới đáy xã hội ({bottomList.length})
