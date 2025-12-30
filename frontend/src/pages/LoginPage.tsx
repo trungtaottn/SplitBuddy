@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -7,22 +7,56 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/toaster'
 
+const FESTIVE_ITEMS = ['🎆', '🎇', '🧨', '🎊', '🎉', '✨', '💫', '⭐', '🌟', '🎋', '🏮', '🧧', '🍺', '🍻', '🥂']
+
+function FestiveBackground() {
+  const particles = useMemo(() => {
+    return Array.from({ length: 30 }, (_, i) => ({
+      id: i,
+      emoji: FESTIVE_ITEMS[Math.floor(Math.random() * FESTIVE_ITEMS.length)],
+      left: Math.random() * 100,
+      delay: Math.random() * 5,
+      duration: 8 + Math.random() * 10,
+      size: 16 + Math.random() * 20,
+    }))
+  }, [])
+
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="absolute animate-float-down opacity-60"
+          style={{
+            left: `${p.left}%`,
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${p.duration}s`,
+            fontSize: `${p.size}px`,
+          }}
+        >
+          {p.emoji}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const FUN_MESSAGES = [
-  "Nhậu đi, lo gì! 🍻",
-  "Chia tiền công bằng, ai cũng vui! 💸",
-  "Không say không về! 🚗",
-  "Một người vì mọi người, mọi người vì bia! 🍺",
-  "Cuộc đời ngắn lắm, nhậu đi đừng ngại! 🌟",
-  "Bia lạnh, bạn bè ấm! ❤️",
-  "Đăng nhập đi rồi nhậu! 😎",
-  "Hôm nay uống gì? 🤔",
-  "Cạn ly đi, chuyện đời tính sau! 🥃",
-  "Tiền chia đều, vui chia đôi! 🎉",
-  "Bạn nhậu tốt, bạn đời tốt hơn! 💕",
-  "Nhậu hôm nay, lo ngày mai! 📅",
-  "Ai nợ ai, app này biết hết! 👀",
-  "Bia chảy về đâu, tiền chảy về đó! 💰",
-  "Đừng để bạn bè chờ lâu! ⏰",
+  "Nhậu đi, lo gì!",
+  "Chia tiền công bằng, ai cũng vui!",
+  "Không say không về!",
+  "Một người vì mọi người, mọi người vì bia!",
+  "Cuộc đời ngắn lắm, nhậu đi đừng ngại!",
+  "Bia lạnh, bạn bè ấm!",
+  "Đăng nhập đi rồi nhậu!",
+  "Hôm nay uống gì?",
+  "Cạn ly đi, chuyện đời tính sau!",
+  "Tiền chia đều, vui chia đôi!",
+  "Bạn nhậu tốt, bạn đời tốt hơn!",
+  "Nhậu hôm nay, lo ngày mai!",
+  "Ai nợ ai, app này biết hết!",
+  "Bia chảy về đâu, tiền chảy về đó!",
+  "Đừng để bạn bè chờ lâu!",
 ]
 
 export default function LoginPage() {
@@ -57,8 +91,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
-      <Card className="w-full max-w-md">
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-orange-50 via-pink-50 to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 px-4 overflow-hidden">
+      <FestiveBackground />
+      <Card className="w-full max-w-md relative z-10 shadow-xl">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 text-5xl animate-bounce">
             🍻
