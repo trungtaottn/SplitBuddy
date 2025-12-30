@@ -146,7 +146,7 @@ export default function DebtsPage() {
                     </table>
                   </div>
                   <p className="mt-3 text-xs text-muted-foreground">
-                    💡 Số dư dương = được nhận lại | Số dư âm = cần trả thêm
+                    Số dư dương = được nhận lại | Số dư âm = cần trả thêm
                   </p>
                 </CardContent>
               </Card>

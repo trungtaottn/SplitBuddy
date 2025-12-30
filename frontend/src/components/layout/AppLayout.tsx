@@ -32,7 +32,7 @@ export default function AppLayout() {
       <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/90 backdrop-blur-md shadow-sm">
         <div className="container mx-auto flex h-14 items-center justify-between px-4 md:h-16">
           <Link to={isAdmin ? "/admin" : "/"} className="flex items-center gap-2 text-lg font-bold md:text-xl group">
-            <span className="text-2xl md:text-3xl group-hover:animate-bounce">🍻</span>
+            <span className="text-2xl md:text-3xl animate-bounce">🍻</span>
             <span className="hidden sm:inline gradient-text">SplitBuddy</span>
           </Link>
 
