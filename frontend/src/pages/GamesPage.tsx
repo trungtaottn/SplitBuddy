@@ -7,7 +7,7 @@ import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCir
 import { toast } from '@/components/ui/toaster'
 import { soundManager, vibrate, vibrationPatterns } from '@/utils/sounds'
 import type { ApiResponse } from '@/types/api'
-import { SpinWheel, DrinkingCounter, PlayerRotation, KingsCup, MostLikelyTo } from '@/components/games'
+import { SpinWheel, DrinkingCounter, PlayerRotation, KingsCup, MostLikelyTo, CategoriesGame, HighOrLow } from '@/components/games'
 
 type GameType = 'truth_or_dare' | 'never_have_i_ever' | 'challenge' | 'dice' | 'wheel'
 
@@ -145,6 +145,12 @@ export default function GamesPage() {
   
   // Most Likely To state
   const [showMostLikelyTo, setShowMostLikelyTo] = useState(false)
+  
+  // Categories state
+  const [showCategories, setShowCategories] = useState(false)
+  
+  // High or Low state
+  const [showHighOrLow, setShowHighOrLow] = useState(false)
   
   // Unified game phase state - prevents overlay flickering
   const [gamePhase, setGamePhase] = useState<GamePhase>('idle')
@@ -528,6 +534,40 @@ export default function GamesPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-teal-400 group"
+          onClick={() => setShowCategories(true)}
+        >
+          <CardContent className="p-6 text-center relative">
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-teal-100 to-cyan-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <span className="text-3xl">📝</span>
+            </div>
+            <h3 className="font-bold text-lg">📝 Categories</h3>
+            <p className="text-sm text-muted-foreground mt-1">Kể tên theo chủ đề!</p>
+            <div className="flex justify-center gap-1 mt-2">
+              <Beer className="h-4 w-4 text-teal-500" />
+              <span className="text-xs text-teal-600">Hết ý = Uống!</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-orange-400 group"
+          onClick={() => setShowHighOrLow(true)}
+        >
+          <CardContent className="p-6 text-center relative">
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-orange-100 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <span className="text-3xl">🃏</span>
+            </div>
+            <h3 className="font-bold text-lg">🃏 Cao hay Thấp?</h3>
+            <p className="text-sm text-muted-foreground mt-1">Đoán lá bài tiếp theo!</p>
+            <div className="flex justify-center gap-1 mt-2">
+              <Zap className="h-4 w-4 text-orange-500" />
+              <span className="text-xs text-orange-600">Streak càng cao, phạt càng nặng!</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Kings Cup Modal */}
@@ -541,6 +581,20 @@ export default function GamesPage() {
       {showMostLikelyTo && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
           <MostLikelyTo onClose={() => setShowMostLikelyTo(false)} />
+        </div>
+      )}
+
+      {/* Categories Modal */}
+      {showCategories && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <CategoriesGame onClose={() => setShowCategories(false)} />
+        </div>
+      )}
+
+      {/* High or Low Modal */}
+      {showHighOrLow && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
+          <HighOrLow onClose={() => setShowHighOrLow(false)} />
         </div>
       )}
 
