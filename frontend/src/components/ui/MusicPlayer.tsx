@@ -7,7 +7,6 @@ import {
   SkipForward, 
   Volume2, 
   VolumeX,
-  Music,
   ChevronUp,
   ChevronDown
 } from 'lucide-react'
@@ -62,12 +61,37 @@ export function MusicPlayer() {
           isExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
         )}
       >
-        {/* Track Info */}
+        {/* Track Info with Vinyl Disc */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center">
-              <Music className="w-6 h-6 text-white" />
+          <div className="flex items-center gap-4">
+            {/* Vinyl Disc Animation */}
+            <div className="relative w-16 h-16 shrink-0">
+              {/* Outer disc */}
+              <div 
+                className={cn(
+                  "absolute inset-0 rounded-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900",
+                  "shadow-lg border-4 border-gray-700",
+                  isPlaying && "animate-spin-slow"
+                )}
+                style={{ animationDuration: '3s' }}
+              >
+                {/* Vinyl grooves */}
+                <div className="absolute inset-2 rounded-full border border-gray-600/30" />
+                <div className="absolute inset-4 rounded-full border border-gray-600/20" />
+                <div className="absolute inset-6 rounded-full border border-gray-600/30" />
+                
+                {/* Center label */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center shadow-inner">
+                    <div className="w-2 h-2 rounded-full bg-gray-900" />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Reflection highlight */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />
             </div>
+            
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">
                 {currentTrack?.name || 'Không có bài hát'}
@@ -75,6 +99,13 @@ export function MusicPlayer() {
               <p className="text-xs text-muted-foreground">
                 {tracks.length} bài hát
               </p>
+              {isPlaying && (
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="w-1 h-3 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1 h-3 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1 h-3 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -163,23 +194,39 @@ export function MusicPlayer() {
         </div>
       </div>
 
-      {/* Floating Button */}
+      {/* Floating Button with Mini Vinyl */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
-          "relative flex items-center gap-2 px-4 py-2 rounded-full shadow-lg transition-all duration-300",
+          "relative flex items-center gap-2 px-3 py-2 rounded-full shadow-lg transition-all duration-300",
           "bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg border border-gray-200 dark:border-gray-700",
           "hover:shadow-xl hover:scale-105",
           isPlaying && "ring-2 ring-orange-400 ring-offset-2 dark:ring-offset-gray-900"
         )}
       >
-        <div className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center",
-          "bg-gradient-to-r from-orange-400 to-pink-500",
-          isPlaying && "animate-pulse"
-        )}>
-          <Music className="w-4 h-4 text-white" />
+        {/* Mini Vinyl Disc */}
+        <div className="relative w-10 h-10">
+          <div 
+            className={cn(
+              "absolute inset-0 rounded-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900",
+              "border-2 border-gray-600",
+              isPlaying && "animate-spin-slow"
+            )}
+          >
+            {/* Grooves */}
+            <div className="absolute inset-1 rounded-full border border-gray-600/30" />
+            <div className="absolute inset-2 rounded-full border border-gray-600/20" />
+            {/* Center */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-3 h-3 rounded-full bg-gradient-to-br from-orange-400 to-pink-500">
+                <div className="w-1 h-1 rounded-full bg-gray-900 mx-auto mt-1" />
+              </div>
+            </div>
+          </div>
+          {/* Highlight */}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />
         </div>
+        
         <span className="text-sm font-medium max-w-24 truncate hidden sm:block">
           {currentTrack?.name || 'Nhạc nền'}
         </span>
