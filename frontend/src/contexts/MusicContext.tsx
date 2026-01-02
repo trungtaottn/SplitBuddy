@@ -40,6 +40,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const ytPlayerRef = useRef<YTPlayer | null>(null)
   const ytContainerRef = useRef<HTMLDivElement | null>(null)
   const [ytReady, setYtReady] = useState(false)
+  
+  // Ref to always have access to latest nextTrack function
+  const nextTrackRef = useRef<() => void>(() => {})
 
   const currentTrack = tracks.length > 0 ? tracks[currentTrackIndex] : null
 
@@ -119,7 +122,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     
     // Auto play next track when current ends
     audioRef.current.addEventListener('ended', () => {
-      nextTrack()
+      nextTrackRef.current()
     })
 
     // Handle errors gracefully (ignore YouTube URLs as they use YT player)
@@ -163,7 +166,10 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         if (ytPlayerRef.current) {
           ytPlayerRef.current.loadVideoById(videoId)
           ytPlayerRef.current.setVolume(volume * 100)
-          if (!wasPlaying) {
+          // Auto-play if was playing, otherwise pause
+          if (wasPlaying) {
+            ytPlayerRef.current.playVideo()
+          } else {
             ytPlayerRef.current.pauseVideo()
           }
         } else {
@@ -187,7 +193,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
               },
               onStateChange: (event) => {
                 if (event.data === YTPlayerState.ENDED) {
-                  nextTrack()
+                  nextTrackRef.current()
                 }
               },
               onError: () => {
@@ -272,8 +278,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const nextTrack = () => {
     if (tracks.length > 0) {
       setCurrentTrackIndex((prev) => (prev + 1) % tracks.length)
+      // Auto-play when switching tracks
+      setIsPlaying(true)
     }
   }
+  
+  // Keep ref updated with latest nextTrack function
+  useEffect(() => {
+    nextTrackRef.current = nextTrack
+  })
 
   const prevTrack = () => {
     if (tracks.length > 0) {
