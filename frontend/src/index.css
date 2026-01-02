@@ -67,6 +67,8 @@
 @layer utilities {
   .font-logo {
     font-family: 'Pacifico', cursive;
+    line-height: 1.4;
+    padding-bottom: 0.1em;
   }
   
   .glass {

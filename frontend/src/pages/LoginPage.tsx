@@ -263,10 +263,10 @@ export default function LoginPage() {
 
       <Card className="w-full max-w-md relative z-10 shadow-xl">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 text-5xl animate-bounce">
+          <div className="mx-auto mb-2 text-4xl animate-bounce">
             🍻
           </div>
-          <CardTitle className="text-3xl font-logo gradient-text">SplitBuddy</CardTitle>
+          <CardTitle className="text-2xl font-logo gradient-text">SplitBuddy</CardTitle>
           <CardDescription className="transition-all duration-500">{funMessage}</CardDescription>
         </CardHeader>
         <CardContent>

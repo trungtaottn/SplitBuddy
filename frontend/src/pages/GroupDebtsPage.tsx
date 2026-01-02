@@ -145,10 +145,10 @@ export default function GroupDebtsPage() {
 
       {/* Simplified Debts - Debt Netting */}
       {simplifiedDebts && simplifiedDebts.simplified_debts.length > 0 && (
-        <Card className="overflow-hidden border-2 border-emerald-200 dark:border-emerald-800">
-          <CardHeader className="pb-2 bg-gradient-to-r from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30">
+        <Card>
+          <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Zap className="h-5 w-5 text-emerald-600" />
+              <Zap className="h-5 w-5 text-primary" />
               Cấn trừ nợ thông minh
               <span className="ml-auto text-sm font-normal text-muted-foreground">
                 {simplifiedDebts.total_transactions} giao dịch
@@ -163,23 +163,23 @@ export default function GroupDebtsPage() {
               {simplifiedDebts.simplified_debts.map((debt, index) => (
                 <div 
                   key={index}
-                  className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 hover:shadow-md transition-all"
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-all"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
-                      <span className="text-red-600 dark:text-red-400 font-bold text-sm">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                      <span className="text-foreground font-bold text-sm">
                         {debt.from_user_name.split(' ').pop()?.charAt(0)}
                       </span>
                     </div>
                     <div>
                       <p className="font-medium text-sm">{debt.from_user_name}</p>
-                      <p className="text-xs text-red-500">Nợ</p>
+                      <p className="text-xs text-muted-foreground">Nợ</p>
                     </div>
                   </div>
                   
                   <div className="flex flex-col items-center">
-                    <ArrowRight className="h-5 w-5 text-emerald-500" />
-                    <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                    <ArrowRight className="h-5 w-5 text-primary" />
+                    <span className="text-lg font-bold text-primary">
                       {formatCurrency(debt.amount)}
                     </span>
                   </div>
@@ -187,10 +187,10 @@ export default function GroupDebtsPage() {
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <p className="font-medium text-sm">{debt.to_user_name}</p>
-                      <p className="text-xs text-emerald-500">Nhận</p>
+                      <p className="text-xs text-muted-foreground">Nhận</p>
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-primary font-bold text-sm">
                         {debt.to_user_name.split(' ').pop()?.charAt(0)}
                       </span>
                     </div>
@@ -201,7 +201,7 @@ export default function GroupDebtsPage() {
             
             <div className="mt-4 pt-4 border-t flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Tổng cần thanh toán:</span>
-              <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+              <span className="text-xl font-bold text-primary">
                 {formatCurrency(simplifiedDebts.total_amount)}
               </span>
             </div>
@@ -285,61 +285,35 @@ export default function GroupDebtsPage() {
         const RankingItem = ({ member, index, isTop }: { member: typeof sortedByParticipation[0]; index: number; isTop: boolean }) => {
           const actualIndex = isTop ? index : sortedByParticipation.length - 4 + (3 - index)
           const isFirst = isTop && index === 0
-          const isLast = !isTop && index === 0
-          
-          const funMessages = isFirst 
-            ? ["Không ai qua nổi!", "Vua nhậu!"]
-            : isLast 
-            ? ["Đi nhậu đi chứ!", "Bỏ anh em à?"]
-            : isTop 
-            ? ["Cố lên nào!", "Chiến tiếp thôi!"]
-            : ["Ủa sao lười thế?", "Nhớ anh em không?"]
-          
-          const randomMsg = funMessages[Math.floor(Math.random() * funMessages.length)]
           
           return (
             <div
-              className={`relative rounded-xl p-3 transition-all hover:scale-[1.02] ${
-                isFirst ? 'ranking-glow-gold bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-100 dark:from-amber-900/50 dark:via-yellow-900/50 dark:to-amber-900/50 shadow-md' :
-                isLast ? 'ranking-glow-red bg-gradient-to-r from-red-100 via-orange-100 to-red-100 dark:from-red-900/50 dark:via-orange-900/50 dark:to-red-900/50' :
-                'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+              className={`relative rounded-lg p-3 border transition-all hover:bg-accent/50 ${
+                isFirst ? 'bg-primary/5 border-primary/20' : 'bg-card'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`relative w-10 h-10 rounded-lg flex flex-col items-center justify-center ${
-                  isFirst ? 'bg-gradient-to-br from-yellow-400 to-amber-500 shadow-lg animate-pulse' :
-                  isTop && index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400' :
-                  isTop && index === 2 ? 'bg-gradient-to-br from-amber-500 to-amber-600' :
-                  isLast ? 'bg-gradient-to-br from-red-400 to-red-500' :
-                  'bg-gray-200 dark:bg-gray-700'
+                <div className={`relative w-10 h-10 rounded-lg flex items-center justify-center ${
+                  isFirst ? 'bg-primary text-primary-foreground' : 'bg-muted'
                 }`}>
                   {isFirst ? (
-                    <Crown className="h-5 w-5 text-white" />
+                    <Crown className="h-5 w-5" />
                   ) : (
-                    <span className="text-lg font-black text-white">{actualIndex + 1}</span>
+                    <span className="text-lg font-bold">{actualIndex + 1}</span>
                   )}
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1">
-                    <span className="font-bold truncate">{member.name}</span>
-                    {isFirst && <span>👑</span>}
-                    {isLast && <Skull className="h-3 w-3 text-red-400" />}
-                  </div>
-                  <p className={`text-xs ${isFirst ? 'text-yellow-600' : isLast ? 'text-red-500' : 'text-muted-foreground'}`}>
-                    {randomMsg}
+                  <span className="font-medium truncate block">{member.name}</span>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrency(member.totalOwed.toFixed(0))}
                   </p>
                 </div>
                 
                 <div className="text-right">
-                  <p className="font-bold text-lg">{member.count} <span className="text-base">cuộc</span></p>
+                  <p className="font-bold text-lg">{member.count}</p>
+                  <p className="text-xs text-muted-foreground">cuộc</p>
                 </div>
-                
-                {isTop && index < 3 && (
-                  <span className={`text-2xl ${index === 0 ? 'animate-bounce' : ''}`}>
-                    {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
-                  </span>
-                )}
               </div>
             </div>
           )
@@ -348,61 +322,41 @@ export default function GroupDebtsPage() {
         return (
           <div className="grid gap-4 md:grid-cols-2">
             {/* Summary Card - Enhanced */}
-            <Card className="overflow-hidden">
-              <CardHeader className="pb-2 bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30">
+            <Card>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Beer className="h-5 w-5 text-orange-500 animate-bounce" /> 
+                  <Beer className="h-5 w-5 text-primary" /> 
                   Tổng quan - {monthName}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
                 {/* Hero Stat - Sessions */}
-                <div className="relative rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 p-5 text-white text-center shadow-lg overflow-hidden">
-                  <div className="absolute -top-4 -right-4 text-6xl opacity-20">🍺</div>
+                <div className="relative rounded-xl bg-primary p-5 text-primary-foreground text-center overflow-hidden">
                   <p className="text-5xl font-black">{filteredSessions.length}</p>
-                  <p className="text-sm opacity-90">Cuộc nhậu trong tháng</p>
-                  {filteredSessions.length >= 4 && (
-                    <p className="text-xs mt-1 bg-white/20 rounded-full px-2 py-0.5 inline-block">
-                      🔥 Tháng sôi động!
-                    </p>
-                  )}
+                  <p className="text-sm opacity-90">Cuộc nhậu trong kỳ</p>
                 </div>
 
                 {/* Money Stats */}
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="rounded-xl bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/40 dark:to-emerald-900/40 p-4 border border-green-200 dark:border-green-800">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-green-600 font-medium">Tổng chi tiêu</p>
-                        <p className="text-2xl font-bold text-green-700">{formatCurrency(totalAmount.toFixed(0))}</p>
-                      </div>
-                      <div className="text-3xl">💸</div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium">Tổng chi tiêu</p>
+                      <p className="text-2xl font-bold">{formatCurrency(totalAmount.toFixed(0))}</p>
                     </div>
+                    <Banknote className="h-8 w-8 text-muted-foreground" />
                   </div>
                 </div>
 
                 {/* Average Stats */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-blue-100 dark:bg-blue-900/40 p-3 border border-blue-200 dark:border-blue-800 text-center hover:shadow-md transition-shadow">
-                    <p className="text-2xl"></p>
-                    <p className="text-lg font-bold text-blue-600">{formatCurrency(avgPerSession.toFixed(0))}</p>
+                  <div className="rounded-lg border p-3 text-center">
+                    <p className="text-lg font-bold">{formatCurrency(avgPerSession.toFixed(0))}</p>
                     <p className="text-xs text-muted-foreground">TB/cuộc</p>
                   </div>
-                  <div className="rounded-xl bg-purple-100 dark:bg-purple-900/40 p-3 border border-purple-200 dark:border-purple-800 text-center hover:shadow-md transition-shadow">
-                    <p className="text-2xl"></p>
-                    <p className="text-lg font-bold text-purple-600">{formatCurrency(avgPerPerson.toFixed(0))}</p>
+                  <div className="rounded-lg border p-3 text-center">
+                    <p className="text-lg font-bold">{formatCurrency(avgPerPerson.toFixed(0))}</p>
                     <p className="text-xs text-muted-foreground">TB/người</p>
                   </div>
-                </div>
-
-                {/* Fun Quote */}
-                <div className="text-center pt-2 border-t">
-                  <p className="text-xs text-muted-foreground italic">
-                    {filteredSessions.length === 0 ? "Chưa có cuộc nhậu nào 😢" :
-                     filteredSessions.length === 1 ? "Mới khởi động thôi! 🚀" :
-                     filteredSessions.length <= 3 ? "Đang ấm lên rồi đấy! 🔥" :
-                     "Tháng này nhậu dữ quá! 🍻🎉"}
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -410,10 +364,10 @@ export default function GroupDebtsPage() {
             {/* Ranking Cards - Split into Top 4 and Bottom 4 */}
             <div className="space-y-4">
               {/* Top performers */}
-              <Card className="overflow-hidden">
-                <CardHeader className="pb-2 bg-gradient-to-r from-yellow-100 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/30">
+              <Card>
+                <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-yellow-600" />
+                    <Trophy className="h-5 w-5 text-primary" />
                     🔥 Top tham gia ({topList.length})
                   </CardTitle>
                 </CardHeader>
@@ -427,11 +381,11 @@ export default function GroupDebtsPage() {
               </Card>
 
               {/* Bottom performers - always show */}
-              <Card className="overflow-hidden">
-                <CardHeader className="pb-2 bg-gradient-to-r from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/30">
+              <Card>
+                <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Skull className="h-5 w-5 text-red-500" />
-                    Dưới đáy xã hội ({bottomList.length})
+                    <Skull className="h-5 w-5 text-muted-foreground" />
+                    Ít tham gia ({bottomList.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-3">
@@ -443,12 +397,12 @@ export default function GroupDebtsPage() {
                     </div>
                   ) : (
                     <div className="text-center py-6">
-                      <p className="text-2xl mb-2">🎉</p>
+                      <p className="text-2xl mb-2"></p>
                       <p className="text-sm text-muted-foreground">
                         Tất cả đều tham gia tốt!
                       </p>
                       <p className="text-xs text-green-600 mt-1">
-                        Nhóm có ít thành viên, ai cũng là top cả 💪
+                        Nhóm có ít thành viên, ai cũng là top cả
                       </p>
                     </div>
                   )}
