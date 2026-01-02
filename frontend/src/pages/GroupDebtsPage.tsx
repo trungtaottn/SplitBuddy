@@ -11,9 +11,19 @@ import type { GroupDebtSummary, SimplifiedDebtSummary, ApiResponse } from '@/typ
 export default function GroupDebtsPage() {
   const { groupId } = useParams<{ groupId: string }>()
   const navigate = useNavigate()
+  const [filterType, setFilterType] = useState<'month' | 'range'>('month')
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [startDate, setStartDate] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  })
+  const [endDate, setEndDate] = useState(() => {
+    const now = new Date()
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${lastDay}`
   })
 
   const { data: summary, isLoading, error } = useQuery({
@@ -67,18 +77,71 @@ export default function GroupDebtsPage() {
         </div>
       </div>
 
-      {/* Month Filter */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-1 text-sm"
-          />
+      {/* Date Filter */}
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Filter Type Toggle */}
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+            <button
+              onClick={() => setFilterType('month')}
+              className={`px-3 py-1.5 text-sm rounded-md transition-all ${
+                filterType === 'month' 
+                  ? 'bg-white dark:bg-gray-700 shadow text-primary font-medium' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Theo tháng
+            </button>
+            <button
+              onClick={() => setFilterType('range')}
+              className={`px-3 py-1.5 text-sm rounded-md transition-all ${
+                filterType === 'range' 
+                  ? 'bg-white dark:bg-gray-700 shadow text-primary font-medium' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Khoảng ngày
+            </button>
+          </div>
+
+          {/* Month Picker */}
+          {filterType === 'month' && (
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:border-primary focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+              />
+            </div>
+          )}
+
+          {/* Date Range Picker */}
+          {filterType === 'range' && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Từ:</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:border-primary focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Đến:</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:border-primary focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                />
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      </Card>
 
       {/* Simplified Debts - Debt Netting */}
       {simplifiedDebts && simplifiedDebts.simplified_debts.length > 0 && (
@@ -148,14 +211,22 @@ export default function GroupDebtsPage() {
 
       {/* Statistics Dashboard - Ranking */}
       {(() => {
-        // Filter sessions by selected month
+        // Filter sessions by selected month or date range
         const filteredSessions = summary.sessions.filter((s) => {
           const sessionDate = new Date(s.session_date)
-          const sessionMonth = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`
-          return sessionMonth === selectedMonth
+          if (filterType === 'month') {
+            const sessionMonth = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`
+            return sessionMonth === selectedMonth
+          } else {
+            const start = new Date(startDate)
+            const end = new Date(endDate)
+            return sessionDate >= start && sessionDate <= end
+          }
         })
 
-        const monthName = new Date(selectedMonth + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+        const monthName = filterType === 'month' 
+          ? new Date(selectedMonth + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+          : `${new Date(startDate).toLocaleDateString('vi-VN')} - ${new Date(endDate).toLocaleDateString('vi-VN')}`
 
         // If no sessions in this month, don't show anything
         if (filteredSessions.length === 0) {
@@ -388,16 +459,24 @@ export default function GroupDebtsPage() {
         )
       })()}
 
-      {/* Summary Cards - filtered by month */}
+      {/* Summary Cards - filtered by month or date range */}
       {(() => {
-        // Filter sessions by selected month
+        // Filter sessions by selected month or date range
         const filteredSessions = summary.sessions.filter((s) => {
           const sessionDate = new Date(s.session_date)
-          const sessionMonth = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`
-          return sessionMonth === selectedMonth
+          if (filterType === 'month') {
+            const sessionMonth = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`
+            return sessionMonth === selectedMonth
+          } else {
+            const start = new Date(startDate)
+            const end = new Date(endDate)
+            return sessionDate >= start && sessionDate <= end
+          }
         })
         
-        const monthName = new Date(selectedMonth + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+        const monthName = filterType === 'month'
+          ? new Date(selectedMonth + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+          : `${new Date(startDate).toLocaleDateString('vi-VN')} - ${new Date(endDate).toLocaleDateString('vi-VN')}`
         
         // Calculate member totals for this month only
         const memberMonthTotals: Record<string, { paid: number; owed: number }> = {}
@@ -460,14 +539,22 @@ export default function GroupDebtsPage() {
 
       {/* Debt Matrix Table */}
       {(() => {
-        // Filter sessions by selected month for the table
+        // Filter sessions by selected month or date range for the table
         const filteredTableSessions = summary.sessions.filter((s) => {
           const sessionDate = new Date(s.session_date)
-          const sessionMonth = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`
-          return sessionMonth === selectedMonth
+          if (filterType === 'month') {
+            const sessionMonth = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`
+            return sessionMonth === selectedMonth
+          } else {
+            const start = new Date(startDate)
+            const end = new Date(endDate)
+            return sessionDate >= start && sessionDate <= end
+          }
         })
         
-        const monthName = new Date(selectedMonth + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+        const monthName = filterType === 'month'
+          ? new Date(selectedMonth + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+          : `${new Date(startDate).toLocaleDateString('vi-VN')} - ${new Date(endDate).toLocaleDateString('vi-VN')}`
         
         return (
           <Card>
