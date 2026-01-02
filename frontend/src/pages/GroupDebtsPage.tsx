@@ -4,9 +4,9 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Trophy, Calendar, Beer, Banknote, Crown, Skull } from 'lucide-react'
+import { ArrowLeft, Trophy, Calendar, Beer, Banknote, Crown, Skull, ArrowRight, Zap } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
-import type { GroupDebtSummary, ApiResponse } from '@/types/api'
+import type { GroupDebtSummary, SimplifiedDebtSummary, ApiResponse } from '@/types/api'
 
 export default function GroupDebtsPage() {
   const { groupId } = useParams<{ groupId: string }>()
@@ -20,6 +20,16 @@ export default function GroupDebtsPage() {
     queryKey: ['groups', groupId, 'debts'],
     queryFn: async () => {
       const res = await api.get<ApiResponse<GroupDebtSummary>>(`/groups/${groupId}/debts`)
+      return res.data.data
+    },
+    enabled: !!groupId,
+  })
+
+  // Query for simplified/netted debts
+  const { data: simplifiedDebts } = useQuery({
+    queryKey: ['groups', groupId, 'debts', 'simplified'],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<SimplifiedDebtSummary>>(`/groups/${groupId}/debts/simplified`)
       return res.data.data
     },
     enabled: !!groupId,
@@ -69,6 +79,72 @@ export default function GroupDebtsPage() {
           />
         </div>
       </div>
+
+      {/* Simplified Debts - Debt Netting */}
+      {simplifiedDebts && simplifiedDebts.simplified_debts.length > 0 && (
+        <Card className="overflow-hidden border-2 border-emerald-200 dark:border-emerald-800">
+          <CardHeader className="pb-2 bg-gradient-to-r from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Zap className="h-5 w-5 text-emerald-600" />
+              Cấn trừ nợ thông minh
+              <span className="ml-auto text-sm font-normal text-muted-foreground">
+                {simplifiedDebts.total_transactions} giao dịch
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Thay vì thanh toán riêng từng cuộc, chỉ cần {simplifiedDebts.total_transactions} giao dịch để tất toán:
+            </p>
+            <div className="space-y-3">
+              {simplifiedDebts.simplified_debts.map((debt, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 hover:shadow-md transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
+                      <span className="text-red-600 dark:text-red-400 font-bold text-sm">
+                        {debt.from_user_name.split(' ').pop()?.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{debt.from_user_name}</p>
+                      <p className="text-xs text-red-500">Nợ</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-center">
+                    <ArrowRight className="h-5 w-5 text-emerald-500" />
+                    <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(debt.amount)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="font-medium text-sm">{debt.to_user_name}</p>
+                      <p className="text-xs text-emerald-500">Nhận</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">
+                        {debt.to_user_name.split(' ').pop()?.charAt(0)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-4 pt-4 border-t flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Tổng cần thanh toán:</span>
+              <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                {formatCurrency(simplifiedDebts.total_amount)}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Statistics Dashboard - Ranking */}
       {(() => {
