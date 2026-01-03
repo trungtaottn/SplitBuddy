@@ -251,6 +251,23 @@ export interface MemberSessionAmount {
   amount_owed: string
 }
 
+// Simplified Debt (after netting)
+export interface SimplifiedDebtSummary {
+  group_id: string
+  group_name: string
+  simplified_debts: SimplifiedDebt[]
+  total_transactions: number
+  total_amount: string
+}
+
+export interface SimplifiedDebt {
+  from_user_id: string
+  from_user_name: string
+  to_user_id: string
+  to_user_name: string
+  amount: string
+}
+
 // Game Types
 export interface GameHistoryEntry {
   id: string

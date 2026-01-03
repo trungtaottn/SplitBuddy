@@ -4,22 +4,42 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Trophy, Calendar, Beer, Banknote, Crown, Skull } from 'lucide-react'
+import { ArrowLeft, Trophy, Calendar, Beer, Banknote, Crown, Skull, ArrowRight, Zap } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
-import type { GroupDebtSummary, ApiResponse } from '@/types/api'
+import type { GroupDebtSummary, SimplifiedDebtSummary, ApiResponse } from '@/types/api'
 
 export default function GroupDebtsPage() {
   const { groupId } = useParams<{ groupId: string }>()
   const navigate = useNavigate()
+  const [filterType, setFilterType] = useState<'month' | 'range'>('month')
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [startDate, setStartDate] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  })
+  const [endDate, setEndDate] = useState(() => {
+    const now = new Date()
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${lastDay}`
   })
 
   const { data: summary, isLoading, error } = useQuery({
     queryKey: ['groups', groupId, 'debts'],
     queryFn: async () => {
       const res = await api.get<ApiResponse<GroupDebtSummary>>(`/groups/${groupId}/debts`)
+      return res.data.data
+    },
+    enabled: !!groupId,
+  })
+
+  // Query for simplified/netted debts
+  const { data: simplifiedDebts } = useQuery({
+    queryKey: ['groups', groupId, 'debts', 'simplified'],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<SimplifiedDebtSummary>>(`/groups/${groupId}/debts/simplified`)
       return res.data.data
     },
     enabled: !!groupId,
@@ -57,29 +77,156 @@ export default function GroupDebtsPage() {
         </div>
       </div>
 
-      {/* Month Filter */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-1 text-sm"
-          />
+      {/* Date Filter */}
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Filter Type Toggle */}
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+            <button
+              onClick={() => setFilterType('month')}
+              className={`px-3 py-1.5 text-sm rounded-md transition-all ${
+                filterType === 'month' 
+                  ? 'bg-white dark:bg-gray-700 shadow text-primary font-medium' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Theo tháng
+            </button>
+            <button
+              onClick={() => setFilterType('range')}
+              className={`px-3 py-1.5 text-sm rounded-md transition-all ${
+                filterType === 'range' 
+                  ? 'bg-white dark:bg-gray-700 shadow text-primary font-medium' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Khoảng ngày
+            </button>
+          </div>
+
+          {/* Month Picker */}
+          {filterType === 'month' && (
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:border-primary focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+              />
+            </div>
+          )}
+
+          {/* Date Range Picker */}
+          {filterType === 'range' && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Từ:</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:border-primary focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Đến:</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:border-primary focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                />
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      </Card>
+
+      {/* Simplified Debts - Debt Netting */}
+      {simplifiedDebts && simplifiedDebts.simplified_debts.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              Cấn trừ nợ thông minh
+              <span className="ml-auto text-sm font-normal text-muted-foreground">
+                {simplifiedDebts.total_transactions} giao dịch
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Thay vì thanh toán riêng từng cuộc, chỉ cần {simplifiedDebts.total_transactions} giao dịch để tất toán:
+            </p>
+            <div className="space-y-3">
+              {simplifiedDebts.simplified_debts.map((debt, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                      <span className="text-foreground font-bold text-sm">
+                        {debt.from_user_name.split(' ').pop()?.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{debt.from_user_name}</p>
+                      <p className="text-xs text-muted-foreground">Nợ</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-center">
+                    <ArrowRight className="h-5 w-5 text-primary" />
+                    <span className="text-lg font-bold text-primary">
+                      {formatCurrency(debt.amount)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="font-medium text-sm">{debt.to_user_name}</p>
+                      <p className="text-xs text-muted-foreground">Nhận</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-primary font-bold text-sm">
+                        {debt.to_user_name.split(' ').pop()?.charAt(0)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-4 pt-4 border-t flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Tổng cần thanh toán:</span>
+              <span className="text-xl font-bold text-primary">
+                {formatCurrency(simplifiedDebts.total_amount)}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Statistics Dashboard - Ranking */}
       {(() => {
-        // Filter sessions by selected month
+        // Filter sessions by selected month or date range
         const filteredSessions = summary.sessions.filter((s) => {
           const sessionDate = new Date(s.session_date)
-          const sessionMonth = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`
-          return sessionMonth === selectedMonth
+          if (filterType === 'month') {
+            const sessionMonth = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`
+            return sessionMonth === selectedMonth
+          } else {
+            const start = new Date(startDate)
+            const end = new Date(endDate)
+            return sessionDate >= start && sessionDate <= end
+          }
         })
 
-        const monthName = new Date(selectedMonth + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+        const monthName = filterType === 'month' 
+          ? new Date(selectedMonth + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+          : `${new Date(startDate).toLocaleDateString('vi-VN')} - ${new Date(endDate).toLocaleDateString('vi-VN')}`
 
         // If no sessions in this month, don't show anything
         if (filteredSessions.length === 0) {
@@ -138,61 +285,35 @@ export default function GroupDebtsPage() {
         const RankingItem = ({ member, index, isTop }: { member: typeof sortedByParticipation[0]; index: number; isTop: boolean }) => {
           const actualIndex = isTop ? index : sortedByParticipation.length - 4 + (3 - index)
           const isFirst = isTop && index === 0
-          const isLast = !isTop && index === 0
-          
-          const funMessages = isFirst 
-            ? ["Không ai qua nổi!", "Vua nhậu!"]
-            : isLast 
-            ? ["Đi nhậu đi chứ!", "Bỏ anh em à?"]
-            : isTop 
-            ? ["Cố lên nào!", "Chiến tiếp thôi!"]
-            : ["Ủa sao lười thế?", "Nhớ anh em không?"]
-          
-          const randomMsg = funMessages[Math.floor(Math.random() * funMessages.length)]
           
           return (
             <div
-              className={`relative rounded-xl p-3 transition-all hover:scale-[1.02] ${
-                isFirst ? 'ranking-glow-gold bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 shadow-md' :
-                isLast ? 'ranking-glow-red bg-gradient-to-r from-red-50 via-orange-50 to-red-50' :
-                'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+              className={`relative rounded-lg p-3 border transition-all hover:bg-accent/50 ${
+                isFirst ? 'bg-primary/5 border-primary/20' : 'bg-card'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`relative w-10 h-10 rounded-lg flex flex-col items-center justify-center ${
-                  isFirst ? 'bg-gradient-to-br from-yellow-400 to-amber-500 shadow-lg animate-pulse' :
-                  isTop && index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400' :
-                  isTop && index === 2 ? 'bg-gradient-to-br from-amber-500 to-amber-600' :
-                  isLast ? 'bg-gradient-to-br from-red-400 to-red-500' :
-                  'bg-gray-200 dark:bg-gray-700'
+                <div className={`relative w-10 h-10 rounded-lg flex items-center justify-center ${
+                  isFirst ? 'bg-primary text-primary-foreground' : 'bg-muted'
                 }`}>
                   {isFirst ? (
-                    <Crown className="h-5 w-5 text-white" />
+                    <Crown className="h-5 w-5" />
                   ) : (
-                    <span className="text-lg font-black text-white">{actualIndex + 1}</span>
+                    <span className="text-lg font-bold">{actualIndex + 1}</span>
                   )}
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1">
-                    <span className="font-bold truncate">{member.name}</span>
-                    {isFirst && <span>👑</span>}
-                    {isLast && <Skull className="h-3 w-3 text-red-400" />}
-                  </div>
-                  <p className={`text-xs ${isFirst ? 'text-yellow-600' : isLast ? 'text-red-500' : 'text-muted-foreground'}`}>
-                    {randomMsg}
+                  <span className="font-medium truncate block">{member.name}</span>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrency(member.totalOwed.toFixed(0))}
                   </p>
                 </div>
                 
                 <div className="text-right">
-                  <p className="font-bold text-lg">{member.count} <span className="text-base">cuộc</span></p>
+                  <p className="font-bold text-lg">{member.count}</p>
+                  <p className="text-xs text-muted-foreground">cuộc</p>
                 </div>
-                
-                {isTop && index < 3 && (
-                  <span className={`text-2xl ${index === 0 ? 'animate-bounce' : ''}`}>
-                    {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
-                  </span>
-                )}
               </div>
             </div>
           )
@@ -201,61 +322,41 @@ export default function GroupDebtsPage() {
         return (
           <div className="grid gap-4 md:grid-cols-2">
             {/* Summary Card - Enhanced */}
-            <Card className="overflow-hidden">
-              <CardHeader className="pb-2 bg-gradient-to-r from-orange-50 to-amber-50">
+            <Card>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Beer className="h-5 w-5 text-orange-500 animate-bounce" /> 
+                  <Beer className="h-5 w-5 text-primary" /> 
                   Tổng quan - {monthName}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
                 {/* Hero Stat - Sessions */}
-                <div className="relative rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 p-5 text-white text-center shadow-lg overflow-hidden">
-                  <div className="absolute -top-4 -right-4 text-6xl opacity-20">🍺</div>
+                <div className="relative rounded-xl bg-primary p-5 text-primary-foreground text-center overflow-hidden">
                   <p className="text-5xl font-black">{filteredSessions.length}</p>
-                  <p className="text-sm opacity-90">Cuộc nhậu trong tháng</p>
-                  {filteredSessions.length >= 4 && (
-                    <p className="text-xs mt-1 bg-white/20 rounded-full px-2 py-0.5 inline-block">
-                      🔥 Tháng sôi động!
-                    </p>
-                  )}
+                  <p className="text-sm opacity-90">Cuộc nhậu trong kỳ</p>
                 </div>
 
                 {/* Money Stats */}
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 p-4 border border-green-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-green-600 font-medium">Tổng chi tiêu</p>
-                        <p className="text-2xl font-bold text-green-700">{formatCurrency(totalAmount.toFixed(0))}</p>
-                      </div>
-                      <div className="text-3xl">💸</div>
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium">Tổng chi tiêu</p>
+                      <p className="text-2xl font-bold">{formatCurrency(totalAmount.toFixed(0))}</p>
                     </div>
+                    <Banknote className="h-8 w-8 text-muted-foreground" />
                   </div>
                 </div>
 
                 {/* Average Stats */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-blue-50 p-3 border border-blue-100 text-center hover:shadow-md transition-shadow">
-                    <p className="text-2xl"></p>
-                    <p className="text-lg font-bold text-blue-600">{formatCurrency(avgPerSession.toFixed(0))}</p>
+                  <div className="rounded-lg border p-3 text-center">
+                    <p className="text-lg font-bold">{formatCurrency(avgPerSession.toFixed(0))}</p>
                     <p className="text-xs text-muted-foreground">TB/cuộc</p>
                   </div>
-                  <div className="rounded-xl bg-purple-50 p-3 border border-purple-100 text-center hover:shadow-md transition-shadow">
-                    <p className="text-2xl"></p>
-                    <p className="text-lg font-bold text-purple-600">{formatCurrency(avgPerPerson.toFixed(0))}</p>
+                  <div className="rounded-lg border p-3 text-center">
+                    <p className="text-lg font-bold">{formatCurrency(avgPerPerson.toFixed(0))}</p>
                     <p className="text-xs text-muted-foreground">TB/người</p>
                   </div>
-                </div>
-
-                {/* Fun Quote */}
-                <div className="text-center pt-2 border-t">
-                  <p className="text-xs text-muted-foreground italic">
-                    {filteredSessions.length === 0 ? "Chưa có cuộc nhậu nào 😢" :
-                     filteredSessions.length === 1 ? "Mới khởi động thôi! 🚀" :
-                     filteredSessions.length <= 3 ? "Đang ấm lên rồi đấy! 🔥" :
-                     "Tháng này nhậu dữ quá! 🍻🎉"}
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -263,10 +364,10 @@ export default function GroupDebtsPage() {
             {/* Ranking Cards - Split into Top 4 and Bottom 4 */}
             <div className="space-y-4">
               {/* Top performers */}
-              <Card className="overflow-hidden">
-                <CardHeader className="pb-2 bg-gradient-to-r from-yellow-50 to-amber-50">
+              <Card>
+                <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-yellow-600" />
+                    <Trophy className="h-5 w-5 text-primary" />
                     🔥 Top tham gia ({topList.length})
                   </CardTitle>
                 </CardHeader>
@@ -280,11 +381,11 @@ export default function GroupDebtsPage() {
               </Card>
 
               {/* Bottom performers - always show */}
-              <Card className="overflow-hidden">
-                <CardHeader className="pb-2 bg-gradient-to-r from-red-50 to-orange-50">
+              <Card>
+                <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Skull className="h-5 w-5 text-red-500" />
-                    Dưới đáy xã hội ({bottomList.length})
+                    <Skull className="h-5 w-5 text-muted-foreground" />
+                    Ít tham gia ({bottomList.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-3">
@@ -296,12 +397,12 @@ export default function GroupDebtsPage() {
                     </div>
                   ) : (
                     <div className="text-center py-6">
-                      <p className="text-2xl mb-2">🎉</p>
+                      <p className="text-2xl mb-2"></p>
                       <p className="text-sm text-muted-foreground">
                         Tất cả đều tham gia tốt!
                       </p>
                       <p className="text-xs text-green-600 mt-1">
-                        Nhóm có ít thành viên, ai cũng là top cả 💪
+                        Nhóm có ít thành viên, ai cũng là top cả
                       </p>
                     </div>
                   )}
@@ -312,16 +413,24 @@ export default function GroupDebtsPage() {
         )
       })()}
 
-      {/* Summary Cards - filtered by month */}
+      {/* Summary Cards - filtered by month or date range */}
       {(() => {
-        // Filter sessions by selected month
+        // Filter sessions by selected month or date range
         const filteredSessions = summary.sessions.filter((s) => {
           const sessionDate = new Date(s.session_date)
-          const sessionMonth = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`
-          return sessionMonth === selectedMonth
+          if (filterType === 'month') {
+            const sessionMonth = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`
+            return sessionMonth === selectedMonth
+          } else {
+            const start = new Date(startDate)
+            const end = new Date(endDate)
+            return sessionDate >= start && sessionDate <= end
+          }
         })
         
-        const monthName = new Date(selectedMonth + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+        const monthName = filterType === 'month'
+          ? new Date(selectedMonth + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+          : `${new Date(startDate).toLocaleDateString('vi-VN')} - ${new Date(endDate).toLocaleDateString('vi-VN')}`
         
         // Calculate member totals for this month only
         const memberMonthTotals: Record<string, { paid: number; owed: number }> = {}
@@ -384,14 +493,22 @@ export default function GroupDebtsPage() {
 
       {/* Debt Matrix Table */}
       {(() => {
-        // Filter sessions by selected month for the table
+        // Filter sessions by selected month or date range for the table
         const filteredTableSessions = summary.sessions.filter((s) => {
           const sessionDate = new Date(s.session_date)
-          const sessionMonth = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`
-          return sessionMonth === selectedMonth
+          if (filterType === 'month') {
+            const sessionMonth = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, '0')}`
+            return sessionMonth === selectedMonth
+          } else {
+            const start = new Date(startDate)
+            const end = new Date(endDate)
+            return sessionDate >= start && sessionDate <= end
+          }
         })
         
-        const monthName = new Date(selectedMonth + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+        const monthName = filterType === 'month'
+          ? new Date(selectedMonth + '-01').toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+          : `${new Date(startDate).toLocaleDateString('vi-VN')} - ${new Date(endDate).toLocaleDateString('vi-VN')}`
         
         return (
           <Card>

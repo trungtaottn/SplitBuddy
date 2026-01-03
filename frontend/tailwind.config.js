@@ -99,6 +99,10 @@ export default {
           "50%": { transform: "scale(1.1)" },
           "100%": { transform: "scale(1)", opacity: "1" },
         },
+        "spin-slow": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -111,6 +115,7 @@ export default {
         "confetti": "confetti 3s ease-out forwards",
         "float": "float 3s ease-in-out infinite",
         "bounce-in": "bounce-in 0.5s ease-out",
+        "spin-slow": "spin-slow 3s linear infinite",
       },
     },
   },

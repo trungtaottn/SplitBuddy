@@ -19,6 +19,7 @@ pub fn routes() -> Router<AppState> {
         .route("/:id/members", get(get_members).post(add_member))
         .route("/:id/members/:user_id", axum::routing::delete(remove_member))
         .route("/:id/debts", get(get_group_debts))
+        .route("/:id/debts/simplified", get(get_simplified_debts))
 }
 
 #[derive(Serialize)]
@@ -293,6 +294,25 @@ pub struct MemberSessionAmount {
     pub amount_owed: rust_decimal::Decimal,
 }
 
+/// Simplified debt after netting - represents minimum transactions needed
+#[derive(Serialize)]
+pub struct SimplifiedDebtSummary {
+    pub group_id: Uuid,
+    pub group_name: String,
+    pub simplified_debts: Vec<SimplifiedDebt>,
+    pub total_transactions: usize,
+    pub total_amount: rust_decimal::Decimal,
+}
+
+#[derive(Serialize, Clone)]
+pub struct SimplifiedDebt {
+    pub from_user_id: Uuid,
+    pub from_user_name: String,
+    pub to_user_id: Uuid,
+    pub to_user_name: String,
+    pub amount: rust_decimal::Decimal,
+}
+
 async fn get_group_debts(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -315,4 +335,100 @@ async fn get_group_debts(
     let summary = repo.get_group_debt_summary(group_id, &group.name).await?;
 
     Ok(ok(summary))
+}
+
+/// Get simplified/netted debts for a group
+/// This calculates the minimum number of transactions needed to settle all debts
+async fn get_simplified_debts(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(group_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<SimplifiedDebtSummary>>, AppError> {
+    use rust_decimal::Decimal;
+    use std::collections::HashMap;
+
+    let repo = GroupRepository::new(state.pool.clone());
+
+    // Verify user is a member of the group
+    if !repo.is_member(group_id, auth_user.user_id).await? {
+        return Err(AppError::Forbidden {
+            message: "You are not a member of this group".to_string(),
+        });
+    }
+
+    let group = repo.find_by_id(group_id).await?.ok_or_else(|| AppError::Validation {
+        field: "group_id".to_string(),
+        message: "Group not found".to_string(),
+    })?;
+
+    // Get full debt summary to calculate balances
+    let summary = repo.get_group_debt_summary(group_id, &group.name).await?;
+
+    // Build a map of user_id -> (name, balance)
+    // Positive balance = creditor (others owe them)
+    // Negative balance = debtor (they owe others)
+    let mut balances: HashMap<Uuid, (String, Decimal)> = HashMap::new();
+    for member in &summary.members {
+        if member.balance != Decimal::ZERO {
+            balances.insert(member.user_id, (member.name.clone(), member.balance));
+        }
+    }
+
+    // Separate into creditors (positive balance) and debtors (negative balance)
+    let mut creditors: Vec<(Uuid, String, Decimal)> = balances
+        .iter()
+        .filter(|(_, (_, balance))| *balance > Decimal::ZERO)
+        .map(|(id, (name, balance))| (*id, name.clone(), *balance))
+        .collect();
+
+    let mut debtors: Vec<(Uuid, String, Decimal)> = balances
+        .iter()
+        .filter(|(_, (_, balance))| *balance < Decimal::ZERO)
+        .map(|(id, (name, balance))| (*id, name.clone(), balance.abs()))
+        .collect();
+
+    // Sort by amount (largest first) for optimal settlement
+    creditors.sort_by(|a, b| b.2.cmp(&a.2));
+    debtors.sort_by(|a, b| b.2.cmp(&a.2));
+
+    // Calculate simplified debts using greedy algorithm
+    let mut simplified_debts: Vec<SimplifiedDebt> = Vec::new();
+    let mut c_idx = 0;
+    let mut d_idx = 0;
+    let mut creditor_remaining: Vec<Decimal> = creditors.iter().map(|c| c.2).collect();
+    let mut debtor_remaining: Vec<Decimal> = debtors.iter().map(|d| d.2).collect();
+
+    while c_idx < creditors.len() && d_idx < debtors.len() {
+        let transfer = creditor_remaining[c_idx].min(debtor_remaining[d_idx]);
+
+        if transfer > Decimal::ZERO {
+            simplified_debts.push(SimplifiedDebt {
+                from_user_id: debtors[d_idx].0,
+                from_user_name: debtors[d_idx].1.clone(),
+                to_user_id: creditors[c_idx].0,
+                to_user_name: creditors[c_idx].1.clone(),
+                amount: transfer,
+            });
+
+            creditor_remaining[c_idx] -= transfer;
+            debtor_remaining[d_idx] -= transfer;
+        }
+
+        if creditor_remaining[c_idx] == Decimal::ZERO {
+            c_idx += 1;
+        }
+        if debtor_remaining[d_idx] == Decimal::ZERO {
+            d_idx += 1;
+        }
+    }
+
+    let total_amount: Decimal = simplified_debts.iter().map(|d| d.amount).sum();
+
+    Ok(ok(SimplifiedDebtSummary {
+        group_id,
+        group_name: group.name,
+        simplified_debts: simplified_debts.clone(),
+        total_transactions: simplified_debts.len(),
+        total_amount,
+    }))
 }
