@@ -118,15 +118,19 @@ export function EmptyState({
       'animate-in fade-in duration-500',
       className
     )}>
-      <div className="mb-6">
+      {/* Illustration with warm shadow */}
+      <div className="mb-6 relative">
         {config.illustration}
+        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-20 h-3 bg-secondary/50 rounded-full blur-md" />
       </div>
       
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+      {/* Title - Uses heading font */}
+      <h3 className="text-lg font-heading font-semibold text-foreground mb-2">
         {displayTitle}
       </h3>
       
-      <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-6">
+      {/* Description - Body font */}
+      <p className="text-sm text-muted-foreground max-w-sm mb-6 font-body">
         {displayDescription}
       </p>
 
@@ -142,7 +146,7 @@ export function EmptyState({
           {secondaryAction && (
             <>
               {action && (
-                <span className="text-sm text-gray-400 self-center hidden sm:block">hoặc</span>
+                <span className="text-sm text-muted-foreground self-center hidden sm:block">hoặc</span>
               )}
               <Button variant="outline" onClick={secondaryAction.onClick} className="gap-2">
                 {secondaryAction.label}

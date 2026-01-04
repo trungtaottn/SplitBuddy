@@ -169,16 +169,17 @@ export default function DashboardPage() {
         onViewDebts={() => navigate('/debts')}
       />
 
+      {/* Debt Summary Cards - Minimalist Retro */}
       <div className="grid gap-4 md:grid-cols-2">
         <FunTooltip messages={FUN_MESSAGES.debtOwed}>
-          <Card className="border shadow-sm hover:shadow-md transition-shadow cursor-pointer hover-pulse">
+          <Card className="card-interactive cursor-pointer">
             <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/30">
-                <TrendingDown className="h-6 w-6 text-red-500" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10">
+                <TrendingDown className="h-6 w-6 text-destructive" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Bạn đang nợ</p>
-                <p className="text-2xl font-bold text-red-500">
+                <p className="text-sm text-muted-foreground font-body">Bạn đang nợ</p>
+                <p className="text-2xl font-bold text-destructive font-mono">
                   {debts ? formatCurrency(debts.total_i_owe) : '0đ'}
                 </p>
               </div>
@@ -186,14 +187,14 @@ export default function DashboardPage() {
           </Card>
         </FunTooltip>
         <FunTooltip messages={FUN_MESSAGES.debtOwing}>
-          <Card className="border shadow-sm hover:shadow-md transition-shadow cursor-pointer hover-pulse">
+          <Card className="card-interactive cursor-pointer">
             <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-50 dark:bg-green-900/30">
-                <TrendingUp className="h-6 w-6 text-green-500" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success/10">
+                <TrendingUp className="h-6 w-6 text-success" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Bạn được nợ</p>
-                <p className="text-2xl font-bold text-green-500">
+                <p className="text-sm text-muted-foreground font-body">Bạn được nợ</p>
+                <p className="text-2xl font-bold text-success font-mono">
                   {debts ? formatCurrency(debts.total_owed_to_me) : '0đ'}
                 </p>
               </div>
@@ -202,14 +203,15 @@ export default function DashboardPage() {
         </FunTooltip>
       </div>
 
+      {/* Section Header - Retro Typography */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-          <Beer className="h-5 w-5" /> Cuộc nhậu của tôi
+        <h2 className="text-xl font-heading font-semibold text-foreground flex items-center gap-2">
+          <Beer className="h-5 w-5 text-primary" /> Cuộc nhậu của tôi
         </h2>
         <FunTooltip messages={FUN_MESSAGES.createSession}>
           <Button 
             onClick={() => setShowCreateModal(true)} 
-            className="gap-2 bg-orange-500 hover:bg-orange-600 rounded-lg hover-wiggle font-bold"
+            className="gap-2 btn-gradient rounded-lg hover-wiggle"
             data-onboarding="create-session"
           >
             <Plus className="h-4 w-4" />
@@ -218,7 +220,7 @@ export default function DashboardPage() {
         </FunTooltip>
       </div>
 
-      {/* Search & Filter */}
+      {/* Search & Filter - Retro Style */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -233,7 +235,7 @@ export default function DashboardPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="h-11 rounded-lg border-2 border-border/60 bg-background px-4 py-2 text-sm font-body transition-all hover:border-border focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
           >
             <option value="">Tất cả</option>
             <option value="active">Đang diễn ra</option>
@@ -241,7 +243,7 @@ export default function DashboardPage() {
           </select>
         </div>
         {pagination && (
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1 text-sm text-muted-foreground font-body">
             <span>{pagination.total} kết quả</span>
           </div>
         )}

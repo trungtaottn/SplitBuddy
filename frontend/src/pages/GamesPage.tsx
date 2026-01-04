@@ -376,12 +376,12 @@ export default function GamesPage() {
             className="gap-1"
             title={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
           >
-            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-gray-400 dark:text-gray-500" />}
+            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
           </Button>
           <select
             value={selectedDifficulty || ''}
             onChange={(e) => setSelectedDifficulty(e.target.value || null)}
-            className="text-xs border rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200"
+            className="text-xs border-2 border-border/60 rounded-lg px-2 py-1.5 bg-background text-foreground font-body transition-all hover:border-border focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
           >
             <option value="">Tất cả độ khó</option>
             <option value="easy">Dễ</option>
@@ -391,10 +391,10 @@ export default function GamesPage() {
           </select>
           <button
             onClick={() => adultContentEnabled ? setAdultContentEnabled(false) : setShowAdultWarning(true)}
-            className={`text-xs px-2 py-1.5 rounded-lg border transition-all ${
+            className={`text-xs px-2 py-1.5 rounded-lg border-2 transition-all font-body ${
               adultContentEnabled 
-                ? 'bg-pink-100 dark:bg-pink-900/30 border-pink-300 dark:border-pink-700 text-pink-700 dark:text-pink-300' 
-                : 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400'
+                ? 'bg-primary/10 border-primary/30 text-primary' 
+                : 'bg-secondary border-border/60 text-muted-foreground hover:border-border'
             }`}
             title={adultContentEnabled ? 'Tắt nội dung 18+' : 'Bật nội dung 18+'}
           >
@@ -402,12 +402,13 @@ export default function GamesPage() {
           </button>
         </div>
 
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 flex items-center justify-center gap-2">
-          <Sparkles className="h-8 w-8 text-yellow-500 animate-pulse" />
+        {/* Header - Retro Typography */}
+        <h1 className="text-3xl font-heading font-bold text-foreground flex items-center justify-center gap-2">
+          <Sparkles className="h-8 w-8 text-warning animate-pulse" />
           Trò chơi nhậu
         </h1>
-        <p className="text-muted-foreground mt-2">Chọn một trò chơi để bắt đầu cuộc vui! 🍻</p>
-        <p className="text-xs text-orange-500 mt-1">Uống có trách nhiệm - Đã uống không lái xe</p>
+        <p className="text-muted-foreground mt-2 font-body">Chọn một trò chơi để bắt đầu cuộc vui! 🍻</p>
+        <p className="text-xs text-primary mt-1 font-body">Uống có trách nhiệm - Đã uống không lái xe</p>
       </div>
 
       {/* Game Selection */}

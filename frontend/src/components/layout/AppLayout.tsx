@@ -46,8 +46,8 @@ export default function AppLayout() {
       <SkipLink />
       
       <InteractiveBackground />
-      {/* Desktop Header */}
-      <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/90 backdrop-blur-md shadow-sm">
+      {/* Desktop Header - Minimalist Retro */}
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-card/90 backdrop-blur-md shadow-sm">
         <div className="container mx-auto flex h-14 items-center justify-between px-4 md:h-16">
           <Link to={isAdmin ? "/admin" : "/"} className="flex items-center gap-2 group">
             <span className="text-xl md:text-2xl animate-bounce">🍻</span>
@@ -136,18 +136,18 @@ export default function AppLayout() {
           </div>
         </nav>
       ) : (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 shadow-lg md:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-border/50 shadow-lg md:hidden">
           <div className="flex h-16 items-center justify-around">
             <Link
               to="/"
               className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
                 isActive('/') 
                   ? 'text-primary bg-primary/10 scale-105' 
-                  : 'text-gray-500 dark:text-gray-400 hover:text-primary'
+                  : 'text-muted-foreground hover:text-primary'
               }`}
             >
               <Home className="h-5 w-5" />
-              <span className="text-xs font-medium">Trang chủ</span>
+              <span className="text-xs font-medium font-body">Trang chủ</span>
             </Link>
             {showGroups && (
               <Link
@@ -155,11 +155,11 @@ export default function AppLayout() {
                 className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
                   isActive('/groups') 
                     ? 'text-primary bg-primary/10 scale-105' 
-                    : 'text-gray-500 dark:text-gray-400 hover:text-primary'
+                    : 'text-muted-foreground hover:text-primary'
                 }`}
               >
                 <Users className="h-5 w-5" />
-                <span className="text-xs font-medium">Nhóm</span>
+                <span className="text-xs font-medium font-body">Nhóm</span>
               </Link>
             )}
             {showDebts && (
@@ -168,11 +168,11 @@ export default function AppLayout() {
                 className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
                   isActive('/debts') 
                     ? 'text-primary bg-primary/10 scale-105' 
-                    : 'text-gray-500 dark:text-gray-400 hover:text-primary'
+                    : 'text-muted-foreground hover:text-primary'
                 }`}
               >
                 <Wallet className="h-5 w-5" />
-                <span className="text-xs font-medium">Công nợ</span>
+                <span className="text-xs font-medium font-body">Công nợ</span>
               </Link>
             )}
             {showGames && (
@@ -181,11 +181,11 @@ export default function AppLayout() {
                 className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
                   isActive('/games') 
                     ? 'text-primary bg-primary/10 scale-105' 
-                    : 'text-gray-500 dark:text-gray-400 hover:text-primary'
+                    : 'text-muted-foreground hover:text-primary'
                 }`}
               >
                 <Sparkles className="h-5 w-5" />
-                <span className="text-xs font-medium">Trò chơi</span>
+                <span className="text-xs font-medium font-body">Trò chơi</span>
               </Link>
             )}
           </div>

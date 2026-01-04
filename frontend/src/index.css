@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
+/* ============================================================
+   SPLITBUDDY DESIGN SYSTEM - Minimalist Retro
+   ============================================================ */
+
+/* Fonts: Playfair Display (headings), DM Sans (body), JetBrains Mono (numbers) */
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,71 +11,129 @@
 
 @layer base {
   :root {
-    /* Background & Foreground */
-    --background: 30 50% 98%;
-    --foreground: 20 14.3% 4.1%;
-    --card: 0 0% 100%;
-    --card-foreground: 20 14.3% 4.1%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 20 14.3% 4.1%;
+    /* ==================== MINIMALIST RETRO PALETTE ==================== */
     
-    /* Primary - Orange/Beer */
-    --primary: 24 95% 50%;
-    --primary-foreground: 60 9.1% 97.8%;
+    /* Background - Warm cream tones */
+    --background: 35 33% 97%;           /* #FAF7F2 - Cream */
+    --foreground: 24 8% 16%;            /* #2D2A26 - Charcoal */
+    --card: 35 25% 95%;                 /* #F5F1EB - Warm white */
+    --card-foreground: 24 8% 16%;       /* #2D2A26 */
+    --popover: 35 33% 97%;
+    --popover-foreground: 24 8% 16%;
     
-    /* Secondary & Muted */
-    --secondary: 30 30% 96%;
-    --secondary-foreground: 24 9.8% 10%;
-    --muted: 30 30% 96%;
-    --muted-foreground: 25 5.3% 44.7%;
-    --accent: 30 30% 96%;
-    --accent-foreground: 24 9.8% 10%;
+    /* Primary - Burnt Orange (Retro accent) */
+    --primary: 24 65% 53%;              /* #D4763B - Burnt Orange */
+    --primary-foreground: 35 33% 97%;   /* Cream */
     
-    /* Semantic */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 60 9.1% 97.8%;
-    --success: 142 76% 36%;
-    --warning: 38 92% 50%;
-    --info: 199 89% 48%;
+    /* Secondary - Terracotta */
+    --secondary: 35 20% 93%;            /* #F0EBE3 - Warm Gray */
+    --secondary-foreground: 24 8% 16%;
     
-    /* UI */
-    --border: 20 5.9% 90%;
-    --input: 20 5.9% 90%;
-    --ring: 24 95% 50%;
-    --radius: 0.75rem;
+    /* Muted - Soft warm gray */
+    --muted: 35 15% 91%;
+    --muted-foreground: 24 5% 45%;      /* #6B6560 - Warm Gray */
     
-    /* Shadows - Warm tint */
-    --shadow-color: 24 50% 50%;
-    --shadow-sm: 0 1px 2px 0 hsl(var(--shadow-color) / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(var(--shadow-color) / 0.08), 0 2px 4px -2px hsl(var(--shadow-color) / 0.05);
+    /* Accent - Same as secondary for consistency */
+    --accent: 35 20% 93%;
+    --accent-foreground: 24 8% 16%;
+    
+    /* Semantic Colors - Retro style */
+    --destructive: 5 50% 50%;           /* #B54D4D - Brick Red */
+    --destructive-foreground: 35 33% 97%;
+    --success: 135 25% 55%;             /* #7A9E7E - Sage Green */
+    --success-foreground: 35 33% 97%;
+    --warning: 42 65% 56%;              /* #D4A84B - Mustard */
+    --warning-foreground: 24 8% 16%;
+    --info: 24 65% 53%;                 /* Same as primary */
+    
+    /* UI Elements */
+    --border: 35 15% 88%;               /* Warm border */
+    --input: 35 15% 88%;
+    --ring: 24 65% 53%;                 /* Burnt Orange */
+    --radius: 0.75rem;                  /* 12px - Soft rounded */
+    --radius-sm: 0.5rem;                /* 8px */
+    --radius-lg: 1rem;                  /* 16px */
+    
+    /* Shadows - Warm tint for depth */
+    --shadow-color: 24 40% 30%;
+    --shadow-xs: 0 1px 2px 0 hsl(var(--shadow-color) / 0.04);
+    --shadow-sm: 0 1px 3px 0 hsl(var(--shadow-color) / 0.06), 0 1px 2px -1px hsl(var(--shadow-color) / 0.04);
+    --shadow-md: 0 4px 6px -1px hsl(var(--shadow-color) / 0.08), 0 2px 4px -2px hsl(var(--shadow-color) / 0.04);
     --shadow-lg: 0 10px 15px -3px hsl(var(--shadow-color) / 0.1), 0 4px 6px -4px hsl(var(--shadow-color) / 0.05);
-    --shadow-xl: 0 20px 25px -5px hsl(var(--shadow-color) / 0.12), 0 8px 10px -6px hsl(var(--shadow-color) / 0.05);
+    --shadow-xl: 0 20px 25px -5px hsl(var(--shadow-color) / 0.12), 0 8px 10px -6px hsl(var(--shadow-color) / 0.04);
+    
+    /* Typography Scale */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 2rem;
+    --text-4xl: 2.5rem;
+    
+    /* Font Families */
+    --font-heading: 'Playfair Display', Georgia, serif;
+    --font-body: 'DM Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    
+    /* Spacing Scale */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 13%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 13%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 24 95% 53%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 24 95% 53%;
+    /* ==================== DARK MODE - Warm Charcoal ==================== */
     
-    /* Dark mode shadows */
+    /* Background - Deep warm tones */
+    --background: 30 10% 10%;           /* #1A1918 - Deep Charcoal */
+    --foreground: 35 20% 95%;           /* #F5F0E8 - Cream */
+    --card: 30 8% 14%;                  /* #252321 - Warm Dark */
+    --card-foreground: 35 20% 95%;
+    --popover: 30 10% 12%;
+    --popover-foreground: 35 20% 95%;
+    
+    /* Primary - Warm Orange (lighter for dark mode) */
+    --primary: 28 75% 60%;              /* #E8924C - Warm Orange */
+    --primary-foreground: 30 10% 10%;
+    
+    /* Secondary */
+    --secondary: 30 8% 18%;
+    --secondary-foreground: 35 20% 95%;
+    
+    /* Muted */
+    --muted: 30 6% 20%;
+    --muted-foreground: 35 10% 65%;     /* #A8A299 - Muted Cream */
+    
+    /* Accent */
+    --accent: 30 8% 18%;
+    --accent-foreground: 35 20% 95%;
+    
+    /* Semantic - Adjusted for dark mode */
+    --destructive: 5 55% 55%;
+    --destructive-foreground: 35 20% 95%;
+    --success: 135 30% 50%;
+    --success-foreground: 30 10% 10%;
+    --warning: 42 70% 55%;
+    --warning-foreground: 30 10% 10%;
+    
+    /* UI Elements */
+    --border: 30 6% 22%;
+    --input: 30 6% 22%;
+    --ring: 28 75% 60%;
+    
+    /* Dark mode shadows - deeper */
     --shadow-color: 0 0% 0%;
-    --shadow-sm: 0 1px 2px 0 hsl(var(--shadow-color) / 0.15);
+    --shadow-xs: 0 1px 2px 0 hsl(var(--shadow-color) / 0.1);
+    --shadow-sm: 0 1px 3px 0 hsl(var(--shadow-color) / 0.15), 0 1px 2px -1px hsl(var(--shadow-color) / 0.1);
     --shadow-md: 0 4px 6px -1px hsl(var(--shadow-color) / 0.2), 0 2px 4px -2px hsl(var(--shadow-color) / 0.1);
     --shadow-lg: 0 10px 15px -3px hsl(var(--shadow-color) / 0.25), 0 4px 6px -4px hsl(var(--shadow-color) / 0.1);
     --shadow-xl: 0 20px 25px -5px hsl(var(--shadow-color) / 0.3), 0 8px 10px -6px hsl(var(--shadow-color) / 0.15);
@@ -88,21 +151,54 @@
   
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-body);
     font-feature-settings: "rlig" 1, "calt" 1;
     font-weight: 400;
     letter-spacing: -0.01em;
+    line-height: 1.6;
   }
   
-  /* Typography scale */
+  /* ==================== TYPOGRAPHY - Minimalist Retro ==================== */
+  
+  /* Headings use Playfair Display (serif) for retro feel */
   h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
     font-weight: 600;
     letter-spacing: -0.02em;
+    line-height: 1.2;
+    @apply text-foreground;
   }
   
-  h1 { @apply text-3xl sm:text-4xl; }
-  h2 { @apply text-2xl sm:text-3xl; }
-  h3 { @apply text-xl sm:text-2xl; }
+  h1 { 
+    font-size: var(--text-3xl);
+    @apply sm:text-4xl;
+    font-weight: 700;
+  }
+  h2 { 
+    font-size: var(--text-2xl);
+    @apply sm:text-3xl;
+  }
+  h3 { 
+    font-size: var(--text-xl);
+    @apply sm:text-2xl;
+  }
+  h4 {
+    font-size: var(--text-lg);
+  }
+  
+  /* Body text uses DM Sans (clean sans-serif) */
+  p, span, div {
+    font-family: var(--font-body);
+  }
+  
+  /* Numbers and amounts use monospace for clarity */
+  .font-mono,
+  [data-currency],
+  .amount,
+  .price {
+    font-family: var(--font-mono);
+    font-feature-settings: "tnum" 1; /* Tabular numbers */
+  }
   
   /* Better focus styles */
   :focus-visible {
@@ -129,6 +225,8 @@
 }
 
 @layer utilities {
+  /* ==================== MINIMALIST RETRO UTILITIES ==================== */
+  
   /* Logo font */
   .font-logo {
     font-family: 'Pacifico', cursive;
@@ -136,22 +234,69 @@
     padding-bottom: 0.1em;
   }
   
-  /* Glass morphism */
+  /* Font utilities */
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+  
+  .font-body {
+    font-family: var(--font-body);
+  }
+  
+  /* Glass morphism - Warm tint */
   .glass {
-    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-md;
+    @apply backdrop-blur-md;
+    background: hsl(35 33% 97% / 0.85);
+  }
+  
+  .dark .glass {
+    background: hsl(30 10% 10% / 0.85);
   }
   
   .glass-subtle {
-    @apply bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm;
+    @apply backdrop-blur-sm;
+    background: hsl(35 33% 97% / 0.6);
   }
   
-  /* Card effects */
+  .dark .glass-subtle {
+    background: hsl(30 10% 10% / 0.6);
+  }
+  
+  /* ==================== CARD STYLES - Retro ==================== */
+  
+  .card-retro {
+    @apply rounded-xl border-0;
+    background: hsl(var(--card));
+    box-shadow: var(--shadow-md);
+    transition: all 0.2s ease;
+  }
+  
+  .card-retro:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+  }
+  
   .card-hover {
-    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+    @apply transition-all duration-300;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .card-hover:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
   }
   
   .card-interactive {
-    @apply transition-all duration-200 hover:shadow-md active:scale-[0.98] cursor-pointer;
+    @apply transition-all duration-200 cursor-pointer;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .card-interactive:hover {
+    box-shadow: var(--shadow-md);
+  }
+  
+  .card-interactive:active {
+    transform: scale(0.98);
   }
   
   .card-glow {
@@ -168,7 +313,12 @@
     @apply opacity-100;
   }
   
-  /* Depth system - Shadows */
+  /* ==================== DEPTH SYSTEM - Warm Shadows ==================== */
+  
+  .depth-xs {
+    box-shadow: var(--shadow-xs);
+  }
+  
   .depth-sm {
     box-shadow: var(--shadow-sm);
   }
@@ -185,29 +335,79 @@
     box-shadow: var(--shadow-xl);
   }
   
-  /* Gradient styles */
+  /* ==================== GRADIENTS - Retro Warm ==================== */
+  
+  /* Primary gradient - Burnt Orange to Terracotta */
   .gradient-primary {
-    @apply bg-gradient-to-r from-orange-500 via-red-500 to-pink-500;
+    background: linear-gradient(135deg, hsl(24 65% 53%) 0%, hsl(12 55% 50%) 100%);
   }
   
+  /* Text gradient */
   .gradient-text {
-    @apply bg-gradient-to-r from-orange-600 via-red-500 to-pink-600 bg-clip-text text-transparent;
+    background: linear-gradient(135deg, hsl(24 65% 45%) 0%, hsl(12 55% 42%) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
   
+  /* Warm background gradient */
   .gradient-warm {
-    @apply bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 dark:from-orange-900/20 dark:via-amber-900/20 dark:to-yellow-900/20;
+    background: linear-gradient(135deg, hsl(35 33% 97%) 0%, hsl(35 25% 93%) 100%);
   }
   
+  .dark .gradient-warm {
+    background: linear-gradient(135deg, hsl(30 10% 12%) 0%, hsl(30 8% 16%) 100%);
+  }
+  
+  /* Success - Sage green gradient */
   .gradient-success {
-    @apply bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20;
+    background: linear-gradient(135deg, hsl(135 20% 95%) 0%, hsl(135 25% 90%) 100%);
   }
   
+  .dark .gradient-success {
+    background: linear-gradient(135deg, hsl(135 20% 15%) 0%, hsl(135 25% 20%) 100%);
+  }
+  
+  /* Danger - Brick red gradient */
   .gradient-danger {
-    @apply bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20;
+    background: linear-gradient(135deg, hsl(5 40% 95%) 0%, hsl(5 45% 90%) 100%);
   }
   
+  .dark .gradient-danger {
+    background: linear-gradient(135deg, hsl(5 40% 15%) 0%, hsl(5 45% 20%) 100%);
+  }
+  
+  /* Button gradient - Retro */
   .btn-gradient {
-    @apply bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all duration-300;
+    background: linear-gradient(135deg, hsl(24 65% 53%) 0%, hsl(12 55% 48%) 100%);
+    @apply text-white transition-all duration-300;
+    box-shadow: 0 4px 14px 0 hsl(24 65% 53% / 0.25);
+  }
+  
+  .btn-gradient:hover {
+    background: linear-gradient(135deg, hsl(24 65% 48%) 0%, hsl(12 55% 43%) 100%);
+    box-shadow: 0 6px 20px 0 hsl(24 65% 53% / 0.35);
+    transform: translateY(-1px);
+  }
+  
+  /* ==================== RETRO SPECIFIC STYLES ==================== */
+  
+  /* Retro divider */
+  .divider-retro {
+    @apply h-px w-full;
+    background: linear-gradient(90deg, transparent 0%, hsl(var(--border)) 50%, transparent 100%);
+  }
+  
+  /* Retro badge */
+  .badge-retro {
+    @apply inline-flex items-center px-3 py-1 text-sm font-medium rounded-full;
+    background: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+  }
+  
+  /* Subtle paper texture for backgrounds */
+  .texture-paper {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
   }
   
   /* Mobile touch optimization */
@@ -426,11 +626,27 @@
   .stagger-4 { animation-delay: 200ms; }
   .stagger-5 { animation-delay: 250ms; }
   
-  /* Skeleton loading */
+  /* Skeleton loading - Warm tones */
   .skeleton {
-    @apply bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700;
+    background: linear-gradient(
+      90deg,
+      hsl(35 20% 90%) 0%,
+      hsl(35 25% 95%) 50%,
+      hsl(35 20% 90%) 100%
+    );
     background-size: 200% 100%;
     animation: skeletonShimmer 1.5s ease-in-out infinite;
+    @apply rounded-md;
+  }
+  
+  .dark .skeleton {
+    background: linear-gradient(
+      90deg,
+      hsl(30 8% 18%) 0%,
+      hsl(30 10% 24%) 50%,
+      hsl(30 8% 18%) 100%
+    );
+    background-size: 200% 100%;
   }
   
   @keyframes skeletonShimmer {

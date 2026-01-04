@@ -4,7 +4,7 @@ import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
-  ArrowRight, Check, Clock, Wallet, Users, Beer, Calendar, Zap, 
+  Check, Clock, Wallet, Users, Beer, Calendar, Zap, 
   ChevronDown, ChevronUp, Copy, TrendingUp,
   ArrowUpRight, ArrowDownRight, MessageSquare
 } from 'lucide-react'
@@ -70,13 +70,13 @@ function DebtCard({
     <div className={cn(
       "relative rounded-xl border p-4 transition-all hover:shadow-md",
       isOwe 
-        ? "bg-gradient-to-br from-red-50 to-white dark:from-red-900/20 dark:to-gray-800 border-red-100 dark:border-red-800/50"
-        : "bg-gradient-to-br from-green-50 to-white dark:from-green-900/20 dark:to-gray-800 border-green-100 dark:border-green-800/50"
+        ? "bg-destructive/5 border-destructive/20"
+        : "bg-success/5 border-success/20"
     )}>
       {/* Status indicator */}
       {isWaiting && (
         <div className="absolute -top-2 -right-2">
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-warning/15 text-warning">
             <Clock className="h-3 w-3" />
             Chờ xác nhận
           </span>
@@ -85,29 +85,29 @@ function DebtCard({
 
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-3 min-w-0">
-          {/* Avatar */}
+          {/* Avatar - Retro style */}
           <div className={cn(
-            "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm",
+            "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm font-body",
             isOwe 
-              ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-              : "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
+              ? "bg-destructive/15 text-destructive"
+              : "bg-success/15 text-success"
           )}>
             {counterpartName.split(' ').pop()?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div className="min-w-0">
-            <p className="font-semibold truncate">{counterpartName}</p>
+            <p className="font-semibold truncate font-heading">{counterpartName}</p>
             <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
               <Beer className="h-3 w-3" /> {sessionName}
             </p>
           </div>
         </div>
 
-        {/* Amount */}
+        {/* Amount - Retro mono font */}
         <div className={cn(
           "text-right flex-shrink-0",
-          isOwe ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
+          isOwe ? "text-destructive" : "text-success"
         )}>
-          <p className="text-lg font-bold">{formatCurrency(amount)}</p>
+          <p className="text-lg font-bold font-mono">{formatCurrency(amount)}</p>
         </div>
       </div>
 
@@ -136,8 +136,8 @@ function DebtCard({
         {isOwe && isPending && (
           <Button
             size="sm"
-            variant="default"
-            className="flex-1 h-8 text-xs bg-red-500 hover:bg-red-600"
+            variant="destructive"
+            className="flex-1 h-8 text-xs"
             onClick={onSettle}
             disabled={isSettling}
           >
@@ -148,8 +148,8 @@ function DebtCard({
         {!isOwe && isWaiting && (
           <Button
             size="sm"
-            variant="default"
-            className="flex-1 h-8 text-xs bg-green-500 hover:bg-green-600"
+            variant="success"
+            className="flex-1 h-8 text-xs"
             onClick={onSettle}
             disabled={isSettling}
           >
@@ -246,7 +246,7 @@ export default function DebtsPage() {
   if (isLoading || sessionDebtsLoading) {
     return (
       <div className="space-y-6 animate-in fade-in duration-300">
-        <h1 className="text-2xl font-bold">Công nợ của tôi</h1>
+        <h1 className="text-2xl font-heading font-semibold text-foreground">Công nợ của tôi</h1>
         
         {/* Stats skeleton */}
         <div className="grid gap-4 md:grid-cols-2">
@@ -255,7 +255,7 @@ export default function DebtsPage() {
         
         {/* Debt cards skeleton */}
         <div className="space-y-4">
-          <div className="h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded skeleton" />
+          <div className="h-8 w-32 skeleton rounded-lg" />
           <div className="grid gap-3 sm:grid-cols-2">
             <DebtCardSkeleton />
             <DebtCardSkeleton />
@@ -268,15 +268,17 @@ export default function DebtsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Công nợ của tôi</h1>
+      {/* Page Header - Retro Typography */}
+      <h1 className="text-2xl font-heading font-semibold text-foreground">Công nợ của tôi</h1>
 
-      <div className="flex gap-2 border-b">
+      {/* Tabs - Retro Style */}
+      <div className="flex gap-2 border-b border-border/50">
         <button
           onClick={() => setActiveTab('sessions')}
-          className={`flex items-center gap-2 px-4 py-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 font-body text-sm font-medium transition-all ${
             activeTab === 'sessions'
               ? 'border-b-2 border-primary text-primary'
-              : 'text-muted-foreground'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           <Users className="h-4 w-4" />
@@ -284,10 +286,10 @@ export default function DebtsPage() {
         </button>
         <button
           onClick={() => setActiveTab('summary')}
-          className={`flex items-center gap-2 px-4 py-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 font-body text-sm font-medium transition-all ${
             activeTab === 'summary'
               ? 'border-b-2 border-primary text-primary'
-              : 'text-muted-foreground'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           <Wallet className="h-4 w-4" />
@@ -396,88 +398,109 @@ export default function DebtsPage() {
 
       {activeTab === 'summary' && (
         <>
-          {/* Smart Netting Section */}
+          {/* Smart Netting Section - Debt Optimization Visualization */}
           {nettedDebts.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
+            <Card className="overflow-hidden border-primary/20">
+              <CardHeader className="pb-2 bg-gradient-to-r from-primary/5 to-primary/10">
                 <button
                   onClick={() => setIsNettingExpanded(!isNettingExpanded)}
                   className="w-full flex items-center justify-between hover:opacity-80 transition-opacity"
                 >
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Zap className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg flex items-center gap-2 font-heading">
+                    <div className="p-1.5 rounded-lg bg-primary/10">
+                      <Zap className="h-5 w-5 text-primary" />
+                    </div>
                     Cấn trừ nợ thông minh
-                    <span className="text-sm font-normal text-muted-foreground">
-                      ({nettedDebts.length} người • Nợ: {formatCurrency(totalNetIOwe)} | Được nợ: {formatCurrency(totalNetOwedToMe)})
-                    </span>
                   </CardTitle>
-                  {isNettingExpanded ? (
-                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                  )}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono bg-card px-2 py-1 rounded-lg border border-border/50">
+                      {nettedDebts.length} giao dịch tối ưu
+                    </span>
+                    {isNettingExpanded ? (
+                      <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
                 </button>
               </CardHeader>
               
               {isNettingExpanded && (
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Sau khi cấn trừ các khoản nợ qua lại, đây là số tiền thực tế cần thanh toán:
-                  </p>
+                <CardContent className="pt-4 space-y-4">
+                  {/* Info banner */}
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10">
+                    <TrendingUp className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-muted-foreground font-body">
+                      Sau khi cấn trừ các khoản nợ qua lại, đây là số tiền thực tế cần thanh toán. 
+                      <span className="text-primary font-medium"> Giảm {nettedDebts.length} giao dịch!</span>
+                    </p>
+                  </div>
+
+                  {/* Optimized debts list with visual flow */}
                   <div className="space-y-3">
-                    {nettedDebts.map((debt) => (
+                    {nettedDebts.map((debt, index) => (
                       <div
                         key={debt.counterpartId}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-all"
+                        className={cn(
+                          "flex items-center justify-between p-4 rounded-xl border transition-all hover:shadow-md animate-in slide-in-from-bottom-2",
+                          debt.netAmount > 0 
+                            ? "bg-destructive/5 border-destructive/20" 
+                            : "bg-success/5 border-success/20"
+                        )}
+                        style={{ animationDelay: `${index * 50}ms` }}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          <div className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm font-body",
                             debt.netAmount > 0 
-                              ? 'bg-red-100 dark:bg-red-900/30' 
-                              : 'bg-green-100 dark:bg-green-900/30'
-                          }`}>
-                            <span className={`font-bold text-sm ${
-                              debt.netAmount > 0 ? 'text-red-600' : 'text-green-600'
-                            }`}>
-                              {debt.counterpartName.split(' ').pop()?.charAt(0)}
-                            </span>
+                              ? "bg-destructive/15 text-destructive" 
+                              : "bg-success/15 text-success"
+                          )}>
+                            {debt.counterpartName.split(' ').pop()?.charAt(0)?.toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-medium text-sm">{debt.counterpartName}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {debt.netAmount > 0 ? 'Bạn nợ' : 'Nợ bạn'}
+                            <p className="font-medium text-sm font-heading">{debt.counterpartName}</p>
+                            <p className="text-xs text-muted-foreground font-body">
+                              {debt.netAmount > 0 ? (
+                                <span className="flex items-center gap-1">
+                                  <ArrowUpRight className="h-3 w-3 text-destructive" />
+                                  Bạn cần trả
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1">
+                                  <ArrowDownRight className="h-3 w-3 text-success" />
+                                  Họ cần trả bạn
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-2">
-                          <ArrowRight className={`h-4 w-4 ${
-                            debt.netAmount > 0 ? 'text-red-500' : 'text-green-500 rotate-180'
-                          }`} />
-                          <span className={`text-lg font-bold ${
-                            debt.netAmount > 0 
-                              ? 'text-red-600 dark:text-red-400' 
-                              : 'text-green-600 dark:text-green-400'
-                          }`}>
-                            {formatCurrency(Math.abs(debt.netAmount))}
-                          </span>
-                        </div>
+                        <span className={cn(
+                          "text-lg font-bold font-mono",
+                          debt.netAmount > 0 ? "text-destructive" : "text-success"
+                        )}>
+                          {formatCurrency(Math.abs(debt.netAmount))}
+                        </span>
                       </div>
                     ))}
                   </div>
                   
-                  <div className="mt-4 pt-4 border-t grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground">Tổng cần trả</p>
-                      <p className="text-xl font-bold text-red-600 dark:text-red-400">
-                        {formatCurrency(totalNetIOwe)}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground">Tổng được nhận</p>
-                      <p className="text-xl font-bold text-green-600 dark:text-green-400">
-                        {formatCurrency(totalNetOwedToMe)}
-                      </p>
+                  {/* Summary with visual comparison */}
+                  <div className="pt-4 border-t border-border/50">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-4 rounded-xl bg-destructive/5 border border-destructive/20">
+                        <p className="text-sm text-muted-foreground font-body mb-1">Tổng cần trả</p>
+                        <p className="text-2xl font-bold font-mono text-destructive">
+                          {formatCurrency(totalNetIOwe)}
+                        </p>
+                      </div>
+                      <div className="text-center p-4 rounded-xl bg-success/5 border border-success/20">
+                        <p className="text-sm text-muted-foreground font-body mb-1">Tổng được nhận</p>
+                        <p className="text-2xl font-bold font-mono text-success">
+                          {formatCurrency(totalNetOwedToMe)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

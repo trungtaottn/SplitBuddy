@@ -245,34 +245,37 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-orange-50 via-pink-50 to-red-50 dark:from-orange-950/50 dark:via-pink-950/50 dark:to-red-950/50 px-4 overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-4 overflow-hidden">
+      {/* Warm gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
       <InteractiveBackground />
       
       {/* Dark mode toggle */}
       <button
         onClick={toggleTheme}
-        className="absolute top-4 right-4 z-20 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:scale-110 transition-transform"
+        className="absolute top-4 right-4 z-20 p-2 rounded-full bg-card/90 backdrop-blur-sm shadow-md hover:scale-110 transition-transform border border-border/50"
         title={theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
       >
         {theme === 'dark' ? (
-          <Sun className="h-5 w-5 text-yellow-500" />
+          <Sun className="h-5 w-5 text-warning" />
         ) : (
-          <Moon className="h-5 w-5 text-gray-700" />
+          <Moon className="h-5 w-5 text-foreground" />
         )}
       </button>
 
-      <Card className="w-full max-w-md relative z-10 shadow-xl">
+      {/* Login Card - Minimalist Retro */}
+      <Card className="w-full max-w-md relative z-10 shadow-xl border-border/50">
         <CardHeader className="text-center pb-2">
-          <div className="mx-auto mb-1 text-4xl animate-bounce">
+          <div className="mx-auto mb-2 text-5xl animate-bounce">
             🍻
           </div>
-          <CardTitle className="text-2xl font-logo gradient-text leading-relaxed">SplitBuddy</CardTitle>
-          <CardDescription className="transition-all duration-500">{funMessage}</CardDescription>
+          <CardTitle className="text-3xl font-logo gradient-text leading-relaxed">SplitBuddy</CardTitle>
+          <CardDescription className="transition-all duration-500 font-body text-muted-foreground">{funMessage}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="font-medium">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -283,7 +286,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Mật khẩu</Label>
+              <Label htmlFor="password" className="font-medium">Mật khẩu</Label>
               <Input
                 id="password"
                 type="password"
@@ -293,11 +296,11 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full btn-gradient" disabled={isLoading}>
               {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="mt-4 text-center text-sm text-muted-foreground font-body">
             Liên hệ quản trị viên để được cấp tài khoản <br />
             Cụ thể là ai thì chưa biết... hẹ hẹ..
           </p>

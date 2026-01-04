@@ -192,37 +192,38 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">Tài khoản của tôi</h1>
+      {/* Page Header - Retro Typography */}
+      <h1 className="text-2xl font-heading font-semibold text-foreground">Tài khoản của tôi</h1>
 
       {/* Avatar & Basic Info */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <User className="h-5 w-5" />
+            <User className="h-5 w-5 text-primary" />
             Thông tin cá nhân
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleUpdateProfile} className="space-y-4">
-            {/* Avatar */}
+            {/* Avatar - Retro style with warm colors */}
             <div className="flex items-center gap-4">
               <div className="relative">
                 {(avatarPreview || avatarUrl) ? (
                   <img
                     src={avatarPreview || avatarUrl}
                     alt="Avatar"
-                    className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
+                    className="w-20 h-20 rounded-full object-cover border-2 border-border"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center text-white text-2xl font-bold">
+                  <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-2xl font-bold font-heading">
                     {getInitials(fullName || user?.full_name || 'U')}
                   </div>
                 )}
-                <label className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-gray-700 rounded-full shadow-md flex items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600">
+                <label className="absolute bottom-0 right-0 w-8 h-8 bg-card rounded-full shadow-md flex items-center justify-center cursor-pointer hover:bg-secondary border border-border transition-colors">
                   {uploadAvatar.isPending ? (
-                    <Loader2 className="h-4 w-4 text-gray-600 dark:text-gray-400 animate-spin" />
+                    <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
                   ) : (
-                    <Camera className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                    <Camera className="h-4 w-4 text-muted-foreground" />
                   )}
                   <input
                     ref={fileInputRef}

@@ -10,6 +10,7 @@ import { MoodEffects } from './components/MoodEffects'
 import { InstallPrompt } from './components/InstallPrompt'
 import { OfflineIndicator } from './components/OfflineIndicator'
 import { OnboardingProvider } from './components/Onboarding'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import AppLayout from './components/layout/AppLayout'
 import { PageSkeleton } from './components/ui/skeleton'
 
@@ -75,6 +76,8 @@ function App() {
           {/* PWA Indicators */}
           <OfflineIndicator />
           
+          {/* Global Error Boundary */}
+          <ErrorBoundary>
           <Routes>
             <Route 
               path="/login" 
@@ -151,6 +154,7 @@ function App() {
               />
             </Route>
           </Routes>
+          </ErrorBoundary>
           
           <MoodEffects />
           <Toaster />

@@ -249,29 +249,75 @@ export function BillInput({
             </div>
           </div>
 
-          {/* Split Preview (Real-time) */}
+          {/* Split Preview (Real-time) - Enhanced Visual Breakdown */}
           {splitPreview && splitPreview.length > 0 && amount && (
-            <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium flex items-center gap-1">
-                  <Users className="h-4 w-4" /> Chia cho {selectedSplitParticipants.length} người
+            <div className="bg-primary/5 rounded-xl p-4 border border-primary/10 space-y-3">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-heading font-medium flex items-center gap-1.5 text-foreground">
+                  <Users className="h-4 w-4 text-primary" /> 
+                  Chia cho {selectedSplitParticipants.length} người
                 </span>
                 {splitMode === 'EQUAL' && (
-                  <span className="text-primary font-semibold">
+                  <span className="text-primary font-mono font-semibold text-sm bg-primary/10 px-2 py-0.5 rounded-lg">
                     {formatCurrency(Math.round(parseFloat(amount) / selectedSplitParticipants.length))}/người
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                {splitPreview.slice(0, 4).map((p) => (
-                  <div key={p.id} className="flex justify-between items-center bg-white dark:bg-gray-800 rounded px-2 py-1">
-                    <span className="truncate">{p.name}</span>
-                    <span className="font-medium text-primary">{formatCurrency(p.amount)}</span>
+              
+              {/* Divider */}
+              <div className="divider-retro" />
+
+              {/* Visual breakdown with progress bars */}
+              <div className="space-y-2">
+                {splitPreview.slice(0, 6).map((p, index) => {
+                  const percentage = (p.amount / parseFloat(amount)) * 100
+                  return (
+                    <div key={p.id} className="space-y-1 animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${index * 50}ms` }}>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="truncate font-body text-foreground flex items-center gap-1.5">
+                          <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                            {p.name.charAt(0).toUpperCase()}
+                          </span>
+                          {p.name}
+                        </span>
+                        <span className="font-mono font-semibold text-primary">
+                          {formatCurrency(p.amount)}
+                        </span>
+                      </div>
+                      {/* Progress bar */}
+                      <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary rounded-full transition-all duration-300"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+                {splitPreview.length > 6 && (
+                  <div className="text-muted-foreground text-xs font-body text-center pt-1">
+                    +{splitPreview.length - 6} người khác
                   </div>
-                ))}
-                {splitPreview.length > 4 && (
-                  <div className="text-gray-500 text-xs">+{splitPreview.length - 4} người khác</div>
                 )}
+              </div>
+
+              {/* Total verification */}
+              <div className="pt-2 border-t border-border/50">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground font-body">Tổng cộng:</span>
+                  <span className={cn(
+                    "font-mono font-bold flex items-center gap-1",
+                    splitMode === 'CUSTOM' && Math.abs(customSplitTotal - parseFloat(amount || '0')) >= 1
+                      ? "text-destructive"
+                      : "text-success"
+                  )}>
+                    {formatCurrency(splitPreview.reduce((sum, p) => sum + p.amount, 0))} / {formatCurrency(amount)}
+                    {(splitMode === 'EQUAL' || Math.abs(customSplitTotal - parseFloat(amount || '0')) < 1) && (
+                      <Check className="h-4 w-4" />
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
           )}

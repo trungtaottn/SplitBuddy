@@ -24,18 +24,19 @@ interface SessionCardProps {
   settled_amount?: number
 }
 
+// Minimalist Retro Status Colors
 const STATUS_CONFIG = {
   active: {
     label: 'Đang diễn ra',
-    className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    className: 'bg-success/15 text-success dark:bg-success/20',
   },
   settled: {
     label: 'Đã xong',
-    className: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+    className: 'bg-muted text-muted-foreground',
   },
   pending: {
     label: 'Chờ thanh toán',
-    className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    className: 'bg-warning/15 text-warning dark:bg-warning/20',
   },
 }
 
@@ -48,22 +49,22 @@ function AvatarStack({ participants, max = 4 }: { participants: Participant[]; m
       {displayed.map((p, i) => (
         <div
           key={p.id}
-          className="relative h-8 w-8 rounded-full border-2 border-white dark:border-gray-800 overflow-hidden bg-gradient-to-br from-orange-400 to-pink-500"
+          className="relative h-8 w-8 rounded-full border-2 border-card overflow-hidden bg-primary"
           style={{ zIndex: max - i }}
           title={p.name}
         >
           {p.avatar_url ? (
             <img src={p.avatar_url} alt={p.name} className="h-full w-full object-cover" />
           ) : (
-            <div className="h-full w-full flex items-center justify-center text-white text-xs font-bold">
+            <div className="h-full w-full flex items-center justify-center text-primary-foreground text-xs font-bold font-body">
               {p.name.charAt(0).toUpperCase()}
             </div>
           )}
         </div>
       ))}
       {remaining > 0 && (
-        <div className="relative h-8 w-8 rounded-full border-2 border-white dark:border-gray-800 bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
-          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">+{remaining}</span>
+        <div className="relative h-8 w-8 rounded-full border-2 border-card bg-secondary flex items-center justify-center">
+          <span className="text-xs font-medium text-secondary-foreground">+{remaining}</span>
         </div>
       )}
     </div>
@@ -99,14 +100,15 @@ export function SessionCard({
       to={`/sessions/${id}`}
       className="block group h-full"
     >
-      <div className="rounded-xl border bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-lg transition-all duration-300 hover:border-primary/50 hover:-translate-y-1 space-y-3 h-full flex flex-col">
+      {/* Minimalist Retro Card - Warm shadows, soft corners */}
+      <div className="rounded-xl bg-card border border-border/40 p-4 shadow-sm hover:shadow-lg transition-all duration-300 hover:border-primary/30 hover:-translate-y-1 space-y-3 h-full flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0 overflow-hidden">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-primary transition-colors">
+            <h3 className="font-heading font-semibold text-foreground truncate group-hover:text-primary transition-colors">
               🍺 {name}
             </h3>
-            <div className="mt-1 text-sm text-gray-500 dark:text-gray-400 space-y-0.5">
+            <div className="mt-1 text-sm text-muted-foreground space-y-0.5">
               {location && (
                 <div className="flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
@@ -128,25 +130,25 @@ export function SessionCard({
         <div className="flex items-center justify-between">
           <AvatarStack participants={participants} max={5} />
           {participants.length > 5 && (
-            <span className="text-xs text-gray-400">+{participants.length - 5}</span>
+            <span className="text-xs text-muted-foreground">+{participants.length - 5}</span>
           )}
         </div>
 
-        {/* Settlement Progress (only show if has bills) */}
+        {/* Settlement Progress - Retro style bar */}
         {total_amount > 0 && status !== 'settled' && (
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs text-muted-foreground">
               <span>Tiến độ thanh toán</span>
-              <span>{settlementProgress}%</span>
+              <span className="font-mono">{settlementProgress}%</span>
             </div>
-            <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-2 bg-secondary rounded-full overflow-hidden">
               <div 
                 className={cn(
                   "h-full transition-all duration-500 rounded-full",
                   settlementProgress === 100 
-                    ? "bg-green-500" 
+                    ? "bg-success" 
                     : settlementProgress > 50 
-                      ? "bg-amber-500" 
+                      ? "bg-warning" 
                       : "bg-primary"
                 )}
                 style={{ width: `${settlementProgress}%` }}
@@ -155,30 +157,30 @@ export function SessionCard({
           </div>
         )}
 
-        {/* Debt Info */}
+        {/* Debt Info - Retro badges */}
         {hasDebtInfo && (
           <div className="flex flex-wrap gap-2">
             {user_debt > 0 && (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-medium">
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-destructive/10 text-destructive text-xs font-medium">
                 <TrendingDown className="h-3 w-3" />
-                <span>Nợ {formatCurrency(user_debt)}</span>
+                <span className="font-mono">Nợ {formatCurrency(user_debt)}</span>
               </div>
             )}
             {user_owed > 0 && (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-xs font-medium">
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-success/10 text-success text-xs font-medium">
                 <TrendingUp className="h-3 w-3" />
-                <span>Được {formatCurrency(user_owed)}</span>
+                <span className="font-mono">Được {formatCurrency(user_owed)}</span>
               </div>
             )}
           </div>
         )}
 
-        {/* Footer */}
-        <div className="flex justify-between items-center pt-2 border-t dark:border-gray-700 mt-auto">
-          <span className="font-bold text-lg text-gray-900 dark:text-gray-100">
+        {/* Footer - Total with mono font */}
+        <div className="flex justify-between items-center pt-3 border-t border-border/50 mt-auto">
+          <span className="font-bold text-lg font-mono text-foreground">
             {formatCurrency(total_amount)}
           </span>
-          <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+          <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
         </div>
       </div>
     </Link>
@@ -253,24 +255,24 @@ export function SessionCardCompact({
 
   return (
     <Link to={`/sessions/${id}`} className="block group">
-      <div className="rounded-lg border bg-white dark:bg-gray-800 p-3 hover:shadow-sm transition-all flex items-center gap-3">
+      <div className="rounded-lg bg-card border border-border/40 p-3 hover:shadow-sm transition-all flex items-center gap-3">
         <div className="flex -space-x-1">
           {participants.slice(0, 3).map((p) => (
             <div
               key={p.id}
-              className="h-6 w-6 rounded-full border border-white dark:border-gray-800 bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-[10px] font-bold"
+              className="h-6 w-6 rounded-full border border-card bg-primary flex items-center justify-center text-primary-foreground text-[10px] font-bold"
             >
               {p.name.charAt(0).toUpperCase()}
             </div>
           ))}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{name}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{formattedDate}</p>
+          <p className="font-medium text-sm truncate group-hover:text-primary transition-colors font-heading">{name}</p>
+          <p className="text-xs text-muted-foreground">{formattedDate}</p>
         </div>
         <div className="text-right">
-          <p className="font-semibold text-sm">{formatCurrency(total_amount)}</p>
-          <span className={cn('text-[10px] px-1.5 py-0.5 rounded', statusConfig.className)}>
+          <p className="font-semibold text-sm font-mono">{formatCurrency(total_amount)}</p>
+          <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full', statusConfig.className)}>
             {statusConfig.label}
           </span>
         </div>

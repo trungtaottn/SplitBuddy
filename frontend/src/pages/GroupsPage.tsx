@@ -191,7 +191,7 @@ export default function GroupsPage() {
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl border bg-white dark:bg-gray-800 p-4 space-y-3">
+            <div key={i} className="rounded-xl border border-border/40 bg-card p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Skeleton variant="circular" className="h-8 w-8" />
                 <Skeleton className="h-5 w-32" />
@@ -213,12 +213,13 @@ export default function GroupsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header - Retro Typography */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Nhóm nhậu</h1>
-          <p className="text-muted-foreground">Đây là nơi chứa các con me men</p>
+          <h1 className="text-2xl font-heading font-semibold text-foreground">Nhóm nhậu</h1>
+          <p className="text-muted-foreground font-body">Đây là nơi chứa các con me men</p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+        <Button onClick={() => setShowCreateModal(true)} className="gap-2 btn-gradient">
           <Plus className="h-4 w-4" />
           Tạo nhóm mới
         </Button>
