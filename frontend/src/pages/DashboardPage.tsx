@@ -252,7 +252,7 @@ export default function DashboardPage() {
           />
         )
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sessions?.map((session) => (
             <FunTooltip key={session.id} messages={FUN_MESSAGES.sessionCard}>
               <SessionCard
@@ -262,13 +262,10 @@ export default function DashboardPage() {
                 date={session.session_date}
                 status={session.status === 'closed' ? 'settled' : 'active'}
                 total_amount={Number(session.total_amount) || 0}
-                participants={[
-                  // Mock participants for now - API should return this
-                  ...Array.from({ length: Math.min(session.participant_count || 1, 5) }).map((_, i) => ({
-                    id: `p${i}`,
-                    name: `Người ${i + 1}`,
-                  })),
-                ]}
+                participants={session.participants || []}
+                user_debt={Number(session.my_debt) || 0}
+                user_owed={Number(session.my_owed) || 0}
+                settled_amount={Number(session.settled_amount) || 0}
               />
             </FunTooltip>
           ))}

@@ -40,6 +40,18 @@ pub struct SessionResponse {
     pub session_date: chrono::NaiveDate,
     pub participant_count: i64,
     pub total_amount: Decimal,
+    // Enhanced fields for better UX
+    pub participants: Vec<ParticipantBasicInfo>,
+    pub my_debt: Decimal,      // How much current user owes in this session
+    pub my_owed: Decimal,      // How much current user is owed in this session
+    pub settled_amount: Decimal, // Total amount already settled
+}
+
+#[derive(Serialize, Clone)]
+pub struct ParticipantBasicInfo {
+    pub id: Uuid,
+    pub name: String,
+    pub avatar_url: Option<String>,
 }
 
 #[derive(Serialize)]

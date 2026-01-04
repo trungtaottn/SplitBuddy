@@ -6,14 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Plus, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check, Lock, Unlock, Download } from 'lucide-react'
-import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
+import { ArrowLeft, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check, Lock, Unlock, Download } from 'lucide-react'
+import { BillInput, BillInputInline } from '@/components/BillInput'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
 import type { SessionDetail, Bill, ApiResponse, CreateBillDto, PayerInput, SplitDetailInput } from '@/types/api'
 
 type TabType = 'overview' | 'bills' | 'debts'
-type SplitMode = 'EQUAL' | 'CUSTOM'
 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -21,12 +20,6 @@ export default function SessionDetailPage() {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [showBillModal, setShowBillModal] = useState(false)
-  const [billDescription, setBillDescription] = useState('')
-  const [billAmount, setBillAmount] = useState('')
-  const [selectedPayer, setSelectedPayer] = useState('')
-  const [splitMode, setSplitMode] = useState<SplitMode>('EQUAL')
-  const [customSplits, setCustomSplits] = useState<Record<string, string>>({})
-  const [selectedSplitParticipants, setSelectedSplitParticipants] = useState<string[]>([])
   const [editingBill, setEditingBill] = useState<{
     id: string
     description: string
@@ -60,7 +53,7 @@ export default function SessionDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['sessions', id] })
       queryClient.invalidateQueries({ queryKey: ['sessions', id, 'bills'] })
       queryClient.invalidateQueries({ queryKey: ['debts'] })
-      resetBillForm()
+      setShowBillModal(false)
       toast.success('Thêm hoá đơn thành công!')
     },
     onError: () => {
@@ -213,77 +206,6 @@ export default function SessionDetailPage() {
     },
   })
 
-  const handleCreateBill = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedPayer) {
-      toast.error('Vui lòng chọn người trả tiền')
-      return
-    }
-
-    const payers: PayerInput[] = [
-      { participant_id: selectedPayer, amount: billAmount },
-    ]
-
-    let split_details: SplitDetailInput[] | undefined
-
-    if (splitMode === 'EQUAL') {
-      // Equal split among selected participants only
-      if (selectedSplitParticipants.length === 0) {
-        toast.error('Vui lòng chọn ít nhất 1 người để chia tiền')
-        return
-      }
-      const amountPerPerson = (parseFloat(billAmount) / selectedSplitParticipants.length).toFixed(0)
-      split_details = selectedSplitParticipants.map((participant_id) => ({
-        participant_id,
-        amount: amountPerPerson,
-      }))
-    } else if (splitMode === 'CUSTOM') {
-      split_details = Object.entries(customSplits)
-        .filter(([, amount]) => parseFloat(amount) > 0)
-        .map(([participant_id, amount]) => ({
-          participant_id,
-          amount,
-        }))
-
-      const totalCustom = split_details.reduce((sum, s) => sum + parseFloat(s.amount), 0)
-      if (Math.abs(totalCustom - parseFloat(billAmount)) > 0.01) {
-        toast.error(`Tổng tiền chia (${totalCustom.toLocaleString()}) phải bằng tổng hoá đơn (${parseFloat(billAmount).toLocaleString()})`)
-        return
-      }
-    }
-
-    createBill.mutate({
-      description: billDescription,
-      total_amount: billAmount,
-      payers,
-      split_strategy: splitMode,
-      split_details,
-    })
-  }
-
-  const resetBillForm = () => {
-    setShowBillModal(false)
-    setBillDescription('')
-    setBillAmount('')
-    setSelectedPayer('')
-    setSplitMode('EQUAL')
-    setCustomSplits({})
-    setSelectedSplitParticipants([])
-  }
-
-  const toggleSplitParticipant = (participantId: string) => {
-    setSelectedSplitParticipants((prev) =>
-      prev.includes(participantId)
-        ? prev.filter((id) => id !== participantId)
-        : [...prev, participantId]
-    )
-  }
-
-  const selectAllParticipants = () => {
-    if (session) {
-      setSelectedSplitParticipants(session.participants.map((p) => p.id))
-    }
-  }
 
   if (isLoading) {
     return (
@@ -520,26 +442,42 @@ export default function SessionDetailPage() {
 
       {activeTab === 'bills' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            {session.status === 'active' ? (
-              <FunTooltip messages={FUN_MESSAGES.addBill}>
-                <Button onClick={() => setShowBillModal(true)} className="gap-2 hover-wiggle">
-                  <Plus className="h-4 w-4" />
-                  Thêm hoá đơn
-                </Button>
-              </FunTooltip>
+          {/* Bill Input - Inline or Expanded */}
+          {session.status === 'active' ? (
+            showBillModal ? (
+              <BillInput
+                participants={session.participants}
+                onSubmit={(data) => {
+                  createBill.mutate({
+                    description: data.description,
+                    total_amount: data.total_amount,
+                    payers: data.payers,
+                    split_strategy: data.split_strategy,
+                    split_details: data.split_details,
+                  })
+                }}
+                onCancel={() => setShowBillModal(false)}
+                isSubmitting={createBill.isPending}
+              />
             ) : (
-              <Button disabled className="gap-2 opacity-50">
-                <Lock className="h-4 w-4" />
-                Session đã đóng
-              </Button>
-            )}
-          </div>
+              <BillInputInline
+                participants={session.participants}
+                onExpand={() => setShowBillModal(true)}
+              />
+            )
+          ) : (
+            <div className="flex items-center justify-center gap-2 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500">
+              <Lock className="h-4 w-4" />
+              <span>Session đã đóng - Không thể thêm hoá đơn mới</span>
+            </div>
+          )}
 
           {bills?.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
+                <Receipt className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                 <p className="text-muted-foreground">Chưa có hoá đơn nào</p>
+                <p className="text-sm text-gray-400">Thêm hoá đơn đầu tiên để bắt đầu chia tiền</p>
               </CardContent>
             </Card>
           ) : (
@@ -819,184 +757,6 @@ export default function SessionDetailPage() {
           <Button onClick={() => navigate('/debts')} variant="outline" className="w-full">
             Xem tổng hợp công nợ tất cả cuộc nhậu
           </Button>
-        </div>
-      )}
-
-      {showBillModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <CardTitle>Thêm hoá đơn mới</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateBill} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="description">Mô tả</Label>
-                  <Input
-                    id="description"
-                    placeholder="VD: Tăng 1 - Ốc xào"
-                    value={billDescription}
-                    onChange={(e) => setBillDescription(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Số tiền (VND)</Label>
-                  <Input
-                    id="amount"
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="500,000"
-                    value={billAmount ? Number(billAmount).toLocaleString('vi-VN') : ''}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^\d]/g, '')
-                      setBillAmount(value)
-                    }}
-                    required
-                  />
-                  {billAmount && (
-                    <p className="text-xs text-muted-foreground">
-                      = {Number(billAmount).toLocaleString('vi-VN')}đ
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="payer">Ai trả tiền?</Label>
-                  <select
-                    id="payer"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={selectedPayer}
-                    onChange={(e) => setSelectedPayer(e.target.value)}
-                    required
-                  >
-                    <option value="">Chọn người trả</option>
-                    {session.participants.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.display_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Cách chia tiền</Label>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant={splitMode === 'EQUAL' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        setSplitMode('EQUAL')
-                        selectAllParticipants()
-                      }}
-                      className="flex-1"
-                    >
-                      Chia đều
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={splitMode === 'CUSTOM' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        setSplitMode('CUSTOM')
-                        const initial: Record<string, string> = {}
-                        session.participants.forEach((p) => {
-                          initial[p.id] = ''
-                        })
-                        setCustomSplits(initial)
-                      }}
-                      className="flex-1"
-                    >
-                      Tuỳ chỉnh
-                    </Button>
-                  </div>
-                </div>
-
-                {splitMode === 'EQUAL' && (
-                  <div className="space-y-3 rounded-lg border p-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">Chọn người chia tiền</p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={selectAllParticipants}
-                      >
-                        Chọn tất cả
-                      </Button>
-                    </div>
-                    {session.participants.map((p) => (
-                      <label
-                        key={p.id}
-                        className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedSplitParticipants.includes(p.id)}
-                          onChange={() => toggleSplitParticipant(p.id)}
-                          className="h-4 w-4 rounded border-gray-300"
-                        />
-                        <span className="text-sm">{p.display_name}</span>
-                      </label>
-                    ))}
-                    {selectedSplitParticipants.length > 0 && billAmount && (
-                      <p className="text-sm font-medium text-primary">
-                        Mỗi người: {formatCurrency(
-                          (parseFloat(billAmount) / selectedSplitParticipants.length).toFixed(0)
-                        )} ({selectedSplitParticipants.length} người)
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {splitMode === 'CUSTOM' && (
-                  <div className="space-y-3 rounded-lg border p-3">
-                    <p className="text-sm text-muted-foreground">
-                      Nhập số tiền mỗi người chịu (tổng phải bằng {billAmount ? formatCurrency(billAmount) : '0đ'})
-                    </p>
-                    {session.participants.map((p) => (
-                      <div key={p.id} className="flex items-center gap-2">
-                        <span className="w-24 truncate text-sm">{p.display_name}</span>
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={customSplits[p.id] || ''}
-                          onChange={(e) =>
-                            setCustomSplits((prev) => ({
-                              ...prev,
-                              [p.id]: e.target.value,
-                            }))
-                          }
-                          className="flex-1"
-                        />
-                      </div>
-                    ))}
-                    <p className="text-sm font-medium">
-                      Tổng: {formatCurrency(
-                        Object.values(customSplits)
-                          .reduce((sum, v) => sum + (parseFloat(v) || 0), 0)
-                          .toString()
-                      )}
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={resetBillForm}
-                  >
-                    Huỷ
-                  </Button>
-                  <Button type="submit" className="flex-1" disabled={createBill.isPending}>
-                    {createBill.isPending ? 'Đang thêm...' : 'Thêm'}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
         </div>
       )}
 

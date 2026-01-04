@@ -3,8 +3,8 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::api::sessions::{
-    BillResponse, ParticipantResponse, PayerInput, SessionDetailResponse, SessionResponse,
-    SplitDetailInput,
+    BillResponse, ParticipantBasicInfo, ParticipantResponse, PayerInput, SessionDetailResponse, 
+    SessionResponse, SplitDetailInput,
 };
 use crate::domain::session::{ParticipantRole, SessionStatus};
 use crate::error::AppError;
@@ -55,8 +55,14 @@ impl SessionRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        let sessions = rows.into_iter().map(|row| {
-            SessionResponse {
+        // Build sessions with enhanced data
+        let mut sessions = Vec::new();
+        for row in rows {
+            let participants = self.get_session_participants_basic(row.id).await?;
+            let (my_debt, my_owed) = self.get_user_debt_in_session(row.id, user_id).await?;
+            let settled_amount = self.get_session_settled_amount(row.id).await?;
+
+            sessions.push(SessionResponse {
                 id: row.id,
                 name: row.name,
                 location: row.location,
@@ -69,8 +75,12 @@ impl SessionRepository {
                 session_date: row.session_date,
                 participant_count: row.participant_count,
                 total_amount: row.total_amount,
-            }
-        }).collect();
+                participants,
+                my_debt,
+                my_owed,
+                settled_amount,
+            });
+        }
 
         Ok(sessions)
     }
@@ -157,8 +167,19 @@ impl SessionRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        let sessions = rows.into_iter().map(|row| {
-            SessionResponse {
+        // Build sessions with enhanced data
+        let mut sessions = Vec::new();
+        for row in rows {
+            // Get participants basic info (max 5 for display)
+            let participants = self.get_session_participants_basic(row.id).await?;
+            
+            // Get user's debt info in this session
+            let (my_debt, my_owed) = self.get_user_debt_in_session(row.id, user_id).await?;
+            
+            // Get settled amount
+            let settled_amount = self.get_session_settled_amount(row.id).await?;
+
+            sessions.push(SessionResponse {
                 id: row.id,
                 name: row.name,
                 location: row.location,
@@ -171,10 +192,108 @@ impl SessionRepository {
                 session_date: row.session_date,
                 participant_count: row.participant_count,
                 total_amount: row.total_amount,
-            }
-        }).collect();
+                participants,
+                my_debt,
+                my_owed,
+                settled_amount,
+            });
+        }
 
         Ok((sessions, total))
+    }
+
+    /// Get basic participant info for session cards (max 5)
+    async fn get_session_participants_basic(&self, session_id: Uuid) -> Result<Vec<ParticipantBasicInfo>, AppError> {
+        #[derive(sqlx::FromRow)]
+        struct ParticipantRow {
+            id: Uuid,
+            name: String,
+            avatar_url: Option<String>,
+        }
+
+        let participants: Vec<ParticipantRow> = sqlx::query_as(
+            r#"
+            SELECT 
+                sp.id,
+                COALESCE(u.full_name, sp.guest_name, 'Guest') as name,
+                u.avatar_url
+            FROM session_participants sp
+            LEFT JOIN users u ON sp.user_id = u.id
+            WHERE sp.session_id = $1
+            ORDER BY sp.joined_at
+            LIMIT 5
+            "#
+        )
+        .bind(session_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(participants.into_iter().map(|p| ParticipantBasicInfo {
+            id: p.id,
+            name: p.name,
+            avatar_url: p.avatar_url,
+        }).collect())
+    }
+
+    /// Get user's debt/owed amounts in a session
+    async fn get_user_debt_in_session(&self, session_id: Uuid, user_id: Uuid) -> Result<(Decimal, Decimal), AppError> {
+        // First get user's participant_id in this session
+        let participant_id: Option<Uuid> = sqlx::query_scalar(
+            r#"SELECT id FROM session_participants WHERE session_id = $1 AND user_id = $2"#
+        )
+        .bind(session_id)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let participant_id = match participant_id {
+            Some(id) => id,
+            None => return Ok((Decimal::ZERO, Decimal::ZERO)),
+        };
+
+        // Get amount user owes (debtor)
+        let my_debt: Decimal = sqlx::query_scalar(
+            r#"
+            SELECT COALESCE(SUM(amount), 0)
+            FROM debts 
+            WHERE session_id = $1 AND debtor_id = $2 AND status = 'pending'
+            "#
+        )
+        .bind(session_id)
+        .bind(participant_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Get amount user is owed (creditor)
+        let my_owed: Decimal = sqlx::query_scalar(
+            r#"
+            SELECT COALESCE(SUM(amount), 0)
+            FROM debts 
+            WHERE session_id = $1 AND creditor_id = $2 AND status = 'pending'
+            "#
+        )
+        .bind(session_id)
+        .bind(participant_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok((my_debt, my_owed))
+    }
+
+    /// Get total settled amount in a session
+    async fn get_session_settled_amount(&self, session_id: Uuid) -> Result<Decimal, AppError> {
+        let settled: Decimal = sqlx::query_scalar(
+            r#"
+            SELECT COALESCE(SUM(amount), 0)
+            FROM debts 
+            WHERE session_id = $1 AND status = 'settled'
+            "#
+        )
+        .bind(session_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(settled)
     }
 
     pub async fn create(
@@ -216,6 +335,20 @@ impl SessionRepository {
 
         tx.commit().await?;
 
+        // Get owner info for participants list
+        let owner_info: Option<(String, Option<String>)> = sqlx::query_as(
+            "SELECT full_name, avatar_url FROM users WHERE id = $1"
+        )
+        .bind(created_by)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let participants = vec![ParticipantBasicInfo {
+            id: Uuid::nil(), // Will be actual ID but we don't have it easily here
+            name: owner_info.clone().map(|(n, _)| n).unwrap_or_else(|| "Unknown".to_string()),
+            avatar_url: owner_info.and_then(|(_, a)| a),
+        }];
+
         Ok(SessionResponse {
             id: session_id,
             name: name.to_string(),
@@ -226,6 +359,10 @@ impl SessionRepository {
             session_date,
             participant_count: 1,
             total_amount: Decimal::ZERO,
+            participants,
+            my_debt: Decimal::ZERO,
+            my_owed: Decimal::ZERO,
+            settled_amount: Decimal::ZERO,
         })
     }
 
@@ -316,6 +453,9 @@ impl SessionRepository {
 
         tx.commit().await?;
 
+        // Get participants basic info
+        let participants = self.get_session_participants_basic(session_id).await?;
+
         Ok(SessionResponse {
             id: session_id,
             name: name.to_string(),
@@ -326,6 +466,10 @@ impl SessionRepository {
             session_date: date,
             participant_count,
             total_amount: Decimal::ZERO,
+            participants,
+            my_debt: Decimal::ZERO,
+            my_owed: Decimal::ZERO,
+            settled_amount: Decimal::ZERO,
         })
     }
 
@@ -514,6 +658,10 @@ impl SessionRepository {
         .fetch_one(&self.pool)
         .await?;
 
+        // Get participants and debt info
+        let participants = self.get_session_participants_basic(session_id).await?;
+        let settled_amount = self.get_session_settled_amount(session_id).await?;
+
         Ok(SessionResponse {
             id: session.id,
             name: session.name,
@@ -524,6 +672,10 @@ impl SessionRepository {
             session_date: session.session_date,
             participant_count,
             total_amount,
+            participants,
+            my_debt: Decimal::ZERO, // Not tracking user context here
+            my_owed: Decimal::ZERO,
+            settled_amount,
         })
     }
 

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { MapPin, Calendar, ArrowRight } from 'lucide-react'
+import { MapPin, Calendar, ArrowRight, TrendingDown, TrendingUp } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { cn } from '@/lib/utils'
 
@@ -19,6 +19,7 @@ interface SessionCardProps {
   participants: Participant[]
   user_debt?: number
   user_owed?: number
+  settled_amount?: number
 }
 
 const STATUS_CONFIG = {
@@ -77,6 +78,7 @@ export function SessionCard({
   participants,
   user_debt = 0,
   user_owed = 0,
+  settled_amount = 0,
 }: SessionCardProps) {
   const statusConfig = STATUS_CONFIG[status]
   const formattedDate = new Date(date).toLocaleDateString('vi-VN', {
@@ -85,12 +87,17 @@ export function SessionCard({
     year: 'numeric',
   })
 
+  // Calculate settlement progress
+  const totalDebts = total_amount > 0 ? total_amount : 1
+  const settlementProgress = Math.min(100, Math.round((settled_amount / totalDebts) * 100))
+  const hasDebtInfo = user_debt > 0 || user_owed > 0
+
   return (
     <Link
       to={`/sessions/${id}`}
       className="block group h-full"
     >
-      <div className="rounded-xl border bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/50 space-y-3 h-full flex flex-col">
+      <div className="rounded-xl border bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-lg transition-all duration-300 hover:border-primary/50 hover:-translate-y-1 space-y-3 h-full flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0 overflow-hidden">
@@ -101,7 +108,7 @@ export function SessionCard({
               {location && (
                 <div className="flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span>{location}</span>
+                  <span className="truncate">{location}</span>
                 </div>
               )}
               <div className="flex items-center gap-1">
@@ -116,31 +123,60 @@ export function SessionCard({
         </div>
 
         {/* Participants */}
-        <div className="flex-1">
+        <div className="flex items-center justify-between">
           <AvatarStack participants={participants} max={5} />
+          {participants.length > 5 && (
+            <span className="text-xs text-gray-400">+{participants.length - 5}</span>
+          )}
         </div>
+
+        {/* Settlement Progress (only show if has bills) */}
+        {total_amount > 0 && status !== 'settled' && (
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+              <span>Tiến độ thanh toán</span>
+              <span>{settlementProgress}%</span>
+            </div>
+            <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div 
+                className={cn(
+                  "h-full transition-all duration-500 rounded-full",
+                  settlementProgress === 100 
+                    ? "bg-green-500" 
+                    : settlementProgress > 50 
+                      ? "bg-amber-500" 
+                      : "bg-primary"
+                )}
+                style={{ width: `${settlementProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Debt Info */}
+        {hasDebtInfo && (
+          <div className="flex flex-wrap gap-2">
+            {user_debt > 0 && (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-medium">
+                <TrendingDown className="h-3 w-3" />
+                <span>Nợ {formatCurrency(user_debt)}</span>
+              </div>
+            )}
+            {user_owed > 0 && (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-xs font-medium">
+                <TrendingUp className="h-3 w-3" />
+                <span>Được {formatCurrency(user_owed)}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex justify-between items-center pt-2 border-t dark:border-gray-700 mt-auto">
-          <span className="font-semibold text-gray-900 dark:text-gray-100">
+          <span className="font-bold text-lg text-gray-900 dark:text-gray-100">
             {formatCurrency(total_amount)}
           </span>
-          <div className="flex items-center gap-2 text-sm">
-            {user_debt > 0 && (
-              <span className="text-red-500 dark:text-red-400">
-                Bạn nợ {formatCurrency(user_debt)}
-              </span>
-            )}
-            {user_owed > 0 && (
-              <span className="text-green-500 dark:text-green-400">
-                Được nợ {formatCurrency(user_owed)}
-              </span>
-            )}
-            {user_debt === 0 && user_owed === 0 && status !== 'settled' && (
-              <span className="text-gray-400"></span>
-            )}
-            <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-primary group-hover:translate-x-1 transition-all" />
-          </div>
+          <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-primary group-hover:translate-x-1 transition-all" />
         </div>
       </div>
     </Link>
