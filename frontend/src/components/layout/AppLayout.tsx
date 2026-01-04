@@ -1,4 +1,4 @@
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useMood } from '@/contexts/MoodContext'
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
@@ -6,6 +6,8 @@ import { LogOut, User, Wallet, Home, Users, Shield, Sparkles } from 'lucide-reac
 import { Button } from '@/components/ui/button'
 import { InteractiveBackground } from '@/components/ui/InteractiveBackground'
 import { MusicPlayer } from '@/components/ui/MusicPlayer'
+import { AnimatedOutlet } from '@/components/PageTransition'
+import { SkipLink } from '@/components/SkipLink'
 
 export default function AppLayout() {
   const { user, logout } = useAuth()
@@ -40,6 +42,9 @@ export default function AppLayout() {
 
   return (
     <div className={`min-h-screen bg-gradient-to-b ${moodConfig.theme.background} ${darkBgMap[moodConfig.name] || darkBgMap.neutral} pb-16 md:pb-0 transition-colors duration-500`}>
+      {/* Accessibility: Skip to main content */}
+      <SkipLink />
+      
       <InteractiveBackground />
       {/* Desktop Header */}
       <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/90 backdrop-blur-md shadow-sm">
@@ -68,22 +73,22 @@ export default function AppLayout() {
                     </Button>
                   </Link>
                 )}
-                {showDebts && (
-                  <Link to="/debts">
-                    <Button variant="ghost" size="sm" className="gap-2">
-                      <Wallet className="h-4 w-4" />
-                      Công nợ
-                    </Button>
-                  </Link>
-                )}
-                {showGames && (
-                  <Link to="/games">
-                    <Button variant="ghost" size="sm" className="gap-2">
-                      <Sparkles className="h-4 w-4" />
-                      Trò chơi
-                    </Button>
-                  </Link>
-                )}
+            {showDebts && (
+              <Link to="/debts" data-onboarding="debts">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <Wallet className="h-4 w-4" />
+                  Công nợ
+                </Button>
+              </Link>
+            )}
+            {showGames && (
+              <Link to="/games" data-onboarding="games">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Trò chơi
+                </Button>
+              </Link>
+            )}
               </>
             )}
 
@@ -111,8 +116,8 @@ export default function AppLayout() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-4 md:py-6">
-        <Outlet />
+      <main id="main-content" tabIndex={-1} className="container mx-auto px-4 py-4 md:py-6 focus:outline-none">
+        <AnimatedOutlet />
       </main>
 
       {/* Mobile Bottom Navigation */}

@@ -1,7 +1,9 @@
-import { Link } from 'react-router-dom'
-import { MapPin, Calendar, ArrowRight, TrendingDown, TrendingUp } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { MapPin, Calendar, ArrowRight, TrendingDown, TrendingUp, Pencil, Trash2 } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { cn } from '@/lib/utils'
+import { SwipeActions } from '@/components/ui/SwipeActions'
+import { triggerHaptic } from '@/hooks/useHaptic'
 
 interface Participant {
   id: string
@@ -180,6 +182,58 @@ export function SessionCard({
         </div>
       </div>
     </Link>
+  )
+}
+
+// Swipeable version of SessionCard for mobile
+interface SwipeableSessionCardProps extends SessionCardProps {
+  onDelete?: () => void
+  enableSwipe?: boolean
+}
+
+export function SwipeableSessionCard({
+  onDelete,
+  enableSwipe = true,
+  ...props
+}: SwipeableSessionCardProps) {
+  const navigate = useNavigate()
+  
+  if (!enableSwipe) {
+    return <SessionCard {...props} />
+  }
+
+  const rightActions = onDelete ? [
+    {
+      icon: <Trash2 className="h-5 w-5" />,
+      label: 'Xóa',
+      onClick: () => {
+        triggerHaptic('heavy')
+        onDelete()
+      },
+      color: 'red' as const,
+    },
+  ] : []
+
+  const leftActions = [
+    {
+      icon: <Pencil className="h-5 w-5" />,
+      label: 'Sửa',
+      onClick: () => {
+        triggerHaptic('tap')
+        navigate(`/sessions/${props.id}`)
+      },
+      color: 'blue' as const,
+    },
+  ]
+
+  return (
+    <SwipeActions
+      leftActions={leftActions}
+      rightActions={rightActions}
+      className="rounded-xl overflow-hidden"
+    >
+      <SessionCard {...props} />
+    </SwipeActions>
   )
 }
 

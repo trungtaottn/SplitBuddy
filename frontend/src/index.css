@@ -465,4 +465,101 @@
     50% { transform: scale(1.2); }
     100% { transform: scale(1); opacity: 1; }
   }
+  
+  /* ==================== ACCESSIBILITY ==================== */
+  
+  /* Skip to content link */
+  .skip-link {
+    @apply absolute -top-10 left-1/2 -translate-x-1/2 z-[9999];
+    @apply px-4 py-2 bg-primary text-primary-foreground font-medium rounded-b-lg;
+    @apply focus:top-0 transition-[top] duration-200;
+  }
+  
+  /* High contrast focus states */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+  }
+  
+  .focus-ring-inset {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset;
+  }
+  
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  
+  /* High contrast mode improvements */
+  @media (prefers-contrast: more) {
+    :root {
+      --border: 20 5.9% 50%;
+      --ring: 24 95% 40%;
+    }
+    
+    .dark {
+      --border: 217 33% 40%;
+      --ring: 24 95% 60%;
+    }
+  }
+  
+  /* Screen reader only content */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+  
+  /* Make focus visible for keyboard users */
+  .focus-visible-only:focus {
+    outline: none;
+  }
+  
+  .focus-visible-only:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2;
+  }
+  
+  /* Interactive element states */
+  .interactive {
+    @apply cursor-pointer select-none;
+    @apply transition-all duration-150;
+    @apply active:scale-[0.98];
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+  }
+  
+  /* Touch target sizing (min 44x44px) */
+  .touch-target-lg {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  
+  /* Visual hidden for decorative elements */
+  [aria-hidden="true"] {
+    pointer-events: none;
+  }
+  
+  /* Disabled states */
+  .disabled {
+    @apply opacity-50 cursor-not-allowed pointer-events-none;
+  }
+  
+  /* Loading state */
+  .loading {
+    @apply relative pointer-events-none;
+  }
+  
+  .loading::after {
+    content: '';
+    @apply absolute inset-0 bg-background/50 backdrop-blur-sm;
+  }
 }

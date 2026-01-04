@@ -14,6 +14,7 @@ import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
 import { SessionCard } from '@/components/SessionCard'
 import { EmptyState } from '@/components/EmptyState'
 import { SessionListSkeleton } from '@/components/ui/skeleton'
+import { useOnboarding } from '@/components/Onboarding'
 import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupDetail, PaginatedResponse } from '@/types/api'
 
 export default function DashboardPage() {
@@ -26,12 +27,28 @@ export default function DashboardPage() {
   const [guestNames, setGuestNames] = useState<string[]>([])
   const [newGuestName, setNewGuestName] = useState('')
   const queryClient = useQueryClient()
+  const { startOnboarding } = useOnboarding()
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [currentPage, setCurrentPage] = useState(1)
   const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  // Auto-start onboarding for new users
+  useEffect(() => {
+    const hasCompletedOnboarding = localStorage.getItem('splitbuddy-onboarding-completed')
+    const hasSeenOnboarding = localStorage.getItem('splitbuddy-onboarding-shown')
+    
+    if (!hasCompletedOnboarding && !hasSeenOnboarding) {
+      // Delay to let the page load first
+      const timer = setTimeout(() => {
+        localStorage.setItem('splitbuddy-onboarding-shown', 'true')
+        startOnboarding()
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [startOnboarding])
 
   // Debounce search
   useEffect(() => {
@@ -190,7 +207,11 @@ export default function DashboardPage() {
           <Beer className="h-5 w-5" /> Cuộc nhậu của tôi
         </h2>
         <FunTooltip messages={FUN_MESSAGES.createSession}>
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2 bg-orange-500 hover:bg-orange-600 rounded-lg hover-wiggle font-bold">
+          <Button 
+            onClick={() => setShowCreateModal(true)} 
+            className="gap-2 bg-orange-500 hover:bg-orange-600 rounded-lg hover-wiggle font-bold"
+            data-onboarding="create-session"
+          >
             <Plus className="h-4 w-4" />
             Nhậu đê...
           </Button>

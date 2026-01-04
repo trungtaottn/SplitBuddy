@@ -8,8 +8,9 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/toaster'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
-import { User, Lock, Camera, Save, Eye, EyeOff, Loader2, Palette, Sparkles, Trophy, Star } from 'lucide-react'
+import { User, Lock, Camera, Save, Eye, EyeOff, Loader2, Palette, Sparkles, Trophy, Star, Lightbulb, HelpCircle } from 'lucide-react'
 import WrappedModal from '@/components/WrappedModal'
+import { useOnboarding } from '@/components/Onboarding'
 import type { ApiResponse, PersonaWithUser, UserAchievement } from '@/types/api'
 
 interface UserProfile {
@@ -442,6 +443,19 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
+      {/* Help & Support */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <HelpCircle className="h-5 w-5" />
+            Trợ giúp
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <ResetOnboardingButton />
+        </CardContent>
+      </Card>
+
       {/* Version Info */}
       <div className="text-center text-xs text-gray-400 py-4">
         <p>SplitBuddy v{appVersion}</p>
@@ -453,5 +467,27 @@ export default function ProfilePage() {
         onClose={() => setShowWrapped(false)} 
       />
     </div>
+  )
+}
+
+// Reset onboarding button component
+function ResetOnboardingButton() {
+  const { startOnboarding } = useOnboarding()
+  
+  const handleReset = () => {
+    localStorage.removeItem('splitbuddy-onboarding-completed')
+    localStorage.removeItem('splitbuddy-onboarding-shown')
+    startOnboarding()
+  }
+  
+  return (
+    <Button 
+      variant="outline" 
+      className="w-full gap-2"
+      onClick={handleReset}
+    >
+      <Lightbulb className="h-4 w-4" />
+      Xem lại hướng dẫn sử dụng
+    </Button>
   )
 }
