@@ -8,6 +8,9 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, Plus, UserPlus, Trash2, BarChart3, Beer } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
+import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/EmptyState'
+import { Celebration } from '@/components/ui/Celebration'
 import type { Group, GroupDetail, ApiResponse, CreateGroupDto, AddMemberDto, GroupMember } from '@/types/api'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -53,6 +56,7 @@ export default function GroupsPage() {
       setShowCreateModal(false)
       setGroupName('')
       setGroupDescription('')
+      setShowCelebration(true)
       toast.success('Tạo nhóm thành công!')
     },
     onError: () => {
@@ -172,10 +176,37 @@ export default function GroupsPage() {
     setShowDetailModal(true)
   }
 
+  // State for celebration
+  const [showCelebration, setShowCelebration] = useState(false)
+
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-56" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-xl border bg-white dark:bg-gray-800 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Skeleton variant="circular" className="h-8 w-8" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+              <Skeleton className="h-4 w-full" />
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-6 w-24 rounded-full" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-8 w-10" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -193,18 +224,17 @@ export default function GroupsPage() {
         </Button>
       </div>
 
+      {/* Celebration effect */}
+      <Celebration show={showCelebration} onComplete={() => setShowCelebration(false)} />
+
       {groups?.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Users className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-            <p className="mt-4 text-lg font-medium">Chưa có nhóm nào</p>
-            <p className="text-muted-foreground">Tạo nhóm để quản lý nơi chứa các con me men dễ dàng hơn</p>
-            <Button onClick={() => setShowCreateModal(true)} className="mt-4 gap-2">
-              <Plus className="h-4 w-4" />
-              Tạo nhóm đầu tiên
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState
+          type="groups"
+          action={{
+            label: 'Tạo nhóm đầu tiên',
+            onClick: () => setShowCreateModal(true),
+          }}
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {groups?.map((group) => (

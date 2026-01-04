@@ -12,6 +12,7 @@ import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
 import { cn } from '@/lib/utils'
+import { DebtCardSkeleton, StatsSkeleton } from '@/components/ui/skeleton'
 import type { DebtSummary, ApiResponse, SessionDebt } from '@/types/api'
 
 type TabType = 'summary' | 'sessions'
@@ -244,8 +245,23 @@ export default function DebtsPage() {
 
   if (isLoading || sessionDebtsLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <div className="space-y-6 animate-in fade-in duration-300">
+        <h1 className="text-2xl font-bold">Công nợ của tôi</h1>
+        
+        {/* Stats skeleton */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <StatsSkeleton />
+        </div>
+        
+        {/* Debt cards skeleton */}
+        <div className="space-y-4">
+          <div className="h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded skeleton" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <DebtCardSkeleton />
+            <DebtCardSkeleton />
+            <DebtCardSkeleton />
+          </div>
+        </div>
       </div>
     )
   }

@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check, Lock, Unlock, Download } from 'lucide-react'
 import { BillInput, BillInputInline } from '@/components/BillInput'
+import { PageSkeleton } from '@/components/ui/skeleton'
+import { SuccessToast } from '@/components/ui/Celebration'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
 import type { SessionDetail, Bill, ApiResponse, CreateBillDto, PayerInput, SplitDetailInput } from '@/types/api'
@@ -54,7 +56,7 @@ export default function SessionDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['sessions', id, 'bills'] })
       queryClient.invalidateQueries({ queryKey: ['debts'] })
       setShowBillModal(false)
-      toast.success('Thêm hoá đơn thành công!')
+      setShowBillSuccess(true)
     },
     onError: () => {
       toast.error('Có lỗi xảy ra. Vui lòng thử lại.')
@@ -207,12 +209,11 @@ export default function SessionDetailPage() {
   })
 
 
+  // Celebration states
+  const [showBillSuccess, setShowBillSuccess] = useState(false)
+
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
+    return <PageSkeleton type="detail" />
   }
 
   if (!session) {
@@ -796,6 +797,14 @@ export default function SessionDetailPage() {
           </Card>
         </div>
       )}
+
+      {/* Success Toast for Bill Creation */}
+      <SuccessToast
+        message="Thêm hoá đơn thành công! 🧾"
+        show={showBillSuccess}
+        onHide={() => setShowBillSuccess(false)}
+        emoji="✅"
+      />
     </div>
   )
 }
