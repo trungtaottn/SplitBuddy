@@ -88,14 +88,14 @@ export default function WrappedModal({ isOpen, onClose, year = new Date().getFul
   const handleShare = async () => {
     try {
       await navigator.share({
-        title: `My SplitBuddy ${year} Wrapped`,
+        title: `My Split Buddy ${year} Wrapped`,
         text: `I attended ${wrapped?.total_sessions} sessions and spent ${formatCurrency(wrapped?.total_spent || 0)} in ${year}! 🍻`,
         url: window.location.origin,
       })
     } catch {
       // Fallback: copy to clipboard
       navigator.clipboard.writeText(
-        `My SplitBuddy ${year} Wrapped: ${wrapped?.total_sessions} sessions, ${formatCurrency(wrapped?.total_spent || 0)} spent! 🍻`
+        `My Split Buddy ${year} Wrapped: ${wrapped?.total_sessions} sessions, ${formatCurrency(wrapped?.total_spent || 0)} spent! 🍻`
       )
     }
   }

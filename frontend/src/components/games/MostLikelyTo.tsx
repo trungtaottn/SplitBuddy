@@ -141,28 +141,28 @@ export function MostLikelyTo({ onClose }: MostLikelyToProps) {
         <div className="min-h-[200px] flex items-center justify-center">
           {isRevealing ? (
             <div className="text-center space-y-4">
-              <div className="text-6xl font-bold text-indigo-500 animate-pulse">
+              <div className="text-6xl font-heading font-bold text-primary animate-pulse">
                 {countdown}
               </div>
-              <p className="text-muted-foreground">Chuẩn bị chỉ người...</p>
+              <p className="text-muted-foreground font-body">Chuẩn bị chỉ người...</p>
             </div>
           ) : currentQuestion ? (
             <div className="text-center space-y-4">
-              <div className="p-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-200">
-                <p className="text-xl font-semibold text-indigo-800 leading-relaxed">
+              <div className="card-paper p-6 rounded-2xl border-2 border-primary/30">
+                <p className="text-xl font-heading font-semibold text-foreground leading-relaxed">
                   {currentQuestion}
                 </p>
               </div>
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <ThumbsUp className="h-4 w-4" />
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground font-body">
+                <ThumbsUp className="h-4 w-4 text-primary" />
                 <span>Đếm 3-2-1 rồi chỉ!</span>
-                <ThumbsUp className="h-4 w-4" />
+                <ThumbsUp className="h-4 w-4 text-primary" />
               </div>
             </div>
           ) : (
             <div className="text-center space-y-4">
-              <HelpCircle className="h-16 w-16 mx-auto text-indigo-300" />
-              <p className="text-muted-foreground">Bấm nút để bắt đầu!</p>
+              <HelpCircle className="h-16 w-16 mx-auto text-primary/30" />
+              <p className="text-muted-foreground font-body">Bấm nút để bắt đầu!</p>
             </div>
           )}
         </div>
@@ -171,7 +171,8 @@ export function MostLikelyTo({ onClose }: MostLikelyToProps) {
         <Button
           onClick={nextQuestion}
           disabled={isRevealing}
-          className="w-full gap-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+          variant="stamp"
+          className="w-full gap-2"
           size="lg"
         >
           <Shuffle className="h-5 w-5" />

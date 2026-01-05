@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/toaster'
 import { Moon, Sun } from 'lucide-react'
+import { BeerIcon } from '@/components/ui/BeerIcon'
 
 /**
  * LoginPage - Vintage Letterhead Style
@@ -97,12 +98,14 @@ export default function LoginPage() {
         <div className="card-paper p-8 texture-coffee animate-paper-slide">
           {/* Letterhead */}
           <div className="text-center mb-8 border-b-2 border-double border-border pb-6">
-            <div className="text-5xl mb-3 animate-bounce">🍺</div>
+            <div className="flex justify-center mb-3">
+              <BeerIcon size={64} animated />
+            </div>
             <h1 className="text-2xl font-bold tracking-tight mb-1">
-              SplitBuddy
+              Split Buddy
             </h1>
             <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-              Bill Splitting System
+              Nhậu đi chứ nhìn cái gì hả? 
             </p>
           </div>
 

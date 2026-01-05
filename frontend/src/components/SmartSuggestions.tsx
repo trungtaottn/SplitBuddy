@@ -122,7 +122,7 @@ export function SmartSuggestions({
         id: 'first-session',
         type: 'quick-action',
         icon: <Zap className="h-4 w-4 text-primary" />,
-        title: 'Bắt đầu với SplitBuddy',
+        title: 'Bắt đầu với Split Buddy',
         description: 'Tạo cuộc nhậu đầu tiên để trải nghiệm!',
         action: onCreateSession ? {
           label: 'Tạo ngay',

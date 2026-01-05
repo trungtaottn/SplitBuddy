@@ -16,10 +16,10 @@ interface OnboardingStep {
 const DEFAULT_STEPS: OnboardingStep[] = [
   {
     id: 'welcome',
-    title: 'Chào mừng đến SplitBuddy! 🍺',
+    title: 'Chào mừng đến Split Buddy!',
     description: 'Ứng dụng giúp bạn chia tiền nhậu dễ dàng với bạn bè. Hãy cùng tìm hiểu nhé!',
     position: 'center',
-    emoji: '👋',
+    emoji: '',
   },
   {
     id: 'create-session',
@@ -27,7 +27,7 @@ const DEFAULT_STEPS: OnboardingStep[] = [
     title: 'Tạo buổi nhậu',
     description: 'Bấm vào đây để tạo buổi nhậu mới. Thêm bạn bè và bắt đầu chia tiền!',
     position: 'bottom',
-    emoji: '➕',
+    emoji: '',
   },
   {
     id: 'add-bill',
@@ -35,7 +35,7 @@ const DEFAULT_STEPS: OnboardingStep[] = [
     title: 'Thêm hóa đơn',
     description: 'Sau khi tạo session, thêm các bill và chọn ai trả tiền, ai được chia.',
     position: 'bottom',
-    emoji: '🧾',
+    emoji: '',
   },
   {
     id: 'view-debts',
@@ -43,7 +43,7 @@ const DEFAULT_STEPS: OnboardingStep[] = [
     title: 'Xem công nợ',
     description: 'Xem ai nợ ai bao nhiêu, và nhắc nhở thanh toán dễ dàng!',
     position: 'right',
-    emoji: '💰',
+    emoji: '',
   },
   {
     id: 'play-games',
@@ -51,7 +51,7 @@ const DEFAULT_STEPS: OnboardingStep[] = [
     title: 'Chơi game vui',
     description: 'Mini games vui nhộn để làm cuộc nhậu thêm sôi động!',
     position: 'right',
-    emoji: '🎲',
+    emoji: '',
   },
 ]
 

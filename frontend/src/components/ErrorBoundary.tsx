@@ -132,7 +132,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
               {/* Fun message */}
               <p className="text-center text-xs text-muted-foreground mt-4">
-                💡 Tip: Nếu lỗi vẫn xảy ra, thử refresh lại trang (Ctrl + R)
+                Tip: Nếu lỗi vẫn xảy ra, thử refresh lại trang (Ctrl + R)
               </p>
             </CardContent>
           </Card>

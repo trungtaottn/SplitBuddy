@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { MusicPlayer } from '@/components/ui/MusicPlayer'
 import { AnimatedOutlet } from '@/components/PageTransition'
 import { SkipLink } from '@/components/SkipLink'
+import { BeerIcon } from '@/components/ui/BeerIcon'
 
 /**
  * AppLayout - Vintage Paper Style
@@ -51,10 +52,10 @@ export default function AppLayout() {
             to={isAdmin ? "/admin" : "/"} 
             className="flex items-center gap-3 group"
           >
-            <span className="text-xl md:text-2xl animate-bounce">🍺</span>
+            <BeerIcon size={28} animated className="md:w-8 md:h-8" />
             <div className="hidden sm:flex flex-col">
               <span className="text-lg font-bold tracking-tight text-foreground">
-                SplitBuddy
+                Split Buddy
               </span>
               <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground -mt-1">
                 Bill Splitter

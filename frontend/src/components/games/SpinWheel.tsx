@@ -14,20 +14,20 @@ interface SpinWheelProps {
   disabled?: boolean
 }
 
-// Soft gradient colors matching app theme (pink/rose tones)
+// Sepia monochrome colors matching vintage paper theme
 const SEGMENT_COLORS = [
-  '#fecdd3', // rose-200
-  '#fda4af', // rose-300
-  '#fb7185', // rose-400
-  '#f472b6', // pink-400
-  '#f9a8d4', // pink-300
-  '#fbcfe8', // pink-200
-  '#fce7f3', // pink-100
-  '#ffe4e6', // rose-100
-  '#fecaca', // red-200
-  '#fca5a5', // red-300
-  '#fdba74', // orange-300
-  '#fed7aa', // orange-200
+  '#EDE8DB', // card (light paper)
+  '#D4CCBB', // muted (worn paper)
+  '#C9BFA8', // secondary (worn paper)
+  '#F4F1E8', // background (aged parchment)
+  '#E8E0D0', // lighter paper
+  '#D9D0C0', // medium paper
+  '#C4B8A5', // darker paper
+  '#B8AA95', // aged paper
+  '#A89A85', // vintage paper
+  '#9C8E78', // old paper
+  '#8B7D6A', // antique paper
+  '#7A6D5A', // aged paper
 ]
 
 // Animation duration in ms

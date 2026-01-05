@@ -8,6 +8,7 @@ import { toast } from '@/components/ui/toaster'
 import { soundManager, vibrate, vibrationPatterns } from '@/utils/sounds'
 import type { ApiResponse } from '@/types/api'
 import { SpinWheel, DrinkingCounter, PlayerRotation, KingsCup, MostLikelyTo, CategoriesGame, HighOrLow } from '@/components/games'
+import { BeerIcon } from '@/components/ui/BeerIcon'
 
 type GameType = 'truth_or_dare' | 'never_have_i_ever' | 'challenge' | 'dice' | 'wheel'
 
@@ -408,185 +409,185 @@ export default function GamesPage() {
           Trò chơi nhậu
         </h1>
         <p className="text-muted-foreground mt-2 font-body">Chọn một trò chơi để bắt đầu cuộc vui!</p>
-        <p className="text-xs text-primary mt-1 font-body">Uống có trách nhiệm - Đã uống không lái xe</p>
+        <p className="text-xs text-primary mt-1 font-body italic">Uống có trách nhiệm - Đã uống không lái xe</p>
       </div>
 
       {/* Game Selection */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card 
-          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-pink-400 group"
+          className="card-interactive cursor-pointer border-2 hover:border-primary/50 group"
           onClick={() => handleGameSelect('truth_or_dare')}
         >
           <CardContent className="p-6 text-center relative">
             <button
-              className="absolute top-2 right-2 p-1 rounded-full hover:bg-pink-100 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-2 right-2 p-1 rounded-full hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={(e) => { e.stopPropagation(); setShowRules('truth_or_dare') }}
             >
-              <HelpCircle className="h-4 w-4 text-pink-400" />
+              <HelpCircle className="h-4 w-4 text-primary" />
             </button>
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-pink-100 to-pink-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <MessageCircleQuestion className="h-8 w-8 text-pink-500" />
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-primary/30">
+              <MessageCircleQuestion className="h-8 w-8 text-primary" />
             </div>
-            <h3 className="font-bold text-lg">Sự thật hay Thách thức</h3>
-            <p className="text-sm text-muted-foreground mt-1">55 câu hỏi & thử thách</p>
+            <h3 className="font-heading font-bold text-lg">Sự thật hay Thách thức</h3>
+            <p className="text-sm text-muted-foreground mt-1 font-body">55 câu hỏi & thử thách</p>
             <div className="flex justify-center gap-1 mt-2">
-              <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">Dễ</span>
-              <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full">Khó</span>
-              <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">18+</span>
+              <span className="text-xs px-2 py-0.5 bg-success/10 text-success rounded-full font-body">Dễ</span>
+              <span className="text-xs px-2 py-0.5 bg-destructive/10 text-destructive rounded-full font-body">Khó</span>
+              <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full font-body">18+</span>
             </div>
           </CardContent>
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-blue-400 group"
+          className="card-interactive cursor-pointer border-2 hover:border-primary/50 group"
           onClick={() => handleGameSelect('never_have_i_ever')}
         >
           <CardContent className="p-6 text-center relative">
             <button
-              className="absolute top-2 right-2 p-1 rounded-full hover:bg-blue-100 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-2 right-2 p-1 rounded-full hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={(e) => { e.stopPropagation(); setShowRules('never_have_i_ever') }}
             >
-              <HelpCircle className="h-4 w-4 text-blue-400" />
+              <HelpCircle className="h-4 w-4 text-primary" />
             </button>
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Hand className="h-8 w-8 text-blue-500" />
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-primary/30">
+              <Hand className="h-8 w-8 text-primary" />
             </div>
-            <h3 className="font-bold text-lg">Tôi chưa bao giờ</h3>
-            <p className="text-sm text-muted-foreground mt-1">30 câu hỏi thú vị</p>
-            <div className="flex justify-center gap-1 mt-2">
-              <Beer className="h-4 w-4 text-amber-500" />
-              <span className="text-xs text-amber-600">Ai đã làm = Uống!</span>
+            <h3 className="font-heading font-bold text-lg">Tôi chưa bao giờ</h3>
+            <p className="text-sm text-muted-foreground mt-1 font-body">30 câu hỏi thú vị</p>
+            <div className="flex justify-center gap-1 mt-2 items-center">
+              <BeerIcon size={16} className="text-warning" />
+              <span className="text-xs text-warning font-body">Ai đã làm = Uống!</span>
             </div>
           </CardContent>
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-orange-400 group"
+          className="card-interactive cursor-pointer border-2 hover:border-warning/50 group"
           onClick={() => handleGameSelect('challenge')}
         >
           <CardContent className="p-6 text-center relative">
             <button
-              className="absolute top-2 right-2 p-1 rounded-full hover:bg-orange-100 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-2 right-2 p-1 rounded-full hover:bg-warning/10 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={(e) => { e.stopPropagation(); setShowRules('challenge') }}
             >
-              <HelpCircle className="h-4 w-4 text-orange-400" />
+              <HelpCircle className="h-4 w-4 text-warning" />
             </button>
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-orange-100 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Flame className="h-8 w-8 text-orange-500 group-hover:animate-pulse" />
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-warning/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-warning/30">
+              <Flame className="h-8 w-8 text-warning group-hover:animate-pulse" />
             </div>
-            <h3 className="font-bold text-lg">Thử thách</h3>
-            <p className="text-sm text-muted-foreground mt-1">25 thử thách điên rồ</p>
-            <div className="flex justify-center gap-1 mt-2">
-              <Skull className="h-4 w-4 text-red-500" />
-              <span className="text-xs text-red-600">Thất bại = Phạt!</span>
+            <h3 className="font-heading font-bold text-lg">Thử thách</h3>
+            <p className="text-sm text-muted-foreground mt-1 font-body">25 thử thách điên rồ</p>
+            <div className="flex justify-center gap-1 mt-2 items-center">
+              <Skull className="h-4 w-4 text-destructive" />
+              <span className="text-xs text-destructive font-body">Thất bại = Phạt!</span>
             </div>
           </CardContent>
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-purple-400 group"
+          className="card-interactive cursor-pointer border-2 hover:border-primary/50 group"
           onClick={() => handleGameSelect('dice')}
         >
           <CardContent className="p-6 text-center relative">
             <button
-              className="absolute top-2 right-2 p-1 rounded-full hover:bg-purple-100 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-2 right-2 p-1 rounded-full hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={(e) => { e.stopPropagation(); setShowRules('dice') }}
             >
-              <HelpCircle className="h-4 w-4 text-purple-400" />
+              <HelpCircle className="h-4 w-4 text-primary" />
             </button>
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-indigo-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Dices className={`h-8 w-8 text-purple-500 ${isSpinning ? 'animate-bounce' : ''}`} />
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-primary/30">
+              <Dices className={`h-8 w-8 text-primary ${isSpinning ? 'animate-bounce' : ''}`} />
             </div>
-            <h3 className="font-bold text-lg">Tung xúc xắc</h3>
-            <p className="text-sm text-muted-foreground mt-1">May rủi quyết định!</p>
-            <div className="flex justify-center gap-1 mt-2">
-              <Zap className="h-4 w-4 text-yellow-500" />
-              <span className="text-xs text-purple-600">Đôi = Chọn người!</span>
+            <h3 className="font-heading font-bold text-lg">Tung xúc xắc</h3>
+            <p className="text-sm text-muted-foreground mt-1 font-body">May rủi quyết định!</p>
+            <div className="flex justify-center gap-1 mt-2 items-center">
+              <Zap className="h-4 w-4 text-warning" />
+              <span className="text-xs text-primary font-body">Đôi = Chọn người!</span>
             </div>
           </CardContent>
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-emerald-400 group"
+          className="card-interactive cursor-pointer border-2 hover:border-primary/50 group"
           onClick={() => setShowWheel(true)}
         >
           <CardContent className="p-6 text-center relative">
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-emerald-100 to-teal-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <CircleDot className="h-8 w-8 text-emerald-500 group-hover:animate-spin" />
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-success/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-success/30">
+              <CircleDot className="h-8 w-8 text-success group-hover:animate-spin" />
             </div>
-            <h3 className="font-bold text-lg">Vòng quay may mắn</h3>
-            <p className="text-sm text-muted-foreground mt-1">Quay để chọn người!</p>
-            <div className="flex justify-center gap-1 mt-2">
-              <Users className="h-4 w-4 text-emerald-500" />
-              <span className="text-xs text-emerald-600">Chọn người ngẫu nhiên</span>
+            <h3 className="font-heading font-bold text-lg">Vòng quay may mắn</h3>
+            <p className="text-sm text-muted-foreground mt-1 font-body">Quay để chọn người!</p>
+            <div className="flex justify-center gap-1 mt-2 items-center">
+              <Users className="h-4 w-4 text-success" />
+              <span className="text-xs text-success font-body">Chọn người ngẫu nhiên</span>
             </div>
           </CardContent>
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-yellow-400 group"
+          className="card-interactive cursor-pointer border-2 hover:border-warning/50 group"
           onClick={() => setShowKingsCup(true)}
         >
           <CardContent className="p-6 text-center relative">
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-100 to-amber-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Crown className="h-8 w-8 text-yellow-500" />
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-warning/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-warning/30">
+              <Crown className="h-8 w-8 text-warning" />
             </div>
-            <h3 className="font-bold text-lg">King's Cup</h3>
-            <p className="text-sm text-muted-foreground mt-1">Mỗi lá bài 1 luật</p>
-            <div className="flex justify-center gap-1 mt-2">
-              <Beer className="h-4 w-4 text-yellow-500" />
-              <span className="text-xs text-yellow-600">Bốc K thứ 4 = Uống!</span>
+            <h3 className="font-heading font-bold text-lg">King's Cup</h3>
+            <p className="text-sm text-muted-foreground mt-1 font-body">Mỗi lá bài 1 luật</p>
+            <div className="flex justify-center gap-1 mt-2 items-center">
+              <BeerIcon size={16} className="text-warning" />
+              <span className="text-xs text-warning font-body">Bốc K thứ 4 = Uống!</span>
             </div>
           </CardContent>
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-indigo-400 group"
+          className="card-interactive cursor-pointer border-2 hover:border-primary/50 group"
           onClick={() => setShowMostLikelyTo(true)}
         >
           <CardContent className="p-6 text-center relative">
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-indigo-100 to-purple-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <ThumbsUp className="h-8 w-8 text-indigo-500" />
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-primary/30">
+              <ThumbsUp className="h-8 w-8 text-primary" />
             </div>
-            <h3 className="font-bold text-lg">Ai có khả năng nhất?</h3>
-            <p className="text-sm text-muted-foreground mt-1">Đếm 3-2-1 rồi chỉ!</p>
-            <div className="flex justify-center gap-1 mt-2">
-              <Beer className="h-4 w-4 text-indigo-500" />
-              <span className="text-xs text-indigo-600">Bị chỉ nhiều = Uống!</span>
+            <h3 className="font-heading font-bold text-lg">Ai có khả năng nhất?</h3>
+            <p className="text-sm text-muted-foreground mt-1 font-body">Đếm 3-2-1 rồi chỉ!</p>
+            <div className="flex justify-center gap-1 mt-2 items-center">
+              <BeerIcon size={16} className="text-primary" />
+              <span className="text-xs text-primary font-body">Bị chỉ nhiều = Uống!</span>
             </div>
           </CardContent>
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-teal-400 group"
+          className="card-interactive cursor-pointer border-2 hover:border-success/50 group"
           onClick={() => setShowCategories(true)}
         >
           <CardContent className="p-6 text-center relative">
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-teal-100 to-cyan-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <List className="h-8 w-8 text-teal-500" />
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-success/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-success/30">
+              <List className="h-8 w-8 text-success" />
             </div>
-            <h3 className="font-bold text-lg">Categories</h3>
-            <p className="text-sm text-muted-foreground mt-1">Kể tên theo chủ đề</p>
-            <div className="flex justify-center gap-1 mt-2">
-              <Beer className="h-4 w-4 text-teal-500" />
-              <span className="text-xs text-teal-600">Hết ý = Uống!</span>
+            <h3 className="font-heading font-bold text-lg">Categories</h3>
+            <p className="text-sm text-muted-foreground mt-1 font-body">Kể tên theo chủ đề</p>
+            <div className="flex justify-center gap-1 mt-2 items-center">
+              <BeerIcon size={16} className="text-success" />
+              <span className="text-xs text-success font-body">Hết ý = Uống!</span>
             </div>
           </CardContent>
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-2 border-2 hover:border-rose-400 group"
+          className="card-interactive cursor-pointer border-2 hover:border-destructive/50 group"
           onClick={() => setShowHighOrLow(true)}
         >
           <CardContent className="p-6 text-center relative">
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-rose-100 to-red-200 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <TrendingUp className="h-8 w-8 text-rose-500" />
+            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-destructive/30">
+              <TrendingUp className="h-8 w-8 text-destructive" />
             </div>
-            <h3 className="font-bold text-lg">Cao hay Thấp?</h3>
-            <p className="text-sm text-muted-foreground mt-1">Đoán lá bài tiếp theo</p>
-            <div className="flex justify-center gap-1 mt-2">
-              <Zap className="h-4 w-4 text-rose-500" />
-              <span className="text-xs text-rose-600">Streak = số ly phạt!</span>
+            <h3 className="font-heading font-bold text-lg">Cao hay Thấp?</h3>
+            <p className="text-sm text-muted-foreground mt-1 font-body">Đoán lá bài tiếp theo</p>
+            <div className="flex justify-center gap-1 mt-2 items-center">
+              <Zap className="h-4 w-4 text-destructive" />
+              <span className="text-xs text-destructive font-body">Streak = số ly phạt!</span>
             </div>
           </CardContent>
         </Card>
@@ -594,68 +595,106 @@ export default function GamesPage() {
 
       {/* Kings Cup Modal */}
       {showKingsCup && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
-          <KingsCup onClose={() => setShowKingsCup(false)} />
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
+          onClick={() => setShowKingsCup(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <KingsCup onClose={() => setShowKingsCup(false)} />
+          </div>
         </div>
       )}
 
       {/* Most Likely To Modal */}
       {showMostLikelyTo && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
-          <MostLikelyTo onClose={() => setShowMostLikelyTo(false)} />
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
+          onClick={() => setShowMostLikelyTo(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <MostLikelyTo onClose={() => setShowMostLikelyTo(false)} />
+          </div>
         </div>
       )}
 
       {/* Categories Modal */}
       {showCategories && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
-          <CategoriesGame onClose={() => setShowCategories(false)} />
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
+          onClick={() => setShowCategories(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <CategoriesGame onClose={() => setShowCategories(false)} />
+          </div>
         </div>
       )}
 
       {/* High or Low Modal */}
       {showHighOrLow && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
-          <HighOrLow onClose={() => setShowHighOrLow(false)} />
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
+          onClick={() => setShowHighOrLow(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <HighOrLow onClose={() => setShowHighOrLow(false)} />
+          </div>
         </div>
       )}
 
       {/* Floating Action Buttons */}
-      <div className="fixed bottom-4 right-4 z-40 flex flex-col gap-2">
+      <div className="fixed bottom-4 right-4 z-40 flex flex-col gap-3">
         <Button
           onClick={() => setShowPlayerRotation(true)}
-          className="rounded-full h-12 w-12 bg-blue-500 hover:bg-blue-600 shadow-lg"
+          variant="stamp"
+          className="rounded-full h-16 w-16 shadow-lg p-0 flex items-center justify-center"
           title="Quản lý lượt chơi"
         >
-          <Users className="h-5 w-5" />
+          <Users className="h-8 w-8" strokeWidth={2} />
         </Button>
         <Button
           onClick={() => setShowDrinkingCounter(true)}
-          className="rounded-full h-14 w-14 bg-amber-500 hover:bg-amber-600 shadow-lg"
+          variant="stamp"
+          className="rounded-full h-16 w-16 shadow-lg p-0 flex items-center justify-center"
           title="Đếm số ly"
         >
-          <Beer className="h-6 w-6" />
+          <BeerIcon size={32} />
         </Button>
       </div>
 
       {/* Player Rotation Modal */}
       {showPlayerRotation && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
-          <PlayerRotation onClose={() => setShowPlayerRotation(false)} />
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
+          onClick={() => setShowPlayerRotation(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <PlayerRotation onClose={() => setShowPlayerRotation(false)} />
+          </div>
         </div>
       )}
 
       {/* Drinking Counter Modal */}
       {showDrinkingCounter && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
-          <DrinkingCounter onClose={() => setShowDrinkingCounter(false)} />
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
+          onClick={() => setShowDrinkingCounter(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <DrinkingCounter onClose={() => setShowDrinkingCounter(false)} />
+          </div>
         </div>
       )}
 
       {/* Wheel Modal */}
       {showWheel && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
-          <Card className="max-w-md w-full mx-4 border-2 border-emerald-300 shadow-2xl max-h-[90vh] overflow-y-auto relative">
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
+          onClick={() => setShowWheel(false)}
+        >
+          <Card 
+            className="card-paper max-w-md w-full mx-4 border-2 border-success/50 shadow-2xl max-h-[90vh] overflow-y-auto relative"
+            onClick={(e) => e.stopPropagation()}
+          >
             <CardHeader className="pb-2">
               <Button
                 variant="ghost"
@@ -665,8 +704,8 @@ export default function GamesPage() {
               >
                 <X className="h-5 w-5" />
               </Button>
-              <CardTitle className="text-center flex items-center justify-center gap-2">
-                <CircleDot className="h-6 w-6 text-emerald-500" />
+              <CardTitle className="text-center flex items-center justify-center gap-2 font-heading">
+                <CircleDot className="h-6 w-6 text-success" />
                 Vòng quay may mắn
               </CardTitle>
             </CardHeader>
@@ -684,10 +723,11 @@ export default function GamesPage() {
                     }
                   }}
                   placeholder="Nhập tên người chơi..."
-                  className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                  className="flex-1 px-3 py-2 border-2 border-border/60 rounded-lg text-sm font-body bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                 />
                 <Button
                   size="sm"
+                  variant="stamp"
                   onClick={() => {
                     if (newParticipant.trim()) {
                       setWheelParticipants([...wheelParticipants, { id: Date.now().toString(), name: newParticipant.trim() }])
@@ -705,12 +745,12 @@ export default function GamesPage() {
                   {wheelParticipants.map((p) => (
                     <span
                       key={p.id}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm"
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-success/10 text-success rounded-full text-sm font-body border border-success/30"
                     >
                       {p.name}
                       <button
                         onClick={() => setWheelParticipants(wheelParticipants.filter(x => x.id !== p.id))}
-                        className="hover:text-red-500"
+                        className="hover:text-destructive transition-colors"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -754,31 +794,37 @@ export default function GamesPage() {
 
       {/* Game Result Overlay */}
       {gamePhase === 'revealed' && (gameContent || diceResult) && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md">
-          <Card className="max-w-lg w-full mx-4 border-2 border-orange-300 shadow-2xl animate-reveal-pop [animation-fill-mode:both]">
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
+          onClick={closeGame}
+        >
+          <Card 
+            className="card-paper max-w-lg w-full mx-4 border-2 border-warning/50 shadow-2xl animate-paper-slide"
+            onClick={(e) => e.stopPropagation()}
+          >
             <CardHeader className="pb-2">
-              <CardTitle className="text-center flex items-center justify-center gap-2">
+              <CardTitle className="text-center flex items-center justify-center gap-2 font-heading">
                 {currentGame === 'truth_or_dare' && (
                   <>
-                    <MessageCircleQuestion className="h-6 w-6 text-pink-500" />
+                    <MessageCircleQuestion className="h-6 w-6 text-primary" />
                     {gameContent?.content_type === 'truth' ? 'Sự thật' : 'Thách thức'}
                   </>
                 )}
                 {currentGame === 'never_have_i_ever' && (
                   <>
-                    <Hand className="h-6 w-6 text-blue-500" />
+                    <Hand className="h-6 w-6 text-primary" />
                     Tôi chưa bao giờ...
                   </>
                 )}
                 {currentGame === 'challenge' && (
                   <>
-                    <Flame className="h-6 w-6 text-orange-500" />
+                    <Flame className="h-6 w-6 text-warning" />
                     Thử thách
                   </>
                 )}
                 {currentGame === 'dice' && (
                   <>
-                    <Dices className="h-6 w-6 text-purple-500" />
+                    <Dices className="h-6 w-6 text-primary" />
                     Kết quả xúc xắc
                   </>
                 )}
@@ -787,14 +833,20 @@ export default function GamesPage() {
             <CardContent className="text-center space-y-4">
               {gameContent && (
                 <>
-                  <p className="text-2xl font-semibold leading-relaxed">{gameContent.content}</p>
+                  <p className="text-2xl font-heading font-semibold leading-relaxed">{gameContent.content}</p>
                   <div className="flex flex-wrap items-center justify-center gap-3">
-                    <span className={`inline-block px-4 py-1.5 rounded-full text-sm font-bold ${getDifficultyColor(gameContent.difficulty)}`}>
+                    <span className={`inline-block px-4 py-1.5 rounded-full text-sm font-bold font-body ${
+                      gameContent.difficulty === 'easy' ? 'bg-success/10 text-success' :
+                      gameContent.difficulty === 'medium' ? 'bg-warning/10 text-warning' :
+                      gameContent.difficulty === 'hard' ? 'bg-destructive/10 text-destructive' :
+                      gameContent.difficulty === 'extreme' ? 'bg-destructive/20 text-destructive border border-destructive/30' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
                       {getDifficultyLabel(gameContent.difficulty)}
                     </span>
                     {gameContent.difficulty && (
-                      <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
-                        <Beer className="h-4 w-4" />
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-warning/10 text-warning rounded-full text-sm font-medium font-body border border-warning/30">
+                        <BeerIcon size={16} />
                         {gameContent.difficulty === 'easy' && '1 shot nếu từ chối'}
                         {gameContent.difficulty === 'medium' && '2 shot nếu từ chối'}
                         {gameContent.difficulty === 'hard' && '3 shot nếu từ chối'}
@@ -808,19 +860,19 @@ export default function GamesPage() {
                 <>
                   {/* Dice Display */}
                   <div className="flex items-center justify-center gap-6">
-                    <div className={`w-24 h-24 rounded-2xl shadow-2xl flex items-center justify-center text-5xl font-black bg-gradient-to-br transition-all duration-300 animate-bounce-in [animation-delay:0.1s] [animation-fill-mode:both] ${
-                      diceResult.severity === 'extreme' ? 'from-red-500 to-orange-500 text-white animate-pulse border-4 border-red-300' :
-                      diceResult.severity === 'spicy' ? 'from-orange-400 to-yellow-400 text-white border-4 border-orange-300' :
-                      diceResult.severity === 'mild' ? 'from-blue-400 to-cyan-400 text-white border-4 border-blue-300' :
-                      'from-gray-100 dark:from-gray-800 to-white dark:to-gray-700 text-gray-800 dark:text-gray-200 border-2 border-gray-200 dark:border-gray-600'
+                    <div className={`w-24 h-24 rounded-2xl shadow-2xl flex items-center justify-center text-5xl font-black font-mono bg-gradient-to-br transition-all duration-300 animate-bounce-in [animation-delay:0.1s] [animation-fill-mode:both] ${
+                      diceResult.severity === 'extreme' ? 'from-destructive to-warning text-primary-foreground animate-pulse border-4 border-destructive/50' :
+                      diceResult.severity === 'spicy' ? 'from-warning to-primary text-primary-foreground border-4 border-warning/50' :
+                      diceResult.severity === 'mild' ? 'from-primary/80 to-primary text-primary-foreground border-4 border-primary/50' :
+                      'from-secondary to-card text-foreground border-2 border-border'
                     }`}>
                       {diceResult.dice1}
                     </div>
-                    <div className={`w-24 h-24 rounded-2xl shadow-2xl flex items-center justify-center text-5xl font-black bg-gradient-to-br transition-all duration-300 animate-bounce-in [animation-delay:0.3s] [animation-fill-mode:both] ${
-                      diceResult.severity === 'extreme' ? 'from-red-500 to-orange-500 text-white animate-pulse border-4 border-red-300' :
-                      diceResult.severity === 'spicy' ? 'from-orange-400 to-yellow-400 text-white border-4 border-orange-300' :
-                      diceResult.severity === 'mild' ? 'from-blue-400 to-cyan-400 text-white border-4 border-blue-300' :
-                      'from-gray-100 dark:from-gray-800 to-white dark:to-gray-700 text-gray-800 dark:text-gray-200 border-2 border-gray-200 dark:border-gray-600'
+                    <div className={`w-24 h-24 rounded-2xl shadow-2xl flex items-center justify-center text-5xl font-black font-mono bg-gradient-to-br transition-all duration-300 animate-bounce-in [animation-delay:0.3s] [animation-fill-mode:both] ${
+                      diceResult.severity === 'extreme' ? 'from-destructive to-warning text-primary-foreground animate-pulse border-4 border-destructive/50' :
+                      diceResult.severity === 'spicy' ? 'from-warning to-primary text-primary-foreground border-4 border-warning/50' :
+                      diceResult.severity === 'mild' ? 'from-primary/80 to-primary text-primary-foreground border-4 border-primary/50' :
+                      'from-secondary to-card text-foreground border-2 border-border'
                     }`}>
                       {diceResult.dice2}
                     </div>
@@ -829,38 +881,38 @@ export default function GamesPage() {
                   {/* Rule Name & Badge */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-center gap-2">
-                      <span className={`text-3xl font-black ${
-                        diceResult.severity === 'extreme' ? 'text-red-600' :
-                        diceResult.severity === 'spicy' ? 'text-orange-600' :
-                        diceResult.severity === 'mild' ? 'text-blue-600' :
-                        'text-gray-600 dark:text-gray-400'
+                      <span className={`text-3xl font-heading font-black ${
+                        diceResult.severity === 'extreme' ? 'text-destructive' :
+                        diceResult.severity === 'spicy' ? 'text-warning' :
+                        diceResult.severity === 'mild' ? 'text-primary' :
+                        'text-foreground'
                       }`}>
                         {diceResult.rule_name}
                       </span>
                       {diceResult.is_double && (
-                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-bold rounded-full animate-bounce">
+                        <span className="px-2 py-1 bg-warning/10 text-warning text-xs font-bold rounded-full animate-bounce font-body border border-warning/30">
                           ĐÔI!
                         </span>
                       )}
                     </div>
-                    <p className="text-gray-600 dark:text-gray-300 text-lg">{diceResult.rule_description}</p>
+                    <p className="text-muted-foreground text-lg font-body">{diceResult.rule_description}</p>
                   </div>
 
                   {/* Action Card */}
                   <div className={`p-4 rounded-xl border-2 ${
-                    diceResult.severity === 'extreme' ? 'bg-red-50 border-red-300' :
-                    diceResult.severity === 'spicy' ? 'bg-orange-50 border-orange-300' :
-                    diceResult.severity === 'mild' ? 'bg-blue-50 border-blue-300' :
-                    'bg-green-50 border-green-300'
+                    diceResult.severity === 'extreme' ? 'bg-destructive/10 border-destructive/50' :
+                    diceResult.severity === 'spicy' ? 'bg-warning/10 border-warning/50' :
+                    diceResult.severity === 'mild' ? 'bg-primary/10 border-primary/50' :
+                    'bg-success/10 border-success/50'
                   }`}>
-                    <p className="font-bold text-lg flex items-center justify-center gap-2">
-                      {diceResult.severity === 'extreme' && <Skull className="h-5 w-5 text-red-500" />}
-                      {diceResult.severity === 'spicy' && <Flame className="h-5 w-5 text-orange-500" />}
-                      {diceResult.severity === 'mild' && <Beer className="h-5 w-5 text-blue-500" />}
-                      {diceResult.severity === 'safe' && <Sparkles className="h-5 w-5 text-green-500" />}
+                    <p className="font-heading font-bold text-lg flex items-center justify-center gap-2">
+                      {diceResult.severity === 'extreme' && <Skull className="h-5 w-5 text-destructive" />}
+                      {diceResult.severity === 'spicy' && <Flame className="h-5 w-5 text-warning" />}
+                      {diceResult.severity === 'mild' && <BeerIcon size={20} className="text-primary" />}
+                      {diceResult.severity === 'safe' && <Sparkles className="h-5 w-5 text-success" />}
                       {diceResult.action}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1 font-body">
                       {diceResult.target === 'self' && 'Bạn phải thực hiện'}
                       {diceResult.target === 'choose' && 'Chọn người thực hiện'}
                       {diceResult.target === 'all' && 'Tất cả cùng chơi'}
@@ -872,7 +924,8 @@ export default function GamesPage() {
               <div className="flex items-center justify-center gap-3 pt-4">
                 <Button 
                   onClick={() => currentGame && startGame(currentGame)}
-                  className="gap-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+                  variant="stamp"
+                  className="gap-2"
                 >
                   <RotateCcw className="h-4 w-4" />
                   Câu tiếp theo
@@ -892,22 +945,31 @@ export default function GamesPage() {
 
       {/* Confirmation Modal */}
       {pendingGame && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <Card className="max-w-md w-full animate-in zoom-in-95 border-2 border-orange-300 shadow-2xl">
+        <div 
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+          onClick={() => {
+            setPendingGame(null)
+            setGamePhase('idle')
+          }}
+        >
+          <Card 
+            className="card-paper max-w-md w-full animate-paper-slide border-2 border-warning/50 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <CardContent className="p-6 text-center space-y-4">
-              <div className="h-20 w-20 mx-auto rounded-full bg-gradient-to-br from-orange-100 to-pink-100 flex items-center justify-center animate-bounce">
-                <GameIcon type={pendingGame} className="h-10 w-10 text-orange-500" />
+              <div className="h-20 w-20 mx-auto rounded-full bg-warning/10 flex items-center justify-center animate-bounce border-2 border-warning/30">
+                <GameIcon type={pendingGame} className="h-10 w-10 text-warning" />
               </div>
-              <h2 className="text-2xl font-bold">{GAME_INFO[pendingGame].name}</h2>
-              <p className="text-orange-600 font-medium flex items-center justify-center gap-2">
+              <h2 className="text-2xl font-heading font-bold">{GAME_INFO[pendingGame].name}</h2>
+              <p className="text-warning font-medium flex items-center justify-center gap-2 font-body">
                 <AlertCircle className="h-5 w-5" />
                 {GAME_INFO[pendingGame].warning}
               </p>
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 text-sm text-gray-600 dark:text-gray-300">
-                <p className="font-semibold mb-1 flex items-center justify-center gap-1">
+              <div className="bg-secondary/50 rounded-lg p-3 text-sm text-muted-foreground border border-border/50">
+                <p className="font-semibold mb-1 flex items-center justify-center gap-1 font-body">
                   <AlertCircle className="h-4 w-4" /> Nhớ luật chơi:
                 </p>
-                <p>Từ chối/Thất bại = Phải uống phạt!</p>
+                <p className="font-body">Từ chối/Thất bại = Phải uống phạt!</p>
               </div>
               <div className="flex gap-3 pt-2">
                 <Button 
@@ -921,7 +983,8 @@ export default function GamesPage() {
                   Để sau
                 </Button>
                 <Button 
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+                  variant="stamp"
+                  className="flex-1"
                   onClick={() => startGame(pendingGame)}
                 >
                   <Flame className="h-4 w-4 mr-1" />
@@ -933,77 +996,77 @@ export default function GamesPage() {
         </div>
       )}
 
-      {/* Loading Suspense Overlay */}
+      {/* Loading Suspense Overlay - Vintage Paper Style */}
       {(gamePhase === 'loading' || gamePhase === 'countdown') && activeGame && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-md">
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-md texture-paper">
           <div className="text-center space-y-6">
             {gamePhase === 'loading' ? (
               <>
-                {/* Game-specific loading animation */}
+                {/* Game-specific loading animation - Sepia tones */}
                 {activeGame === 'dice' && (
                   <div className="flex items-center justify-center gap-4">
-                    <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl shadow-2xl flex items-center justify-center text-4xl font-black text-white animate-bounce" style={{ animationDelay: '0s' }}>
+                    <div className="w-20 h-20 bg-gradient-to-br from-primary to-warning rounded-2xl shadow-2xl flex items-center justify-center text-4xl font-black font-mono text-primary-foreground animate-bounce border-2 border-primary/50" style={{ animationDelay: '0s' }}>
                       {Math.floor(Math.random() * 6) + 1}
                     </div>
-                    <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl shadow-2xl flex items-center justify-center text-4xl font-black text-white animate-bounce" style={{ animationDelay: '0.1s' }}>
+                    <div className="w-20 h-20 bg-gradient-to-br from-primary to-warning rounded-2xl shadow-2xl flex items-center justify-center text-4xl font-black font-mono text-primary-foreground animate-bounce border-2 border-primary/50" style={{ animationDelay: '0.1s' }}>
                       {Math.floor(Math.random() * 6) + 1}
                     </div>
                   </div>
                 )}
                 {activeGame === 'truth_or_dare' && (
                   <div className="flex items-center justify-center gap-4">
-                    <div className="w-24 h-24 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full shadow-2xl flex items-center justify-center animate-bounce">
-                      <MessageCircleQuestion className="h-12 w-12 text-white" />
+                    <div className="w-24 h-24 bg-gradient-to-br from-primary/80 to-primary rounded-full shadow-2xl flex items-center justify-center animate-bounce border-2 border-primary/50">
+                      <MessageCircleQuestion className="h-12 w-12 text-primary-foreground" />
                     </div>
-                    <div className="w-24 h-24 bg-gradient-to-br from-orange-500 to-red-500 rounded-full shadow-2xl flex items-center justify-center animate-bounce" style={{ animationDelay: '0.2s' }}>
-                      <Target className="h-12 w-12 text-white" />
+                    <div className="w-24 h-24 bg-gradient-to-br from-warning/80 to-warning rounded-full shadow-2xl flex items-center justify-center animate-bounce border-2 border-warning/50" style={{ animationDelay: '0.2s' }}>
+                      <Target className="h-12 w-12 text-warning-foreground" />
                     </div>
                   </div>
                 )}
                 {activeGame === 'never_have_i_ever' && (
                   <div className="flex items-center justify-center">
-                    <div className="w-28 h-28 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full shadow-2xl flex items-center justify-center animate-bounce">
-                      <Hand className="h-14 w-14 text-white" />
+                    <div className="w-28 h-28 bg-gradient-to-br from-primary/80 to-primary rounded-full shadow-2xl flex items-center justify-center animate-bounce border-2 border-primary/50">
+                      <Hand className="h-14 w-14 text-primary-foreground" />
                     </div>
                   </div>
                 )}
                 {activeGame === 'challenge' && (
                   <div className="flex items-center justify-center">
-                    <div className="w-28 h-28 bg-gradient-to-br from-orange-500 to-red-500 rounded-full shadow-2xl flex items-center justify-center animate-pulse">
-                      <Flame className="h-14 w-14 text-white animate-bounce" />
+                    <div className="w-28 h-28 bg-gradient-to-br from-warning/80 to-warning rounded-full shadow-2xl flex items-center justify-center animate-pulse border-2 border-warning/50">
+                      <Flame className="h-14 w-14 text-warning-foreground animate-bounce" />
                     </div>
                   </div>
                 )}
                 
-                {/* Spinner */}
+                {/* Spinner - Sepia tones */}
                 <div className="relative">
                   <div className={`w-24 h-24 mx-auto rounded-full border-4 border-t-4 animate-spin ${
-                    activeGame === 'dice' ? 'border-purple-500/30 border-t-purple-500' :
-                    activeGame === 'truth_or_dare' ? 'border-pink-500/30 border-t-pink-500' :
-                    activeGame === 'never_have_i_ever' ? 'border-blue-500/30 border-t-blue-500' :
-                    'border-orange-500/30 border-t-orange-500'
+                    activeGame === 'dice' ? 'border-primary/30 border-t-primary' :
+                    activeGame === 'truth_or_dare' ? 'border-primary/30 border-t-primary' :
+                    activeGame === 'never_have_i_ever' ? 'border-primary/30 border-t-primary' :
+                    'border-warning/30 border-t-warning'
                   }`} />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <GameIcon type={activeGame} className={`h-10 w-10 animate-pulse ${
-                      activeGame === 'dice' ? 'text-purple-400' :
-                      activeGame === 'truth_or_dare' ? 'text-pink-400' :
-                      activeGame === 'never_have_i_ever' ? 'text-blue-400' :
-                      'text-orange-400'
+                      activeGame === 'dice' ? 'text-primary' :
+                      activeGame === 'truth_or_dare' ? 'text-primary' :
+                      activeGame === 'never_have_i_ever' ? 'text-primary' :
+                      'text-warning'
                     }`} />
                   </div>
                 </div>
                 
-                <p className="text-white text-2xl font-bold animate-pulse">{loadingMessage}</p>
-                <p className="text-gray-400 dark:text-gray-500">{GAME_INFO[activeGame].name}</p>
+                <p className="text-primary-foreground text-2xl font-heading font-bold animate-pulse">{loadingMessage}</p>
+                <p className="text-muted-foreground font-body">{GAME_INFO[activeGame].name}</p>
                 <div className="flex justify-center gap-1">
                   {[...Array(3)].map((_, i) => (
                     <div 
                       key={i} 
                       className={`w-3 h-3 rounded-full animate-bounce ${
-                        activeGame === 'dice' ? 'bg-purple-500' :
-                        activeGame === 'truth_or_dare' ? 'bg-pink-500' :
-                        activeGame === 'never_have_i_ever' ? 'bg-blue-500' :
-                        'bg-orange-500'
+                        activeGame === 'dice' ? 'bg-primary' :
+                        activeGame === 'truth_or_dare' ? 'bg-primary' :
+                        activeGame === 'never_have_i_ever' ? 'bg-primary' :
+                        'bg-warning'
                       }`}
                       style={{ animationDelay: `${i * 0.15}s` }}
                     />
@@ -1012,19 +1075,19 @@ export default function GamesPage() {
               </>
             ) : countdown > 0 ? (
               <>
-                <div className={`text-9xl font-black animate-ping ${
-                  activeGame === 'dice' ? 'text-purple-400' :
-                  activeGame === 'truth_or_dare' ? 'text-pink-400' :
-                  activeGame === 'never_have_i_ever' ? 'text-blue-400' :
-                  'text-orange-400'
+                <div className={`text-9xl font-heading font-black animate-ping ${
+                  activeGame === 'dice' ? 'text-primary' :
+                  activeGame === 'truth_or_dare' ? 'text-primary' :
+                  activeGame === 'never_have_i_ever' ? 'text-primary' :
+                  'text-warning'
                 }`}>
                   {countdown}
                 </div>
-                <p className={`text-2xl font-bold animate-pulse ${
-                  activeGame === 'dice' ? 'text-purple-400' :
-                  activeGame === 'truth_or_dare' ? 'text-pink-400' :
-                  activeGame === 'never_have_i_ever' ? 'text-blue-400' :
-                  'text-orange-400'
+                <p className={`text-2xl font-heading font-bold animate-pulse ${
+                  activeGame === 'dice' ? 'text-primary' :
+                  activeGame === 'truth_or_dare' ? 'text-primary' :
+                  activeGame === 'never_have_i_ever' ? 'text-primary' :
+                  'text-warning'
                 }`}>
                   {activeGame === 'truth_or_dare' && 'Sự thật hay Thách thức...'}
                   {activeGame === 'never_have_i_ever' && 'Bạn đã từng chưa...'}
@@ -1039,29 +1102,35 @@ export default function GamesPage() {
 
       {/* Rules Modal */}
       {showRules && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowRules(null)}>
-          <Card className="max-w-md w-full animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" 
+          onClick={() => setShowRules(null)}
+        >
+          <Card 
+            className="card-paper max-w-md w-full animate-paper-slide" 
+            onClick={(e) => e.stopPropagation()}
+          >
             <CardHeader className="relative">
               <button 
-                className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="absolute top-4 right-4 p-1 rounded-full hover:bg-secondary/50 transition-colors"
                 onClick={() => setShowRules(null)}
               >
                 <X className="h-5 w-5" />
               </button>
-              <CardTitle>{GAME_RULES[showRules as keyof typeof GAME_RULES]?.title}</CardTitle>
+              <CardTitle className="font-heading">{GAME_RULES[showRules as keyof typeof GAME_RULES]?.title}</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3">
                 {GAME_RULES[showRules as keyof typeof GAME_RULES]?.rules.map((rule, i) => (
                   <li key={i} className="flex items-start gap-2">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-sm font-bold">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-warning/10 text-warning flex items-center justify-center text-sm font-bold font-body border border-warning/30">
                       {i + 1}
                     </span>
-                    <span>{rule}</span>
+                    <span className="font-body">{rule}</span>
                   </li>
                 ))}
               </ul>
-              <Button className="w-full mt-4" onClick={() => setShowRules(null)}>
+              <Button variant="stamp" className="w-full mt-4" onClick={() => setShowRules(null)}>
                 Đã hiểu! 🍻
               </Button>
             </CardContent>
@@ -1071,27 +1140,33 @@ export default function GamesPage() {
 
       {/* Adult Content Warning Modal */}
       {showAdultWarning && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowAdultWarning(false)}>
-          <Card className="max-w-md w-full animate-in zoom-in-95 border-2 border-pink-300 dark:border-pink-700" onClick={e => e.stopPropagation()}>
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" 
+          onClick={() => setShowAdultWarning(false)}
+        >
+          <Card 
+            className="card-paper max-w-md w-full animate-paper-slide border-2 border-destructive/50" 
+            onClick={(e) => e.stopPropagation()}
+          >
             <CardHeader className="text-center">
-              <div className="mx-auto h-16 w-16 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center mb-2">
+              <div className="mx-auto h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mb-2 border-2 border-destructive/30">
                 <span className="text-3xl">🔞</span>
               </div>
-              <CardTitle className="text-pink-600 dark:text-pink-400">Cảnh báo nội dung người lớn</CardTitle>
+              <CardTitle className="text-destructive font-heading">Cảnh báo nội dung người lớn</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-4 text-sm text-pink-800 dark:text-pink-300">
-                <p className="font-semibold mb-2 flex items-center gap-2">
+              <div className="bg-destructive/10 rounded-lg p-4 text-sm text-destructive border border-destructive/30">
+                <p className="font-semibold mb-2 flex items-center gap-2 font-body">
                   <AlertCircle className="h-4 w-4" /> Lưu ý quan trọng:
                 </p>
-                <ul className="space-y-1 list-disc list-inside">
+                <ul className="space-y-1 list-disc list-inside font-body">
                   <li>Nội dung 18+ chỉ dành cho người trưởng thành</li>
                   <li>Các câu hỏi có thể nhạy cảm hoặc khiêu khích</li>
                   <li>Chỉ chơi khi tất cả người tham gia đều đồng ý</li>
                   <li>Tôn trọng giới hạn của mọi người</li>
                 </ul>
               </div>
-              <p className="text-center text-sm text-muted-foreground">
+              <p className="text-center text-sm text-muted-foreground font-body">
                 Bạn xác nhận rằng bạn đã đủ 18 tuổi và đồng ý xem nội dung này?
               </p>
               <div className="flex gap-3">
@@ -1103,7 +1178,8 @@ export default function GamesPage() {
                   Không, cảm ơn
                 </Button>
                 <Button 
-                  className="flex-1 bg-pink-500 hover:bg-pink-600"
+                  variant="destructive"
+                  className="flex-1"
                   onClick={() => {
                     setAdultContentEnabled(true)
                     setShowAdultWarning(false)

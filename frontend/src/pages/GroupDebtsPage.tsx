@@ -382,7 +382,7 @@ export default function GroupDebtsPage() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Trophy className="h-5 w-5 text-primary" />
-                    🔥 Top tham gia ({topList.length})
+                    Top tham gia ({topList.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-3">

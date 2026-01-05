@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Crown, RotateCcw, X, Beer, Shuffle } from 'lucide-react'
+import { BeerIcon } from '@/components/ui/BeerIcon'
 import { soundManager } from '@/utils/sounds'
 
 interface CardType {
@@ -125,9 +126,9 @@ export function KingsCup({ onClose }: KingsCupProps) {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between font-heading">
           <div className="flex items-center gap-2">
-            <Crown className="h-5 w-5 text-yellow-500" />
+            <Crown className="h-5 w-5 text-warning" />
             King's Cup
           </div>
           <div className="flex items-center gap-2">
@@ -144,14 +145,14 @@ export function KingsCup({ onClose }: KingsCupProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Stats */}
-        <div className="flex justify-between text-sm">
+        <div className="flex justify-between text-sm font-body">
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">Còn lại:</span>
-            <span className="font-bold">{deck.length}/52</span>
+            <span className="font-bold font-mono">{deck.length}/52</span>
           </div>
           <div className="flex items-center gap-2">
-            <Crown className="h-4 w-4 text-yellow-500" />
-            <span className="font-bold">{kingsDrawn}/4</span>
+            <Crown className="h-4 w-4 text-warning" />
+            <span className="font-bold font-mono">{kingsDrawn}/4</span>
           </div>
         </div>
 
@@ -162,8 +163,8 @@ export function KingsCup({ onClose }: KingsCupProps) {
               key={i}
               className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
                 i <= kingsDrawn
-                  ? 'bg-yellow-500 border-yellow-600 text-white'
-                  : 'bg-gray-100 border-gray-300 text-gray-400'
+                  ? 'bg-warning border-warning text-warning-foreground'
+                  : 'bg-secondary border-border text-muted-foreground'
               }`}
             >
               <Crown className="h-4 w-4" />
@@ -181,18 +182,18 @@ export function KingsCup({ onClose }: KingsCupProps) {
                 isFlipping ? 'scale-95 opacity-50' : 'hover:scale-105'
               }`}
             >
-              <div className="w-32 h-48 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl shadow-xl flex items-center justify-center border-4 border-white">
-                <Crown className="h-12 w-12 text-white/80" />
+              <div className="w-32 h-48 bg-gradient-to-br from-primary to-warning rounded-xl shadow-xl flex items-center justify-center border-4 border-card">
+                <Crown className="h-12 w-12 text-primary-foreground/80" />
               </div>
-              <p className="text-center text-sm text-muted-foreground mt-2">Bấm để bốc bài</p>
+              <p className="text-center text-sm text-muted-foreground mt-2 font-body">Bấm để bốc bài</p>
             </div>
           )}
 
           {/* Current Card */}
           {currentCard && (
             <div className={`absolute transition-all duration-500 ${isFlipping ? 'rotate-y-180 opacity-0' : ''}`}>
-              <div className={`w-32 h-48 bg-white rounded-xl shadow-xl border-2 p-3 flex flex-col ${
-                currentCard.value === 'K' ? 'border-yellow-400 ring-4 ring-yellow-200' : 'border-gray-200'
+              <div className={`w-32 h-48 bg-card rounded-xl shadow-xl border-2 p-3 flex flex-col ${
+                currentCard.value === 'K' ? 'border-warning ring-4 ring-warning/20' : 'border-border'
               }`}>
                 {/* Card Value Top */}
                 <div className={`text-2xl font-bold ${SUIT_COLORS[currentCard.suit]}`}>
@@ -220,11 +221,11 @@ export function KingsCup({ onClose }: KingsCupProps) {
           {gameOver && (
             <div className="text-center space-y-4">
               <div className="flex justify-center gap-2">
-                <Crown className="h-16 w-16 text-yellow-500 animate-bounce" />
-                <Beer className="h-16 w-16 text-amber-500 animate-bounce" />
+                <Crown className="h-16 w-16 text-warning animate-bounce" />
+                <BeerIcon size={64} animated className="text-warning" />
               </div>
-              <p className="text-xl font-bold text-yellow-600">UỐNG LY KING!</p>
-              <Button onClick={shuffleDeck} className="gap-2">
+              <p className="text-xl font-heading font-bold text-warning">UỐNG LY KING!</p>
+              <Button onClick={shuffleDeck} variant="stamp" className="gap-2">
                 <RotateCcw className="h-4 w-4" />
                 Chơi lại
               </Button>

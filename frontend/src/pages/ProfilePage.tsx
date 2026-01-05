@@ -459,7 +459,7 @@ export default function ProfilePage() {
 
       {/* Version Info */}
       <div className="text-center text-xs text-gray-400 py-4">
-        <p>SplitBuddy v{appVersion}</p>
+        <p>Split Buddy v{appVersion}</p>
       </div>
 
       {/* Wrapped Modal */}

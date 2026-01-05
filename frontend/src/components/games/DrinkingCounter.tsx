@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Beer, Plus, Minus, Trophy, AlertTriangle, X, Users } from 'lucide-react'
 import { soundManager } from '@/utils/sounds'
+import { BeerIcon } from '@/components/ui/BeerIcon'
 
 interface Participant {
   id: string
@@ -20,6 +21,24 @@ const DANGER_THRESHOLD = 8
 export function DrinkingCounter({ onClose }: DrinkingCounterProps) {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [newName, setNewName] = useState('')
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
+        onClose?.()
+      }
+    }
+
+    if (onClose) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [onClose])
 
   const addParticipant = () => {
     if (!newName.trim()) return
@@ -66,12 +85,12 @@ export function DrinkingCounter({ onClose }: DrinkingCounterProps) {
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card ref={cardRef} className="w-full max-w-md mx-auto">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Beer className="h-5 w-5 text-amber-500" />
-            Đếm số ly
+        <CardTitle className="flex items-center justify-between font-heading">
+          <div className="flex items-center gap-3">
+            <BeerIcon size={28} className="text-warning" />
+            <span className="text-xl">Đếm số ly</span>
           </div>
           {onClose && (
             <Button variant="ghost" size="sm" onClick={onClose}>

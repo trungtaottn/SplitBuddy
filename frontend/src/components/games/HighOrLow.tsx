@@ -111,10 +111,10 @@ export function HighOrLow({ onClose }: HighOrLowProps) {
     if (!card) return null
     
     return (
-      <div className={`w-24 h-36 bg-white rounded-xl shadow-xl border-2 p-2 flex flex-col transition-all ${
-        isNext && result === 'correct' ? 'border-green-400 ring-4 ring-green-200' :
-        isNext && result === 'wrong' ? 'border-red-400 ring-4 ring-red-200' :
-        'border-gray-200'
+      <div className={`w-24 h-36 bg-card rounded-xl shadow-xl border-2 p-2 flex flex-col transition-all ${
+        isNext && result === 'correct' ? 'border-success ring-4 ring-success/20' :
+        isNext && result === 'wrong' ? 'border-destructive ring-4 ring-destructive/20' :
+        'border-border'
       }`}>
         <div className={`text-lg font-bold ${SUIT_COLORS[card.suit]}`}>
           {card.value}{SUIT_SYMBOLS[card.suit]}
