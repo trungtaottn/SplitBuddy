@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, Beer, HelpCircle, X, Skull, Zap, AlertCircle, Target, Hand, Volume2, VolumeX, Users, CircleDot, Crown, ThumbsUp, List, TrendingUp } from 'lucide-react'
+import { Dices, Sparkles, MessageCircleQuestion, Flame, RotateCcw, HelpCircle, X, Skull, Zap, AlertCircle, Target, Hand, Volume2, VolumeX, Users, CircleDot, Crown, ThumbsUp, List, TrendingUp } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
 import { soundManager, vibrate, vibrationPatterns } from '@/utils/sounds'
 import type { ApiResponse } from '@/types/api'
@@ -342,17 +342,6 @@ export default function GamesPage() {
       setGamePhase('idle')
     }
   })
-
-  const getDifficultyColor = (difficulty: string | null) => {
-    switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'hard': return 'bg-red-100 text-red-800'
-      case 'extreme': return 'bg-purple-100 text-purple-800'
-      case '18+': return 'bg-pink-100 text-pink-800 border border-pink-300'
-      default: return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-    }
-  }
 
   const getDifficultyLabel = (difficulty: string | null) => {
     switch (difficulty) {

@@ -1,6 +1,6 @@
 {
-  "name": "SplitBuddy - Chia tiền nhậu",
-  "short_name": "SplitBuddy",
+  "name": "Split Buddy",
+  "short_name": "Split Buddy",
   "description": "Ứng dụng chia tiền nhậu thông minh cho hội bạn bè",
   "start_url": "/",
   "display": "standalone",

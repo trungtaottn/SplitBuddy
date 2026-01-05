@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Beer, Plus, Minus, Trophy, AlertTriangle, X, Users } from 'lucide-react'
+import { Plus, Minus, Trophy, AlertTriangle, X, Users } from 'lucide-react'
 import { soundManager } from '@/utils/sounds'
 import { BeerIcon } from '@/components/ui/BeerIcon'
 

@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icons/*.png', 'icons/*.svg', 'music/*.mp3'],
       manifest: {
-        name: 'SplitBuddy - Chia tiền nhậu',
-        short_name: 'SplitBuddy',
+        name: 'Split Buddy',
+        short_name: 'Split Buddy',
         description: 'Ứng dụng chia tiền nhậu thông minh cho hội bạn bè',
         theme_color: '#F97316',
         background_color: '#FFF7ED',
