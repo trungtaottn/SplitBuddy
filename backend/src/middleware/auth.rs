@@ -15,6 +15,7 @@ use crate::error::AppError;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: Uuid,
+    pub role: String,
     pub exp: i64,
     pub iat: i64,
 }
@@ -25,12 +26,13 @@ pub struct AuthUser {
     pub role: String,
 }
 
-pub fn create_token(config: &Config, user_id: Uuid) -> Result<String, AppError> {
+pub fn create_token(config: &Config, user_id: Uuid, role: &str) -> Result<String, AppError> {
     let now = Utc::now();
     let exp = now + Duration::hours(config.jwt_expiration_hours);
 
     let claims = Claims {
         sub: user_id,
+        role: role.to_string(),
         exp: exp.timestamp(),
         iat: now.timestamp(),
     };
@@ -81,20 +83,10 @@ impl FromRequestParts<AppState> for AuthUser {
 
         let claims = verify_token(&state.config, token)?;
 
-        // Fetch user role from database
-        let role: Option<(String,)> = sqlx::query_as(
-            "SELECT role FROM users WHERE id = $1"
-        )
-        .bind(claims.sub)
-        .fetch_optional(&state.pool)
-        .await
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("Database error: {}", e)))?;
-
-        let role = role.map(|(r,)| r).unwrap_or_else(|| "user".to_string());
-
+        // Role is now included in JWT claims - no DB query needed!
         Ok(AuthUser {
             user_id: claims.sub,
-            role,
+            role: claims.role,
         })
     }
 }

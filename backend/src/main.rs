@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use axum::{Router, response::Response, middleware::{self as axum_mw, Next}, extract::Request, body::Body};
 use axum::http::header;
@@ -6,18 +7,23 @@ use sqlx::postgres::PgPoolOptions;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tower_http::services::{ServeDir, ServeFile};
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 mod api;
+mod audit;
+mod cache;
 mod config;
 mod domain;
 mod error;
 mod middleware;
 mod openapi;
 mod repository;
+mod utils;
 
+use cache::AppCache;
 use config::Config;
 use openapi::ApiDoc;
 use sqlx::PgPool;
@@ -46,7 +52,7 @@ async fn add_cache_headers(request: Request, next: Next) -> Response<Body> {
     response
 }
 
-async fn init_admin_user(pool: &PgPool) -> anyhow::Result<()> {
+async fn init_admin_user(pool: &PgPool, admin_password: &str) -> anyhow::Result<()> {
     use argon2::{
         password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
         Argon2,
@@ -65,10 +71,10 @@ async fn init_admin_user(pool: &PgPool) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // Hash password
+    // Hash password from environment config
     let salt = SaltString::generate(&mut OsRng);
     let password_hash = Argon2::default()
-        .hash_password(b"Admin123", &salt)
+        .hash_password(admin_password.as_bytes(), &salt)
         .map_err(|e| anyhow::anyhow!("Failed to hash password: {}", e))?
         .to_string();
 
@@ -85,7 +91,7 @@ async fn init_admin_user(pool: &PgPool) -> anyhow::Result<()> {
     .execute(pool)
     .await?;
 
-    tracing::info!("✅ Created admin user: admin@splitbuddy.com / Admin123");
+    tracing::info!("Created admin user: admin@splitbuddy.com (password set from ADMIN_DEFAULT_PASSWORD env)");
     Ok(())
 }
 
@@ -128,21 +134,76 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Running migrations...");
     sqlx::migrate!("./migrations").run(&pool).await?;
 
-    // Initialize admin user if not exists
-    init_admin_user(&pool).await?;
+    // Initialize admin user if not exists (using password from config)
+    init_admin_user(&pool, &config.admin_default_password).await?;
+
+    // Initialize application cache
+    let cache = AppCache::new();
+    tracing::info!("Application cache initialized");
+
+    // Initialize WebSocket manager for real-time updates
+    let ws_manager = api::WsManager::new();
+    tracing::info!("WebSocket manager initialized");
 
     let app_state = api::AppState {
         pool,
         config: config.clone(),
+        cache,
+        ws_manager,
     };
 
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    // Configure CORS - use specific origins from config instead of Any
+    let cors = {
+        use axum::http::HeaderValue;
+        use tower_http::cors::AllowOrigin;
+        
+        let origins: Vec<HeaderValue> = config.cors_origins
+            .iter()
+            .filter_map(|origin| origin.parse().ok())
+            .collect();
+        
+        if origins.is_empty() {
+            tracing::warn!("No valid CORS origins configured, allowing all origins (not recommended for production)");
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any)
+        } else {
+            tracing::info!("CORS configured for origins: {:?}", config.cors_origins);
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::list(origins))
+                .allow_methods(Any)
+                .allow_headers(Any)
+                .allow_credentials(true)
+        }
+    };
 
     // Create uploads directory if it doesn't exist
     tokio::fs::create_dir_all("uploads/avatars").await.ok();
+
+    // Configure rate limiting
+    let governor_conf = Arc::new(
+        GovernorConfigBuilder::default()
+            .per_second(config.rate_limit_requests_per_second)
+            .burst_size(config.rate_limit_burst_size)
+            .finish()
+            .expect("Failed to create rate limiter config"),
+    );
+    let governor_limiter = governor_conf.limiter().clone();
+    
+    // Spawn background task to clean up rate limiter state
+    let governor_limiter_clone = governor_limiter.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            governor_limiter_clone.retain_recent();
+        }
+    });
+
+    tracing::info!("Rate limiting configured: {} req/s, burst size {}", 
+        config.rate_limit_requests_per_second, 
+        config.rate_limit_burst_size
+    );
 
     // Serve static files (frontend) - fallback to index.html for SPA routing
     let static_service = ServeDir::new("static")
@@ -158,6 +219,7 @@ async fn main() -> anyhow::Result<()> {
         .with_state(app_state)
         .fallback_service(static_service)
         .layer(axum_mw::from_fn(add_cache_headers))
+        .layer(GovernorLayer { config: governor_conf })
         .layer(cors)
         .layer(TraceLayer::new_for_http());
 

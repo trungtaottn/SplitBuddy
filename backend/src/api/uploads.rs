@@ -22,6 +22,36 @@ pub struct UploadResponse {
     pub url: String,
 }
 
+/// Validate image file by checking magic bytes (file signature)
+/// This is more secure than just checking content-type header
+fn validate_image_magic_bytes(data: &[u8]) -> Option<&'static str> {
+    if data.len() < 8 {
+        return None;
+    }
+    
+    // JPEG: FF D8 FF
+    if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        return Some("jpg");
+    }
+    
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if data.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
+        return Some("png");
+    }
+    
+    // GIF: 47 49 46 38 (GIF87a or GIF89a)
+    if data.starts_with(&[0x47, 0x49, 0x46, 0x38]) {
+        return Some("gif");
+    }
+    
+    // WebP: 52 49 46 46 ... 57 45 42 50 (RIFF....WEBP)
+    if data.len() >= 12 && data.starts_with(&[0x52, 0x49, 0x46, 0x46]) && &data[8..12] == b"WEBP" {
+        return Some("webp");
+    }
+    
+    None
+}
+
 async fn upload_avatar(
     State(_state): State<AppState>,
     auth_user: AuthUser,
@@ -39,30 +69,7 @@ async fn upload_avatar(
         let name = field.name().unwrap_or("").to_string();
         
         if name == "file" || name == "avatar" {
-            let content_type = field.content_type().unwrap_or("").to_string();
-            
-            // Validate file type
-            if !content_type.starts_with("image/") {
-                return Err(AppError::Validation {
-                    field: "file".to_string(),
-                    message: "File must be an image".to_string(),
-                });
-            }
-
-            // Get file extension from content type
-            let ext = match content_type.as_str() {
-                "image/jpeg" => "jpg",
-                "image/png" => "png",
-                "image/gif" => "gif",
-                "image/webp" => "webp",
-                _ => "jpg",
-            };
-
-            // Generate unique filename
-            let filename = format!("{}_{}.{}", auth_user.user_id, Uuid::new_v4(), ext);
-            let filepath = upload_dir.join(&filename);
-
-            // Read file data
+            // Read file data first
             let data = field.bytes().await.map_err(|e| {
                 AppError::Internal(anyhow::anyhow!("Failed to read file data: {}", e))
             })?;
@@ -74,6 +81,18 @@ async fn upload_avatar(
                     message: "File size must be less than 5MB".to_string(),
                 });
             }
+
+            // Validate file content by checking magic bytes (more secure than content-type header)
+            let ext = validate_image_magic_bytes(&data).ok_or_else(|| {
+                AppError::Validation {
+                    field: "file".to_string(),
+                    message: "Invalid image file. Only JPEG, PNG, GIF, and WebP are supported.".to_string(),
+                }
+            })?;
+
+            // Generate unique filename
+            let filename = format!("{}_{}.{}", auth_user.user_id, Uuid::new_v4(), ext);
+            let filepath = upload_dir.join(&filename);
 
             // Save file
             fs::write(&filepath, &data).await.map_err(|e| {

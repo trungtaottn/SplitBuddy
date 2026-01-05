@@ -12,6 +12,8 @@ use crate::api::response::{ok, ApiResponse};
 use crate::api::AppState;
 use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
+use crate::audit::{fetch_audit_logs, AuditLogQuery, AuditLogEntry};
+use crate::utils::password::hash_password;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -22,6 +24,7 @@ pub fn routes() -> Router<AppState> {
         .route("/music/url", post(add_music_url)) // Must be before /music/:id
         .route("/music/:id", delete(delete_music))
         .route("/music", get(list_music).post(upload_music).layer(DefaultBodyLimit::max(50 * 1024 * 1024))) // 50MB limit
+        .route("/audit-logs", get(get_audit_logs))
 }
 
 #[derive(Serialize, sqlx::FromRow)]
@@ -96,17 +99,8 @@ async fn create_user(
         });
     }
 
-    // Hash password
-    use argon2::{
-        password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
-        Argon2,
-    };
-
-    let salt = SaltString::generate(&mut OsRng);
-    let password_hash = Argon2::default()
-        .hash_password(payload.password.as_bytes(), &salt)
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to hash password: {}", e)))?
-        .to_string();
+    // Hash password using shared utility
+    let password_hash = hash_password(&payload.password)?;
 
     let id = Uuid::new_v4();
     let user: UserResponse = sqlx::query_as(
@@ -134,16 +128,8 @@ async fn reset_password(
 ) -> Result<Json<ApiResponse<()>>, AppError> {
     require_admin(&auth_user)?;
 
-    use argon2::{
-        password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
-        Argon2,
-    };
-
-    let salt = SaltString::generate(&mut OsRng);
-    let password_hash = Argon2::default()
-        .hash_password(payload.new_password.as_bytes(), &salt)
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to hash password: {}", e)))?
-        .to_string();
+    // Hash password using shared utility
+    let password_hash = hash_password(&payload.new_password)?;
 
     sqlx::query!(
         "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2",
@@ -158,7 +144,7 @@ async fn reset_password(
 
 // Feature Flags
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Serialize, sqlx::FromRow, Clone)]
 pub struct FeatureFlag {
     pub id: Uuid,
     pub key: String,
@@ -213,6 +199,10 @@ async fn toggle_feature(
     .bind(&key)
     .fetch_one(&state.pool)
     .await?;
+
+    // Invalidate cache when feature flag is updated
+    state.cache.invalidate_feature_flag(&key).await;
+    tracing::info!("Feature flag '{}' updated to {}, cache invalidated", key, payload.enabled);
 
     Ok(ok(feature))
 }
@@ -494,5 +484,37 @@ async fn add_music_url(
         id: track.id,
         name: track.name,
         src: track.filename, // URL is stored in filename
+    }))
+}
+
+// Audit Logs
+
+#[derive(Serialize)]
+pub struct AuditLogsResponse {
+    pub logs: Vec<AuditLogEntry>,
+    pub total: i64,
+    pub page: i64,
+    pub limit: i64,
+}
+
+async fn get_audit_logs(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    axum::extract::Query(query): axum::extract::Query<AuditLogQuery>,
+) -> Result<Json<ApiResponse<AuditLogsResponse>>, AppError> {
+    require_admin(&auth_user)?;
+
+    let page = query.page.unwrap_or(1);
+    let limit = query.limit.unwrap_or(50);
+
+    let (logs, total) = fetch_audit_logs(&state.pool, query)
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to fetch audit logs: {}", e)))?;
+
+    Ok(ok(AuditLogsResponse {
+        logs,
+        total,
+        page,
+        limit,
     }))
 }
