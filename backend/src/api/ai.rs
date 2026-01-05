@@ -86,7 +86,7 @@ fn get_random_slogan() -> String {
 }
 
 async fn get_greeting(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     _auth_user: AuthUser,
     Json(payload): Json<GreetingRequest>,
 ) -> Result<Json<ApiResponse<GreetingResponse>>, AppError> {
@@ -215,7 +215,7 @@ Nếu người dùng vui -> gợi ý tạo cuộc nhậu ăn mừng."#, first_na
 }
 
 async fn chat(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     _auth_user: AuthUser,
     Json(payload): Json<ChatRequest>,
 ) -> Result<Json<ApiResponse<ChatResponse>>, AppError> {

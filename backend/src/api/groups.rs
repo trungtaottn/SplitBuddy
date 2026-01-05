@@ -60,6 +60,7 @@ pub struct CreateGroupRequest {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct AddMemberRequest {
     pub email: String,
     pub full_name: Option<String>,

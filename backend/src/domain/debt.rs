@@ -1,22 +1,18 @@
+#![allow(dead_code)]
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, Default)]
 #[sqlx(type_name = "debt_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum DebtStatus {
+    #[default]
     Pending,
     SettlementRequested,
     Settled,
-}
-
-impl Default for DebtStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
 }
 
 #[derive(Debug, Clone, FromRow, Serialize)]

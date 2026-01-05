@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use rust_decimal::Decimal;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -85,6 +86,7 @@ impl SessionRepository {
         Ok(sessions)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn find_by_user_paginated(
         &self,
         user_id: Uuid,
@@ -366,6 +368,7 @@ impl SessionRepository {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_with_participants(
         &self,
         name: &str,
@@ -814,6 +817,7 @@ impl SessionRepository {
         Ok(bills)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_bill(
         &self,
         session_id: Uuid,
@@ -1031,6 +1035,7 @@ impl SessionRepository {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_bill(
         &self,
         bill_id: Uuid,

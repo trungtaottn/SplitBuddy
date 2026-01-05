@@ -258,17 +258,17 @@ async fn check_achievements(
     .unwrap_or((0,));
 
     // Check party_starter (10+ sessions created)
-    if sessions_created.0 >= 10 {
-        if try_unlock_achievement(&state.pool, auth_user.user_id, "party_starter").await {
-            newly_unlocked.push("party_starter".to_string());
-        }
+    if sessions_created.0 >= 10
+        && try_unlock_achievement(&state.pool, auth_user.user_id, "party_starter").await
+    {
+        newly_unlocked.push("party_starter".to_string());
     }
 
     // Check centurion (100 sessions attended)
-    if sessions_attended.0 >= 100 {
-        if try_unlock_achievement(&state.pool, auth_user.user_id, "centurion").await {
-            newly_unlocked.push("centurion".to_string());
-        }
+    if sessions_attended.0 >= 100
+        && try_unlock_achievement(&state.pool, auth_user.user_id, "centurion").await
+    {
+        newly_unlocked.push("centurion".to_string());
     }
 
     // Check founding_member
@@ -281,13 +281,13 @@ async fn check_achievements(
     .unwrap_or(None);
 
     if let Some((created_at,)) = user_created {
-        if created_at < chrono::DateTime::parse_from_rfc3339("2026-06-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc)
+        if created_at
+            < chrono::DateTime::parse_from_rfc3339("2026-06-01T00:00:00Z")
+                .unwrap()
+                .with_timezone(&chrono::Utc)
+            && try_unlock_achievement(&state.pool, auth_user.user_id, "founding_member").await
         {
-            if try_unlock_achievement(&state.pool, auth_user.user_id, "founding_member").await {
-                newly_unlocked.push("founding_member".to_string());
-            }
+            newly_unlocked.push("founding_member".to_string());
         }
     }
 

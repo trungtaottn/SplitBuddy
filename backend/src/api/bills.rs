@@ -6,6 +6,7 @@ use axum::Router;
 
 use crate::api::AppState;
 
+#[allow(dead_code)]
 pub fn routes() -> Router<AppState> {
     Router::new()
 }

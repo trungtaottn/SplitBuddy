@@ -33,6 +33,7 @@ impl<T: Serialize> ApiResponse<T> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_pagination(data: T, pagination: PaginationMeta) -> Self {
         Self {
             data,
@@ -44,6 +45,7 @@ impl<T: Serialize> ApiResponse<T> {
     }
 }
 
+#[allow(dead_code)]
 pub struct CreatedResponse<T: Serialize>(pub T);
 
 impl<T: Serialize> IntoResponse for CreatedResponse<T> {
