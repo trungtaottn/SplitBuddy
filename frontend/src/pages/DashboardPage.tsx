@@ -112,6 +112,8 @@ export default function DashboardPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
       setShowCreateModal(false)
       setNewSessionName('')
       setNewSessionLocation('')

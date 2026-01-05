@@ -105,16 +105,32 @@ export default function GroupDebtsPage() {
             </button>
           </div>
 
-          {/* Month Picker */}
+          {/* Month Picker - Custom Select */}
           {filterType === 'month' && (
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
-              <input
-                type="month"
+              <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 className="rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:border-primary focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-              />
+              >
+                {(() => {
+                  const months = []
+                  const now = new Date()
+                  // Show last 12 months
+                  for (let i = 0; i < 12; i++) {
+                    const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+                    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+                    const label = date.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+                    months.push({ value, label })
+                  }
+                  return months.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))
+                })()}
+              </select>
             </div>
           )}
 

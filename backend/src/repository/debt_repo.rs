@@ -28,7 +28,8 @@ impl DebtRepository {
                 d.creditor_id as counterpart_id,
                 COALESCE(u.full_name, sp_creditor.guest_name, 'Unknown') as "counterpart_name!",
                 d.amount,
-                d.status as "status: DebtStatus"
+                d.status as "status: DebtStatus",
+                (sp_creditor.user_id IS NULL) as "is_guest!"
             FROM debts d
             JOIN sessions s ON d.session_id = s.id
             JOIN session_participants sp_debtor ON d.debtor_id = sp_debtor.id
@@ -52,7 +53,8 @@ impl DebtRepository {
                 d.debtor_id as counterpart_id,
                 COALESCE(u.full_name, sp_debtor.guest_name, 'Unknown') as "counterpart_name!",
                 d.amount,
-                d.status as "status: DebtStatus"
+                d.status as "status: DebtStatus",
+                (sp_debtor.user_id IS NULL) as "is_guest!"
             FROM debts d
             JOIN sessions s ON d.session_id = s.id
             JOIN session_participants sp_debtor ON d.debtor_id = sp_debtor.id
@@ -164,6 +166,72 @@ impl DebtRepository {
             return Err(AppError::Validation {
                 field: "status".to_string(),
                 message: "Settlement must be requested before it can be confirmed".to_string(),
+            });
+        }
+
+        let updated = sqlx::query_as!(
+            Debt,
+            r#"
+            UPDATE debts 
+            SET status = 'settled', settled_at = NOW()
+            WHERE id = $1
+            RETURNING 
+                id,
+                session_id,
+                debtor_id,
+                creditor_id,
+                amount,
+                status as "status: DebtStatus",
+                created_at,
+                settled_at
+            "#,
+            debt_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(updated)
+    }
+
+    /// Settle a debt from a guest directly (creditor can mark as settled without request)
+    pub async fn settle_guest_debt(
+        &self,
+        debt_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Debt, AppError> {
+        // Check if the user is the creditor and the debtor is a guest
+        let debt = sqlx::query_as!(
+            Debt,
+            r#"
+            SELECT 
+                d.id,
+                d.session_id,
+                d.debtor_id,
+                d.creditor_id,
+                d.amount,
+                d.status as "status: DebtStatus",
+                d.created_at,
+                d.settled_at
+            FROM debts d
+            JOIN session_participants sp_creditor ON d.creditor_id = sp_creditor.id
+            JOIN session_participants sp_debtor ON d.debtor_id = sp_debtor.id
+            WHERE d.id = $1 
+              AND sp_creditor.user_id = $2 
+              AND sp_debtor.user_id IS NULL
+            "#,
+            debt_id,
+            user_id
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(AppError::Forbidden {
+            message: "Chỉ có thể tất toán nợ từ khách (không phải thành viên hệ thống)".to_string(),
+        })?;
+
+        if debt.status == DebtStatus::Settled {
+            return Err(AppError::Validation {
+                field: "status".to_string(),
+                message: "Khoản nợ này đã được tất toán".to_string(),
             });
         }
 

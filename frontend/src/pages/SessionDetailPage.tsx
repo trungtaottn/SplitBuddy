@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check, Lock, Unlock, Download } from 'lucide-react'
+import { ArrowLeft, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check, Lock, Unlock, Download, UserPlus, Ghost } from 'lucide-react'
 import { BillInput, BillInputInline } from '@/components/BillInput'
 import { PageSkeleton } from '@/components/ui/skeleton'
 import { SuccessToast } from '@/components/ui/Celebration'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
-import type { SessionDetail, Bill, ApiResponse, CreateBillDto, PayerInput, SplitDetailInput } from '@/types/api'
+import type { SessionDetail, Bill, ApiResponse, CreateBillDto, PayerInput, SplitDetailInput, GroupDetail } from '@/types/api'
 
 type TabType = 'overview' | 'bills' | 'debts'
 
@@ -127,6 +127,25 @@ export default function SessionDetailPage() {
 
   const [editingParticipant, setEditingParticipant] = useState<{ id: string; name: string } | null>(null)
   const [deletingParticipantId, setDeletingParticipantId] = useState<string | null>(null)
+  const [showAddParticipant, setShowAddParticipant] = useState(false)
+  const [addMode, setAddMode] = useState<'guest' | 'member'>('guest')
+  const [newGuestName, setNewGuestName] = useState('')
+
+  // Fetch group details if session has a group
+  const { data: groupDetail } = useQuery({
+    queryKey: ['groups', session?.group_id],
+    queryFn: async () => {
+      if (!session?.group_id) return null
+      const res = await api.get<ApiResponse<GroupDetail>>(`/groups/${session.group_id}`)
+      return res.data.data
+    },
+    enabled: !!session?.group_id,
+  })
+
+  // Filter group members who are not already participants
+  const availableMembers = groupDetail?.members.filter(
+    (m) => !session?.participants.some((p) => p.user_id === m.user_id)
+  ) || []
 
   const updateParticipant = useMutation({
     mutationFn: async ({ participantId, guestName }: { participantId: string; guestName: string }) => {
@@ -159,6 +178,23 @@ export default function SessionDetailPage() {
     },
   })
 
+  const addParticipant = useMutation({
+    mutationFn: async (data: { user_id?: string; guest_name?: string }) => {
+      await api.post(`/sessions/${id}/participants`, data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions', id, 'bills'] })
+      setShowAddParticipant(false)
+      setNewGuestName('')
+      toast.success('Đã thêm người tham gia!')
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      toast.error(message)
+    },
+  })
+
   const closeSession = useMutation({
     mutationFn: async () => {
       await api.post(`/sessions/${id}/close`)
@@ -166,6 +202,8 @@ export default function SessionDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions', id] })
       queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
       toast.success('Đã đóng session!')
     },
     onError: (error: any) => {
@@ -181,6 +219,8 @@ export default function SessionDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions', id] })
       queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
       toast.success('Đã mở lại session!')
     },
     onError: (error: any) => {
@@ -436,6 +476,118 @@ export default function SessionDetailPage() {
                   )}
                 </div>
               ))}
+              
+              {/* Add Participant Button */}
+              {session.status === 'active' && (
+                showAddParticipant ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Mode Toggle - show only if session has group */}
+                    {session.group_id && availableMembers.length > 0 && (
+                      <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full p-0.5">
+                        <button
+                          onClick={() => setAddMode('member')}
+                          className={`px-2 py-1 text-xs rounded-full transition-all ${
+                            addMode === 'member' 
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          👤 Nhóm
+                        </button>
+                        <button
+                          onClick={() => setAddMode('guest')}
+                          className={`px-2 py-1 text-xs rounded-full transition-all ${
+                            addMode === 'guest' 
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          👻 Khách
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Add Group Member */}
+                    {addMode === 'member' && availableMembers.length > 0 && (
+                      <div className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-2">
+                        <Users className="h-4 w-4 text-primary" />
+                        <select
+                          className="h-7 text-sm bg-transparent border-none outline-none cursor-pointer"
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              addParticipant.mutate({ user_id: e.target.value })
+                              e.target.value = ''
+                            }
+                          }}
+                          disabled={addParticipant.isPending}
+                        >
+                          <option value="">Chọn thành viên...</option>
+                          {availableMembers.map((m) => (
+                            <option key={m.user_id} value={m.user_id}>
+                              {m.full_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Add Guest */}
+                    {addMode === 'guest' && (
+                      <div className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-2">
+                        <Ghost className="h-4 w-4 text-primary" />
+                        <Input
+                          value={newGuestName}
+                          onChange={(e) => setNewGuestName(e.target.value)}
+                          placeholder="Tên khách..."
+                          className="h-7 w-32 text-sm"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newGuestName.trim()) {
+                              addParticipant.mutate({ guest_name: newGuestName.trim() })
+                            }
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0"
+                          onClick={() => {
+                            if (newGuestName.trim()) {
+                              addParticipant.mutate({ guest_name: newGuestName.trim() })
+                            }
+                          }}
+                          disabled={addParticipant.isPending || !newGuestName.trim()}
+                        >
+                          <Check className="h-3 w-3 text-green-600" />
+                        </Button>
+                      </div>
+                    )}
+
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0"
+                      onClick={() => {
+                        setShowAddParticipant(false)
+                        setNewGuestName('')
+                        setAddMode('guest')
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddParticipant(true)}
+                    className="rounded-full gap-1"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Thêm người
+                  </Button>
+                )
+              )}
             </div>
           </div>
         </div>

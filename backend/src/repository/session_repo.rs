@@ -490,6 +490,7 @@ impl SessionRepository {
             created_at: chrono::DateTime<chrono::Utc>,
             session_date: chrono::NaiveDate,
             total_amount: Decimal,
+            group_id: Option<Uuid>,
         }
 
         let session: Option<SessionDetailRow> = sqlx::query_as(
@@ -502,7 +503,8 @@ impl SessionRepository {
                 s.created_by,
                 s.created_at,
                 s.session_date,
-                COALESCE(SUM(b.amount), 0) as total_amount
+                COALESCE(SUM(b.amount), 0) as total_amount,
+                s.group_id
             FROM sessions s
             LEFT JOIN bills b ON s.id = b.session_id
             WHERE s.id = $1
@@ -549,6 +551,7 @@ impl SessionRepository {
             created_at: session.created_at,
             session_date: session.session_date,
             total_amount: session.total_amount,
+            group_id: session.group_id,
             participants: participants
                 .into_iter()
                 .map(|p| ParticipantResponse {

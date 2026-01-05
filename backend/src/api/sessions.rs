@@ -65,6 +65,7 @@ pub struct SessionDetailResponse {
     pub session_date: chrono::NaiveDate,
     pub participants: Vec<ParticipantResponse>,
     pub total_amount: Decimal,
+    pub group_id: Option<Uuid>,
 }
 
 #[derive(Serialize)]

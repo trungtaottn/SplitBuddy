@@ -20,6 +20,7 @@ pub fn routes() -> Router<AppState> {
         .route("/sessions", get(get_debts_by_session))
         .route("/:id/request-settle", post(request_settle))
         .route("/:id/confirm-settle", post(confirm_settle))
+        .route("/:id/settle-guest", post(settle_guest_debt))
 }
 
 #[derive(Serialize)]
@@ -40,6 +41,7 @@ pub struct DebtItemResponse {
     #[serde(with = "rust_decimal::serde::str")]
     pub amount: Decimal,
     pub status: DebtStatus,
+    pub is_guest: bool, // Whether the counterpart (debtor for owed_to_me) is a guest
 }
 
 #[derive(Serialize)]
@@ -126,5 +128,23 @@ async fn confirm_settle(
         debt_id: debt.id,
         status: debt.status,
         message: "Settlement confirmed. Debt has been cleared.".to_string(),
+    }))
+}
+
+/// Settle a debt from a guest (non-user participant) directly
+/// This allows creditors to mark guest debts as settled without waiting for settlement request
+async fn settle_guest_debt(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(debt_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<SettleResponse>>, AppError> {
+    let repo = DebtRepository::new(state.pool.clone());
+
+    let debt = repo.settle_guest_debt(debt_id, auth_user.user_id).await?;
+
+    Ok(ok(SettleResponse {
+        debt_id: debt.id,
+        status: debt.status,
+        message: "Guest debt has been settled.".to_string(),
     }))
 }

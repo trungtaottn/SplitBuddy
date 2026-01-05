@@ -32,7 +32,9 @@ function DebtCard({
   sessionName,
   amount,
   status,
+  isGuest,
   onSettle,
+  onSettleGuest,
   isSettling,
 }: {
   type: 'owe' | 'owed'
@@ -40,7 +42,9 @@ function DebtCard({
   sessionName: string
   amount: string
   status: string
+  isGuest: boolean
   onSettle: () => void
+  onSettleGuest?: () => void
   isSettling: boolean
 }) {
   const isOwe = type === 'owe'
@@ -159,6 +163,20 @@ function DebtCard({
             Xác nhận
           </Button>
         )}
+        {/* Guest debt - can settle directly without waiting for request */}
+        {!isOwe && isPending && isGuest && onSettleGuest && (
+          <Button
+            size="sm"
+            variant="success"
+            className="flex-1 h-8 text-xs"
+            onClick={onSettleGuest}
+            disabled={isSettling}
+            title="Khách ngoài nhóm - tất toán trực tiếp"
+          >
+            <Check className="h-3 w-3 mr-1" />
+            Tất toán
+          </Button>
+        )}
       </div>
     </div>
   )
@@ -242,6 +260,20 @@ export default function DebtsPage() {
     },
     onError: () => {
       toast.error('Có lỗi xảy ra')
+    },
+  })
+
+  const settleGuestDebt = useMutation({
+    mutationFn: async (debtId: string) => {
+      await api.post(`/debts/${debtId}/settle-guest`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
+      toast.success('Đã tất toán nợ từ khách!')
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
+      toast.error(message)
     },
   })
 
@@ -478,12 +510,79 @@ export default function DebtsPage() {
                           </div>
                         </div>
                         
-                        <span className={cn(
-                          "text-lg font-bold font-mono",
-                          debt.netAmount > 0 ? "text-destructive" : "text-success"
-                        )}>
-                          {formatCurrency(Math.abs(debt.netAmount))}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className={cn(
+                            "text-lg font-bold font-mono",
+                            debt.netAmount > 0 ? "text-destructive" : "text-success"
+                          )}>
+                            {formatCurrency(Math.abs(debt.netAmount))}
+                          </span>
+                          
+                          {/* Settlement action for netted debts */}
+                          {debt.netAmount > 0 ? (
+                            // I owe them - request settlement for all related debts
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
+                              onClick={() => {
+                                // Find all pending debts I owe to this person and request settle
+                                const relatedDebts = debts?.i_owe.filter(
+                                  d => d.counterpart_id === debt.counterpartId && d.status === 'pending'
+                                ) || []
+                                relatedDebts.forEach(d => requestSettle.mutate(d.id))
+                              }}
+                              disabled={requestSettle.isPending}
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              Đã trả
+                            </Button>
+                          ) : (
+                            // They owe me - show pending count or settle guests
+                            (() => {
+                              const relatedDebts = debts?.owed_to_me.filter(
+                                d => d.counterpart_id === debt.counterpartId
+                              ) || []
+                              const pendingDebts = relatedDebts.filter(d => d.status === 'pending')
+                              const waitingDebts = relatedDebts.filter(d => d.status === 'settlement_requested')
+                              const guestDebts = pendingDebts.filter(d => d.is_guest)
+                              
+                              return (
+                                <div className="flex items-center gap-1">
+                                  {waitingDebts.length > 0 && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 text-xs border-success/30 text-success hover:bg-success/10"
+                                      onClick={() => {
+                                        waitingDebts.forEach(d => confirmSettle.mutate(d.id))
+                                      }}
+                                      disabled={confirmSettle.isPending}
+                                    >
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Xác nhận ({waitingDebts.length})
+                                    </Button>
+                                  )}
+                                  {guestDebts.length > 0 && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 text-xs border-success/30 text-success hover:bg-success/10"
+                                      onClick={() => {
+                                        guestDebts.forEach(d => settleGuestDebt.mutate(d.id))
+                                      }}
+                                      disabled={settleGuestDebt.isPending}
+                                      title="Tất toán nợ từ khách"
+                                    >
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Tất toán khách
+                                    </Button>
+                                  )}
+                                </div>
+                              )
+                            })()
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -577,6 +676,7 @@ export default function DebtsPage() {
                   sessionName={debt.session_name}
                   amount={debt.amount}
                   status={debt.status}
+                  isGuest={debt.is_guest}
                   onSettle={() => requestSettle.mutate(debt.id)}
                   isSettling={requestSettle.isPending}
                 />
@@ -624,8 +724,10 @@ export default function DebtsPage() {
                   sessionName={debt.session_name}
                   amount={debt.amount}
                   status={debt.status}
+                  isGuest={debt.is_guest}
                   onSettle={() => confirmSettle.mutate(debt.id)}
-                  isSettling={confirmSettle.isPending}
+                  onSettleGuest={() => settleGuestDebt.mutate(debt.id)}
+                  isSettling={confirmSettle.isPending || settleGuestDebt.isPending}
                 />
               </motion.div>
             ))}
