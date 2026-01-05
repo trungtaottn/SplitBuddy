@@ -1,17 +1,22 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { useMood } from '@/contexts/MoodContext'
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
 import { LogOut, User, Wallet, Home, Users, Shield, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { InteractiveBackground } from '@/components/ui/InteractiveBackground'
 import { MusicPlayer } from '@/components/ui/MusicPlayer'
 import { AnimatedOutlet } from '@/components/PageTransition'
 import { SkipLink } from '@/components/SkipLink'
 
+/**
+ * AppLayout - Vintage Paper Style
+ * Features:
+ * - Paper texture background
+ * - Typewriter navigation
+ * - Notebook-style header
+ */
+
 export default function AppLayout() {
   const { user, logout } = useAuth()
-  const { moodConfig } = useMood()
   const { isEnabled } = useFeatureFlags()
   const navigate = useNavigate()
   const location = useLocation()
@@ -30,162 +35,219 @@ export default function AppLayout() {
 
   const isActive = (path: string) => location.pathname === path
 
-  // Dark mode backgrounds per mood (lighter colors for better visibility)
-  const darkBgMap: Record<string, string> = {
-    happy: 'dark:from-orange-950/50 dark:via-amber-950/50 dark:to-yellow-950/50',
-    sad: 'dark:from-blue-950/50 dark:via-slate-950/50 dark:to-gray-950/50',
-    tired: 'dark:from-violet-950/50 dark:via-purple-950/50 dark:to-indigo-950/50',
-    stressed: 'dark:from-emerald-950/50 dark:via-teal-950/50 dark:to-cyan-950/50',
-    excited: 'dark:from-pink-950/50 dark:via-rose-950/50 dark:to-red-950/50',
-    neutral: 'dark:from-gray-950/50 dark:via-slate-950/50 dark:to-zinc-950/50',
-  }
-
   return (
-    <div className={`min-h-screen bg-gradient-to-b ${moodConfig.theme.background} ${darkBgMap[moodConfig.name] || darkBgMap.neutral} pb-16 md:pb-0 transition-colors duration-500`}>
+    <div className="min-h-screen bg-background pb-20 md:pb-0 texture-paper">
+      {/* Aged paper vignette effect */}
+      <div className="fixed inset-0 pointer-events-none texture-aged" />
+      
       {/* Accessibility: Skip to main content */}
       <SkipLink />
       
-      <InteractiveBackground />
-      {/* Desktop Header - Minimalist Retro */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-card/90 backdrop-blur-md shadow-sm">
+      {/* Desktop Header - Letterhead Style */}
+      <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b-2 border-double border-border">
         <div className="container mx-auto flex h-14 items-center justify-between px-4 md:h-16">
-          <Link to={isAdmin ? "/admin" : "/"} className="flex items-center gap-2 group">
-            <span className="text-xl md:text-2xl animate-bounce">🍻</span>
-            <span className="hidden sm:inline font-logo text-xl gradient-text">SplitBuddy</span>
+          {/* Logo - Vintage style with beer icon */}
+          <Link 
+            to={isAdmin ? "/admin" : "/"} 
+            className="flex items-center gap-3 group"
+          >
+            <span className="text-xl md:text-2xl animate-bounce">🍺</span>
+            <div className="hidden sm:flex flex-col">
+              <span className="text-lg font-bold tracking-tight text-foreground">
+                SplitBuddy
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground -mt-1">
+                Bill Splitter
+              </span>
+            </div>
           </Link>
 
-          {/* Desktop Nav */}
-          <nav className="hidden items-center gap-4 md:flex">
+          {/* Desktop Nav - Typewriter tabs */}
+          <nav className="hidden items-center gap-1 md:flex">
             {isAdmin ? (
               <Link to="/admin">
                 <Button variant="ghost" size="sm" className="gap-2">
-                  <Shield className="h-4 w-4" />
-                  Quản lý Users
+                  <Shield className="h-4 w-4" strokeWidth={1.5} />
+                  <span>Quản lý</span>
                 </Button>
               </Link>
             ) : (
               <>
                 {showGroups && (
                   <Link to="/groups">
-                    <Button variant="ghost" size="sm" className="gap-2">
-                      <Users className="h-4 w-4" />
-                      Nhóm
+                    <Button 
+                      variant={isActive('/groups') ? 'outline' : 'ghost'} 
+                      size="sm" 
+                      className="gap-2"
+                    >
+                      <Users className="h-4 w-4" strokeWidth={1.5} />
+                      <span>Nhóm</span>
                     </Button>
                   </Link>
                 )}
-            {showDebts && (
-              <Link to="/debts" data-onboarding="debts">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <Wallet className="h-4 w-4" />
-                  Công nợ
-                </Button>
-              </Link>
-            )}
-            {showGames && (
-              <Link to="/games" data-onboarding="games">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  Trò chơi
-                </Button>
-              </Link>
-            )}
+                {showDebts && (
+                  <Link to="/debts" data-onboarding="debts">
+                    <Button 
+                      variant={isActive('/debts') ? 'outline' : 'ghost'} 
+                      size="sm" 
+                      className="gap-2"
+                    >
+                      <Wallet className="h-4 w-4" strokeWidth={1.5} />
+                      <span>Công nợ</span>
+                    </Button>
+                  </Link>
+                )}
+                {showGames && (
+                  <Link to="/games" data-onboarding="games">
+                    <Button 
+                      variant={isActive('/games') ? 'outline' : 'ghost'} 
+                      size="sm" 
+                      className="gap-2"
+                    >
+                      <Sparkles className="h-4 w-4" strokeWidth={1.5} />
+                      <span>Trò chơi</span>
+                    </Button>
+                  </Link>
+                )}
               </>
             )}
 
-            <Link to="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white">
-                <User className="h-4 w-4" />
+            {/* Divider */}
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* User section */}
+            <Link 
+              to="/profile" 
+              className="flex items-center gap-2 px-2 py-1 rounded-sm hover:bg-accent/30 transition-colors"
+            >
+              <div className="flex h-7 w-7 items-center justify-center rounded-sm border-2 border-primary/50 bg-primary/10 text-primary">
+                <User className="h-3.5 w-3.5" strokeWidth={1.5} />
               </div>
-              <span className="text-sm font-medium">{user?.full_name}</span>
+              <span className="text-sm font-medium max-w-[100px] truncate">
+                {user?.full_name}
+              </span>
             </Link>
 
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
-              <LogOut className="h-4 w-4" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="h-4 w-4" strokeWidth={1.5} />
             </Button>
           </nav>
 
-          {/* Mobile: Show user avatar and logout */}
+          {/* Mobile: User info */}
           <div className="flex items-center gap-2 md:hidden">
-            <Link to="/profile" className="max-w-24 truncate text-sm font-medium hover:text-primary">
+            <Link 
+              to="/profile" 
+              className="max-w-24 truncate text-sm font-medium text-foreground"
+            >
               {user?.full_name}
             </Link>
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
-              <LogOut className="h-4 w-4" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleLogout}
+              className="text-muted-foreground"
+            >
+              <LogOut className="h-4 w-4" strokeWidth={1.5} />
             </Button>
           </div>
         </div>
       </header>
 
-      <main id="main-content" tabIndex={-1} className="container mx-auto px-4 py-4 md:py-6 focus:outline-none">
+      {/* Main Content */}
+      <main 
+        id="main-content" 
+        tabIndex={-1} 
+        className="container mx-auto px-4 py-6 md:py-8 focus:outline-none relative z-10"
+      >
         <AnimatedOutlet />
       </main>
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile Bottom Navigation - Tab bar style */}
       {isAdmin ? (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white dark:bg-gray-900 dark:border-gray-800 md:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t-2 border-border bg-card md:hidden">
           <div className="flex h-16 items-center justify-center">
             <Link
               to="/admin"
-              className={`flex flex-col items-center gap-1 px-4 py-2 ${
-                isActive('/admin') ? 'text-primary' : 'text-gray-500 dark:text-gray-400'
+              className={`flex flex-col items-center gap-1 px-6 py-2 ${
+                isActive('/admin') 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground'
               }`}
             >
-              <Shield className="h-5 w-5" />
-              <span className="text-xs">Quản lý Users</span>
+              <Shield className="h-5 w-5" strokeWidth={1.5} />
+              <span className="text-[10px] uppercase tracking-wider font-semibold">
+                Admin
+              </span>
             </Link>
           </div>
         </nav>
       ) : (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-border/50 shadow-lg md:hidden">
-          <div className="flex h-16 items-center justify-around">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t-2 border-border md:hidden">
+          <div className="flex h-16 items-center justify-around px-2">
             <Link
               to="/"
-              className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
+              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-sm transition-all ${
                 isActive('/') 
-                  ? 'text-primary bg-primary/10 scale-105' 
-                  : 'text-muted-foreground hover:text-primary'
+                  ? 'text-primary bg-primary/10' 
+                  : 'text-muted-foreground'
               }`}
             >
-              <Home className="h-5 w-5" />
-              <span className="text-xs font-medium font-body">Trang chủ</span>
+              <Home className="h-5 w-5" strokeWidth={1.5} />
+              <span className="text-[10px] uppercase tracking-wider font-semibold">
+                Home
+              </span>
             </Link>
+
             {showGroups && (
               <Link
                 to="/groups"
-                className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
+                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-sm transition-all ${
                   isActive('/groups') 
-                    ? 'text-primary bg-primary/10 scale-105' 
-                    : 'text-muted-foreground hover:text-primary'
+                    ? 'text-primary bg-primary/10' 
+                    : 'text-muted-foreground'
                 }`}
               >
-                <Users className="h-5 w-5" />
-                <span className="text-xs font-medium font-body">Nhóm</span>
+                <Users className="h-5 w-5" strokeWidth={1.5} />
+                <span className="text-[10px] uppercase tracking-wider font-semibold">
+                  Nhóm
+                </span>
               </Link>
             )}
+
             {showDebts && (
               <Link
                 to="/debts"
-                className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
+                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-sm transition-all ${
                   isActive('/debts') 
-                    ? 'text-primary bg-primary/10 scale-105' 
-                    : 'text-muted-foreground hover:text-primary'
+                    ? 'text-primary bg-primary/10' 
+                    : 'text-muted-foreground'
                 }`}
               >
-                <Wallet className="h-5 w-5" />
-                <span className="text-xs font-medium font-body">Công nợ</span>
+                <Wallet className="h-5 w-5" strokeWidth={1.5} />
+                <span className="text-[10px] uppercase tracking-wider font-semibold">
+                  Nợ
+                </span>
               </Link>
             )}
+
             {showGames && (
               <Link
                 to="/games"
-                className={`flex flex-col items-center gap-1 px-5 py-2 rounded-xl transition-all ${
+                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-sm transition-all ${
                   isActive('/games') 
-                    ? 'text-primary bg-primary/10 scale-105' 
-                    : 'text-muted-foreground hover:text-primary'
+                    ? 'text-primary bg-primary/10' 
+                    : 'text-muted-foreground'
                 }`}
               >
-                <Sparkles className="h-5 w-5" />
-                <span className="text-xs font-medium font-body">Trò chơi</span>
+                <Sparkles className="h-5 w-5" strokeWidth={1.5} />
+                <span className="text-[10px] uppercase tracking-wider font-semibold">
+                  Games
+                </span>
               </Link>
             )}
           </div>

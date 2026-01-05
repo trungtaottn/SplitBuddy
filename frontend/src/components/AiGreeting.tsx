@@ -7,10 +7,13 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useMood, MoodType, MOOD_CONFIGS } from '@/contexts/MoodContext'
 import { Smile, Frown, Moon, Flame, Zap, RefreshCw } from 'lucide-react'
 
-// Tailwind safelist classes - needed for dynamic mood backgrounds
-// from-orange-50 via-amber-50 to-yellow-50 from-blue-50 via-slate-50 to-gray-100
-// from-violet-50 via-purple-50 to-indigo-50 from-emerald-50 via-teal-50 to-cyan-50
-// from-pink-50 via-rose-50 to-red-50 from-gray-50 via-slate-50 to-zinc-50
+/**
+ * AiGreeting - Vintage Paper Style
+ * Features:
+ * - Typewriter mood selection
+ * - Sepia monochrome colors
+ * - Paper card styling
+ */
 
 interface GreetingResponse {
   message: string
@@ -24,14 +27,14 @@ interface AiGreetingProps {
   onViewDebts?: () => void
 }
 
-// Static class mappings for Tailwind (dynamic classes don't work with purge)
+// Vintage monochrome mood button styles
 const MOOD_BUTTON_CLASSES: Record<MoodType, string> = {
-  happy: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md scale-105',
-  sad: 'bg-gradient-to-r from-blue-500 to-slate-500 text-white shadow-md scale-105',
-  tired: 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-md scale-105',
-  stressed: 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md scale-105',
-  excited: 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md scale-105',
-  neutral: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200',
+  happy: 'bg-primary text-primary-foreground border-primary shadow-paper',
+  sad: 'bg-muted text-muted-foreground border-muted-foreground shadow-paper',
+  tired: 'bg-accent text-accent-foreground border-accent shadow-paper',
+  stressed: 'bg-warning/20 text-warning border-warning shadow-paper',
+  excited: 'bg-primary text-primary-foreground border-primary shadow-paper',
+  neutral: 'bg-card text-card-foreground border-border',
 }
 
 const MOODS = [
@@ -62,7 +65,6 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
   // Fetch greeting on mount if mood is already set
   useEffect(() => {
     if (mood !== 'neutral' && !greeting) {
-      // Use local greeting instead of API call for immediate feedback
       const localGreeting = MOOD_CONFIGS[mood].greetings[
         Math.floor(Math.random() * MOOD_CONFIGS[mood].greetings.length)
       ]
@@ -115,83 +117,89 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
   const firstName = user.full_name?.split(' ').pop() || 'Bạn'
 
   return (
-    <Card className="border shadow-sm">
+    <Card className="card-paper">
       <CardContent className="p-5">
-        {/* Slogan */}
-        <p 
-          className="text-center text-xl md:text-2xl lg:text-3xl font-bold text-orange-500 mb-4 pb-4 border-b border-gray-100 dark:border-gray-800"
-          style={{ fontFamily: '"Dancing Script", cursive' }}
-        >
-          {currentSlogan}
-        </p>
+        {/* Slogan - Vintage Typewriter Style */}
+        <div className="text-center mb-4 pb-4 border-b-2 border-dotted border-border">
+          <p className="text-lg md:text-xl italic text-primary font-semibold">
+            "{currentSlogan}"
+          </p>
+        </div>
 
         {showMoodSelector ? (
           <div className="space-y-4">
             <div className="text-center">
-              <p className="text-lg font-medium">
-                Chào <span className="text-orange-500 font-bold">{firstName}</span>! 👋
+              <p className="text-base font-medium">
+                Chào <span className="text-primary font-bold">{firstName}</span>! 👋
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1 italic">
                 Hôm nay tâm trạng thế nào?
               </p>
             </div>
             
+            {/* Mood Selection - Vintage Button Style */}
             <div className="flex flex-wrap justify-center gap-2">
               {MOODS.map((moodItem) => (
                 <button
                   key={moodItem.id}
                   onClick={() => handleMoodSelect(moodItem.id)}
                   disabled={greetingMutation.isPending}
-                  className={`flex flex-col items-center gap-1 rounded-xl px-4 py-2 transition-all ${
-                    mood === moodItem.id
+                  className={`
+                    flex flex-col items-center gap-1 rounded-sm px-4 py-2.5 
+                    border-2 transition-all duration-200
+                    hover:scale-105 active:scale-95
+                    ${mood === moodItem.id
                       ? MOOD_BUTTON_CLASSES[moodItem.id]
-                      : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:scale-105'
-                  }`}
+                      : 'bg-card text-foreground border-border hover:border-primary/50 hover:bg-secondary'
+                    }
+                  `}
                 >
-                  <moodItem.icon className="h-6 w-6" />
-                  <span className="text-xs font-medium">{moodItem.label}</span>
+                  <moodItem.icon className="h-5 w-5" strokeWidth={1.5} />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider">
+                    {moodItem.label}
+                  </span>
                 </button>
               ))}
             </div>
             
             {greetingMutation.isPending && (
-              <p className="text-center text-sm text-muted-foreground animate-pulse">
-                Đang suy nghĩ... 🤔
+              <p className="text-center text-sm text-muted-foreground italic cursor-blink">
+                Đang suy nghĩ
               </p>
             )}
           </div>
         ) : greeting ? (
           <div className="space-y-4">
             <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <span className="text-2xl">{MOOD_CONFIGS[mood].emoji}</span>
-                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Tâm trạng: {MOOD_CONFIGS[mood].nameVi}
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <span className="text-xl">{MOOD_CONFIGS[mood].emoji}</span>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {MOOD_CONFIGS[mood].nameVi}
                 </span>
                 <button
                   onClick={() => {
                     setShowMoodSelector(true)
                     setGreeting(null)
                   }}
-                  className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="p-1 rounded-sm hover:bg-secondary transition-colors border border-transparent hover:border-border"
                   title="Đổi tâm trạng"
                 >
-                  <RefreshCw className="h-4 w-4 text-gray-400" />
+                  <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
                 </button>
               </div>
-              <p className="text-base leading-relaxed">{greeting.message}</p>
+              <p className="text-sm leading-relaxed">{greeting.message}</p>
               
               {greeting.suggestion && (
-                <p className="mt-2 text-sm font-medium text-orange-500">
+                <p className="mt-2 text-sm font-medium text-primary italic">
                   {greeting.suggestion}
                 </p>
               )}
             </div>
             
             {greeting.action && (
-              <div className="flex justify-center">
-                <Button onClick={handleAction} className="gap-2 bg-orange-500 hover:bg-orange-600">
-                  {greeting.action === 'create_session' && 'Nhậu ngay đê! Chờ chi nữa...'}
+              <div className="flex justify-center pt-2">
+                <Button onClick={handleAction} variant="stamp" className="gap-2">
+                  {greeting.action === 'create_session' && 'Nhậu ngay đê!'}
                   {greeting.action === 'view_debts' && 'Xem công nợ'}
                 </Button>
               </div>

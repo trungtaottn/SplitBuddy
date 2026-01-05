@@ -3,6 +3,14 @@ import { Button } from '@/components/ui/button'
 import { Beer, Users, Receipt, Wallet, Search, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+/**
+ * EmptyState - Vintage Paper Style
+ * Features:
+ * - Typewriter text
+ * - Paper texture background
+ * - Stamp-style action buttons
+ */
+
 type EmptyStateType = 'sessions' | 'bills' | 'debts' | 'groups' | 'search' | 'games'
 
 interface EmptyStateProps {
@@ -28,70 +36,75 @@ const EMPTY_STATES: Record<EmptyStateType, {
   illustration: ReactNode
 }> = {
   sessions: {
-    icon: <Beer className="h-6 w-6" />,
-    title: 'Chưa có buổi nhậu nào!',
-    description: 'Tạo session đầu tiên để bắt đầu chia tiền với bạn bè.',
+    icon: <Beer className="h-5 w-5" strokeWidth={1.5} />,
+    title: 'No Sessions Yet',
+    description: 'Create your first session to start splitting bills with friends.',
     illustration: (
       <div className="relative">
-        <div className="text-6xl animate-float">🍺</div>
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full blur-sm" />
+        <div className="text-5xl">📋</div>
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-xs text-muted-foreground">
+          ~ empty ~
+        </div>
       </div>
     ),
   },
   bills: {
-    icon: <Receipt className="h-6 w-6" />,
-    title: 'Chưa có hóa đơn nào',
-    description: 'Thêm bill đầu tiên bằng nút + bên trên.',
+    icon: <Receipt className="h-5 w-5" strokeWidth={1.5} />,
+    title: 'No Bills Yet',
+    description: 'Add your first bill using the + button above.',
     illustration: (
       <div className="relative">
-        <div className="text-6xl animate-float">🧾</div>
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-12 h-2 bg-gray-200 dark:bg-gray-700 rounded-full blur-sm" />
+        <div className="text-5xl">🧾</div>
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-xs text-muted-foreground">
+          ~ empty ~
+        </div>
       </div>
     ),
   },
   debts: {
-    icon: <Wallet className="h-6 w-6" />,
-    title: 'Tuyệt vời! Không có nợ nần gì 🎉',
-    description: 'Bạn không nợ ai và không ai nợ bạn. Tiếp tục nhậu thôi!',
+    icon: <Wallet className="h-5 w-5" strokeWidth={1.5} />,
+    title: 'All Clear!',
+    description: 'No debts to settle. You\'re all good!',
     illustration: (
       <div className="relative">
-        <div className="text-6xl animate-bounce-in">🎉</div>
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-14 h-2 bg-gray-200 dark:bg-gray-700 rounded-full blur-sm" />
+        <div className="text-5xl">✓</div>
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-xs text-success">
+          ~ settled ~
+        </div>
       </div>
     ),
   },
   groups: {
-    icon: <Users className="h-6 w-6" />,
-    title: 'Chưa có nhóm nào',
-    description: 'Tạo nhóm để dễ dàng quản lý và chia tiền với bạn nhậu.',
+    icon: <Users className="h-5 w-5" strokeWidth={1.5} />,
+    title: 'No Groups Yet',
+    description: 'Create a group to manage your drinking buddies.',
     illustration: (
-      <div className="relative flex -space-x-4">
-        <div className="text-5xl animate-float" style={{ animationDelay: '0s' }}>👤</div>
-        <div className="text-5xl animate-float" style={{ animationDelay: '0.2s' }}>👤</div>
-        <div className="text-5xl animate-float" style={{ animationDelay: '0.4s' }}>👤</div>
+      <div className="relative flex gap-1">
+        <span className="text-4xl opacity-30">👤</span>
+        <span className="text-4xl opacity-50">👤</span>
+        <span className="text-4xl opacity-30">👤</span>
       </div>
     ),
   },
   search: {
-    icon: <Search className="h-6 w-6" />,
-    title: 'Không tìm thấy kết quả',
-    description: 'Thử tìm với từ khóa khác.',
+    icon: <Search className="h-5 w-5" strokeWidth={1.5} />,
+    title: 'No Results Found',
+    description: 'Try a different search term.',
     illustration: (
       <div className="relative">
-        <div className="text-6xl">🔍</div>
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-12 h-2 bg-gray-200 dark:bg-gray-700 rounded-full blur-sm" />
+        <div className="text-5xl opacity-50">🔍</div>
       </div>
     ),
   },
   games: {
-    icon: <Sparkles className="h-6 w-6" />,
-    title: 'Sẵn sàng chơi!',
-    description: 'Chọn một trò chơi để bắt đầu cuộc vui.',
+    icon: <Sparkles className="h-5 w-5" strokeWidth={1.5} />,
+    title: 'Ready to Play!',
+    description: 'Pick a game to get the party started.',
     illustration: (
       <div className="relative flex gap-2">
-        <div className="text-4xl animate-float" style={{ animationDelay: '0s' }}>🎲</div>
-        <div className="text-4xl animate-float" style={{ animationDelay: '0.3s' }}>🃏</div>
-        <div className="text-4xl animate-float" style={{ animationDelay: '0.6s' }}>🎯</div>
+        <span className="text-3xl">🎲</span>
+        <span className="text-3xl">🃏</span>
+        <span className="text-3xl">🎯</span>
       </div>
     ),
   },
@@ -108,36 +121,36 @@ export function EmptyState({
 }: EmptyStateProps) {
   const config = EMPTY_STATES[type]
   const displayTitle = searchTerm 
-    ? `Không tìm thấy "${searchTerm}"`
+    ? `No results for "${searchTerm}"`
     : (title || config.title)
   const displayDescription = description || config.description
 
   return (
     <div className={cn(
       'flex flex-col items-center justify-center py-12 px-4 text-center',
-      'animate-in fade-in duration-500',
+      'animate-ink-fade',
       className
     )}>
-      {/* Illustration with warm shadow */}
-      <div className="mb-6 relative">
+      {/* Illustration */}
+      <div className="mb-6 relative p-6 card-note inline-block">
         {config.illustration}
-        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-20 h-3 bg-secondary/50 rounded-full blur-md" />
       </div>
       
-      {/* Title - Uses heading font */}
-      <h3 className="text-lg font-heading font-semibold text-foreground mb-2">
+      {/* Title - Typewriter style */}
+      <h3 className="text-base font-semibold text-foreground mb-2 uppercase tracking-wider">
         {displayTitle}
       </h3>
       
-      {/* Description - Body font */}
-      <p className="text-sm text-muted-foreground max-w-sm mb-6 font-body">
+      {/* Description */}
+      <p className="text-sm text-muted-foreground max-w-xs mb-6 italic">
         {displayDescription}
       </p>
 
+      {/* Actions */}
       {(action || secondaryAction) && (
         <div className="flex flex-col sm:flex-row gap-3">
           {action && (
-            <Button onClick={action.onClick} className="gap-2">
+            <Button onClick={action.onClick} variant="stamp" className="gap-2">
               {config.icon}
               {action.label}
             </Button>
@@ -146,7 +159,9 @@ export function EmptyState({
           {secondaryAction && (
             <>
               {action && (
-                <span className="text-sm text-muted-foreground self-center hidden sm:block">hoặc</span>
+                <span className="text-xs text-muted-foreground self-center hidden sm:block">
+                  — or —
+                </span>
               )}
               <Button variant="outline" onClick={secondaryAction.onClick} className="gap-2">
                 {secondaryAction.label}
@@ -165,7 +180,7 @@ export function SearchEmptyState({ searchTerm, onClear }: { searchTerm: string; 
       type="search"
       searchTerm={searchTerm}
       action={onClear ? {
-        label: 'Xóa tìm kiếm',
+        label: 'Clear Search',
         onClick: onClear,
       } : undefined}
     />

@@ -211,10 +211,11 @@ export default function DashboardPage() {
         <FunTooltip messages={FUN_MESSAGES.createSession}>
           <Button 
             onClick={() => setShowCreateModal(true)} 
-            className="gap-2 btn-gradient rounded-lg hover-wiggle"
+            variant="stamp"
+            className="gap-2"
             data-onboarding="create-session"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4" strokeWidth={1.5} />
             Nhậu đê...
           </Button>
         </FunTooltip>
@@ -235,7 +236,7 @@ export default function DashboardPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-11 rounded-lg border-2 border-border/60 bg-background px-4 py-2 text-sm font-body transition-all hover:border-border focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+            className="h-10 rounded-sm border-0 border-b-2 border-border bg-transparent px-2 py-2 text-sm transition-all hover:border-foreground/40 focus:border-primary focus:outline-none uppercase tracking-wide"
           >
             <option value="">Tất cả</option>
             <option value="active">Đang diễn ra</option>
@@ -444,13 +445,13 @@ export default function DashboardPage() {
                       {guestNames.map((name, index) => (
                         <div
                           key={index}
-                          className="flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/30 px-3 py-1 text-sm text-orange-700 dark:text-orange-300"
+                          className="flex items-center gap-1 rounded-sm bg-secondary border border-border px-2.5 py-1 text-xs font-medium text-foreground"
                         >
                           <span>👤 {name}</span>
                           <button
                             type="button"
                             onClick={() => removeGuest(index)}
-                            className="ml-1 text-orange-500 hover:text-orange-700"
+                            className="ml-1 text-muted-foreground hover:text-destructive"
                           >
                             ✕
                           </button>

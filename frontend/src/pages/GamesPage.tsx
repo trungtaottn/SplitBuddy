@@ -407,7 +407,7 @@ export default function GamesPage() {
           <Sparkles className="h-8 w-8 text-warning animate-pulse" />
           Trò chơi nhậu
         </h1>
-        <p className="text-muted-foreground mt-2 font-body">Chọn một trò chơi để bắt đầu cuộc vui! 🍻</p>
+        <p className="text-muted-foreground mt-2 font-body">Chọn một trò chơi để bắt đầu cuộc vui!</p>
         <p className="text-xs text-primary mt-1 font-body">Uống có trách nhiệm - Đã uống không lái xe</p>
       </div>
 

@@ -1,6 +1,11 @@
 import { useState, useRef, ReactNode, MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 
+/**
+ * FunTooltip - Vintage Paper Style
+ * Displays random fun messages on hover
+ */
+
 interface FunTooltipProps {
   children: ReactNode
   messages: string[]
@@ -61,7 +66,10 @@ export default function FunTooltip({
             animation: 'tooltipFadeIn 0.15s ease-out'
           }}
         >
-          <div className="bg-gradient-to-r from-orange-500 to-pink-500 text-white text-sm font-bold px-4 py-2 rounded-full shadow-lg whitespace-nowrap">
+          {/* Vintage note style tooltip */}
+          <div className="bg-card border-2 border-border text-foreground text-xs font-semibold px-3 py-2 rounded-sm shadow-paper whitespace-nowrap relative">
+            {/* Corner fold */}
+            <div className="absolute -top-px -right-px w-3 h-3 bg-background border-l border-b border-border" style={{ transform: 'rotate(0deg)' }} />
             {currentMessage}
           </div>
         </div>,
@@ -73,48 +81,48 @@ export default function FunTooltip({
 
 export const FUN_MESSAGES = {
   createSession: [
-    "Đừng ngại, làm đi! 🍻",
-    "Nhanh lên, anh em đang chờ! 🔥",
-    "Tới lắm rồiiii! 🎉",
-    "Nhậu thôi còn chờ gì! 😎",
-    "Click đi, đừng sợ! 💪",
-    "Cuộc vui đang chờ bạn! 🥳",
+    "Đừng ngại, làm đi!",
+    "Nhanh lên, anh em đang chờ!",
+    "Tới lắm rồiiii!",
+    "Nhậu thôi còn chờ gì!",
+    "Click đi, đừng sợ!",
+    "Cuộc vui đang chờ bạn!",
   ],
   viewDebts: [
-    "Xem ai nợ ai nè! 👀",
-    "Đòi nợ thôi! 💰",
-    "Công bằng là trên hết! ⚖️",
-    "Ai nợ ai, rõ ràng! 📊",
+    "Xem ai nợ ai nè!",
+    "Đòi nợ thôi!",
+    "Công bằng là trên hết!",
+    "Ai nợ ai, rõ ràng!",
   ],
   addBill: [
-    "Ghi lại đi kẻo quên! 📝",
-    "Chia đều cho công bằng! ⚖️",
-    "Tính tiền nào! 💵",
-    "Ai trả bill đây? 🤔",
+    "Ghi lại đi kẻo quên!",
+    "Chia đều cho công bằng!",
+    "Tính tiền nào!",
+    "Ai trả bill đây?",
   ],
   groups: [
-    "Hội bạn thân đây! 👥",
-    "Team nhậu chất lượng! 🏆",
-    "Gắn bó bền chặt! 💪",
+    "Hội bạn thân đây!",
+    "Team nhậu chất lượng!",
+    "Gắn bó bền chặt!",
   ],
   sessionCard: [
-    "Cuộc vui đang chờ! 🎊",
-    "Xem chi tiết nào! 👀",
-    "Click để xem thêm! 🔍",
+    "Cuộc vui đang chờ!",
+    "Xem chi tiết nào!",
+    "Click để xem thêm!",
   ],
   debtOwed: [
-    "Trả đi nhé! 😅",
-    "Đừng quên nợ nha! 💸",
-    "Công bằng là hạnh phúc! 😊",
+    "Trả đi nhé!",
+    "Đừng quên nợ nha!",
+    "Công bằng là hạnh phúc!",
   ],
   debtOwing: [
-    "Đòi đi thôi! 💪",
-    "Tiền của mình mà! 💰",
-    "Nhắc họ đi nào! 📢",
+    "Đòi đi thôi!",
+    "Tiền của mình mà!",
+    "Nhắc họ đi nào!",
   ],
   participant: [
-    "Thành viên VIP! ⭐",
-    "Người anh em! 🤝",
-    "Chiến hữu đồng hành! 🍺",
+    "Thành viên VIP!",
+    "Người anh em!",
+    "Chiến hữu đồng hành!",
   ],
 }

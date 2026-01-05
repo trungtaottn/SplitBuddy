@@ -4,12 +4,11 @@ import { cn } from '@/lib/utils'
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 
 /**
- * Input - Minimalist Retro Style
+ * Input - Vintage Typewriter Style
  * Features:
- * - Warm border colors
- * - Soft rounded corners
- * - Clear focus states with accent color
- * - Smooth transitions
+ * - Underline style (no box border)
+ * - Paper background
+ * - Clear focus states
  */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {
@@ -17,21 +16,22 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         type={type}
         className={cn(
-          // Base styles
-          'flex h-11 w-full rounded-lg border-2 border-border/60 bg-background px-4 py-2',
-          'text-sm font-body text-foreground',
-          // Placeholder
-          'placeholder:text-muted-foreground/60',
-          // Focus state - warm accent
-          'focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20',
+          // Base styles - Underline style
+          'flex h-10 w-full rounded-none border-0 border-b-2 border-border/60',
+          'bg-transparent px-1 py-2',
+          'text-sm text-foreground',
+          // Placeholder - italic typewriter
+          'placeholder:text-muted-foreground/50 placeholder:italic',
+          // Focus state
+          'focus-visible:outline-none focus-visible:border-primary',
           // Transitions
-          'transition-all duration-200',
+          'transition-colors duration-200',
           // File input
           'file:border-0 file:bg-transparent file:text-sm file:font-medium',
           // Disabled
-          'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-muted',
+          'disabled:cursor-not-allowed disabled:opacity-50',
           // Hover
-          'hover:border-border',
+          'hover:border-foreground/40',
           className
         )}
         ref={ref}

@@ -13,6 +13,14 @@ import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
 
+/**
+ * MusicPlayer - Vintage Paper Style
+ * Features:
+ * - Paper card design
+ * - Sepia monochrome colors
+ * - Typewriter typography
+ */
+
 export function MusicPlayer() {
   const { 
     isPlaying, 
@@ -70,41 +78,41 @@ export function MusicPlayer() {
 
   return (
     <div ref={containerRef} className="fixed bottom-20 md:bottom-4 left-4 z-50">
-      {/* Expanded Panel */}
+      {/* Expanded Panel - Vintage Paper Style */}
       <div 
         className={cn(
-          "absolute bottom-full left-0 mb-2 w-72 rounded-xl shadow-2xl overflow-hidden transition-all duration-300 ease-out",
-          "bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg border border-gray-200 dark:border-gray-700",
+          "absolute bottom-full left-0 mb-2 w-72 overflow-hidden transition-all duration-300 ease-out",
+          "card-paper",
           isExpanded ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95 pointer-events-none"
         )}
       >
         {/* Track Info */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-b-2 border-dotted border-border">
           <div className="flex items-center gap-3">
-            {/* Animated Icon */}
+            {/* Vintage Icon */}
             <div className={cn(
-              "w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center",
+              "w-10 h-10 rounded-sm border-2 border-primary/50 bg-primary/10 flex items-center justify-center",
               isPlaying && "animate-pulse"
             )}>
-              <Music2 className="h-6 w-6 text-white" />
+              <Music2 className="h-5 w-5 text-primary" strokeWidth={1.5} />
             </div>
             
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">
+              <p className="font-semibold text-sm truncate uppercase tracking-wide">
                 {currentTrack?.name || 'Không có bài hát'}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
                 {tracks.length} bài hát
               </p>
               {isPlaying && (
-                <div className="flex items-center gap-0.5 mt-1">
+                <div className="flex items-center gap-1 mt-1">
                   {[0, 1, 2, 3].map((i) => (
                     <span 
                       key={i}
-                      className="w-0.5 bg-orange-500 rounded-full animate-bounce" 
+                      className="w-0.5 bg-primary rounded-none animate-bounce" 
                       style={{ 
                         animationDelay: `${i * 100}ms`,
-                        height: `${8 + Math.random() * 8}px`
+                        height: `${6 + Math.random() * 6}px`
                       }} 
                     />
                   ))}
@@ -120,30 +128,30 @@ export function MusicPlayer() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-9 w-9 rounded-full"
+              className="h-8 w-8 rounded-sm"
               onClick={prevTrack}
             >
-              <SkipBack className="h-4 w-4" />
+              <SkipBack className="h-4 w-4" strokeWidth={1.5} />
             </Button>
             <Button 
-              variant="default" 
+              variant="stamp" 
               size="icon" 
-              className="h-11 w-11 rounded-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 shadow-lg"
+              className="h-10 w-10 rounded-sm"
               onClick={toggle}
             >
               {isPlaying ? (
-                <Pause className="h-5 w-5 text-white" />
+                <Pause className="h-4 w-4" strokeWidth={1.5} />
               ) : (
-                <Play className="h-5 w-5 text-white ml-0.5" />
+                <Play className="h-4 w-4 ml-0.5" strokeWidth={1.5} />
               )}
             </Button>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-9 w-9 rounded-full"
+              className="h-8 w-8 rounded-sm"
               onClick={nextTrack}
             >
-              <SkipForward className="h-4 w-4" />
+              <SkipForward className="h-4 w-4" strokeWidth={1.5} />
             </Button>
           </div>
 
@@ -152,13 +160,13 @@ export function MusicPlayer() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-7 w-7 shrink-0"
+              className="h-7 w-7 shrink-0 rounded-sm"
               onClick={handleMuteToggle}
             >
               {isMuted || volume === 0 ? (
-                <VolumeX className="h-3.5 w-3.5" />
+                <VolumeX className="h-3.5 w-3.5" strokeWidth={1.5} />
               ) : (
-                <Volume2 className="h-3.5 w-3.5" />
+                <Volume2 className="h-3.5 w-3.5" strokeWidth={1.5} />
               )}
             </Button>
             <Slider
@@ -172,62 +180,61 @@ export function MusicPlayer() {
         </div>
 
         {/* Track List */}
-        <div className="max-h-32 overflow-y-auto border-t border-gray-200 dark:border-gray-700">
+        <div className="max-h-32 overflow-y-auto border-t-2 border-dotted border-border">
           {tracks.map((track, index) => (
             <button
               key={track.id}
               className={cn(
-                "w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
-                "flex items-center gap-2",
-                currentTrack?.id === track.id && "bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400"
+                "w-full px-3 py-2 text-left text-xs hover:bg-secondary transition-colors",
+                "flex items-center gap-2 border-b border-border/30 last:border-b-0",
+                currentTrack?.id === track.id && "bg-primary/10 text-primary"
               )}
               onClick={() => selectTrack(track)}
             >
-              <span className="w-4 text-center text-xs text-muted-foreground">
+              <span className="w-4 text-center text-[10px] text-muted-foreground">
                 {index + 1}
               </span>
-              <span className="flex-1 truncate text-xs">{track.name}</span>
+              <span className="flex-1 truncate">{track.name}</span>
               {currentTrack?.id === track.id && isPlaying && (
-                <span className="text-xs">🎵</span>
+                <span className="text-[10px]">♪</span>
               )}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Floating Button - Minimal & Smooth */}
+      {/* Floating Button - Vintage Style */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
-          "group flex items-center gap-2 h-10 px-3 rounded-full shadow-md transition-all duration-300 ease-out",
-          "bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50",
-          "hover:shadow-lg hover:bg-white dark:hover:bg-gray-900",
-          isPlaying && "ring-1 ring-orange-400/50"
+          "group flex items-center gap-2 h-9 px-3 rounded-sm transition-all duration-200",
+          "bg-card border-2 border-border shadow-paper",
+          "hover:shadow-lifted hover:border-primary/50",
+          isPlaying && "border-primary/50"
         )}
       >
         {/* Icon */}
         <div className={cn(
-          "w-6 h-6 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center transition-transform",
-          isPlaying && "animate-pulse",
-          isExpanded && "rotate-180"
+          "w-5 h-5 rounded-sm border border-primary/50 bg-primary/10 flex items-center justify-center",
+          isPlaying && "animate-pulse"
         )}>
-          <Music2 className="h-3.5 w-3.5 text-white" />
+          <Music2 className="h-3 w-3 text-primary" strokeWidth={1.5} />
         </div>
         
-        <span className="text-xs font-medium max-w-20 truncate text-gray-700 dark:text-gray-300">
-          {isPlaying ? (currentTrack?.name || 'Đang phát') : 'Nhạc'}
+        <span className="text-[10px] font-semibold uppercase tracking-wider max-w-16 truncate text-foreground">
+          {isPlaying ? (currentTrack?.name || 'Playing') : 'Music'}
         </span>
         
         {/* Sound wave indicator when playing */}
         {isPlaying && (
-          <div className="flex items-center gap-0.5 h-4">
+          <div className="flex items-center gap-0.5 h-3">
             {[0, 1, 2].map((i) => (
               <span 
                 key={i}
-                className="w-0.5 bg-orange-500 rounded-full animate-bounce" 
+                className="w-0.5 bg-primary rounded-none animate-bounce" 
                 style={{ 
                   animationDelay: `${i * 150}ms`,
-                  height: `${6 + i * 2}px`
+                  height: `${4 + i * 2}px`
                 }} 
               />
             ))}

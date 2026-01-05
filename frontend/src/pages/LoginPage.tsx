@@ -1,198 +1,21 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/toaster'
 import { Moon, Sun } from 'lucide-react'
 
-interface Particle {
-  id: number
-  x: number
-  y: number
-  size: number
-  color: string
-  life: number
-}
-
-interface MousePos {
-  x: number
-  y: number
-  targetX: number
-  targetY: number
-}
-
-function InteractiveBackground() {
-  const [particles, setParticles] = useState<Particle[]>([])
-  const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([])
-  
-  const glowRef = useRef<HTMLDivElement>(null)
-  const mouseRef = useRef<MousePos>({ x: 0, y: 0, targetX: 0, targetY: 0 })
-  const animationRef = useRef<number>()
-  const lastParticleTime = useRef(0)
-
-  const colors = ['#f97316', '#ec4899', '#ef4444', '#f59e0b', '#fb7185']
-
-  const blobs = useMemo(() => {
-    const blobColors = [
-      'from-orange-400/10 to-pink-400/10',
-      'from-pink-400/10 to-red-400/10',
-      'from-red-400/10 to-orange-400/10',
-      'from-amber-400/10 to-orange-400/10',
-      'from-rose-400/10 to-pink-400/10',
-    ]
-    return Array.from({ length: 7 }, (_, i) => ({
-      id: i,
-      color: blobColors[i % blobColors.length],
-      size: 200 + Math.random() * 200,
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      delay: Math.random() * 3,
-      duration: 12 + Math.random() * 8,
-    }))
-  }, [])
-
-  // Smooth animation loop
-  useEffect(() => {
-    const animate = () => {
-      const mouse = mouseRef.current
-      mouse.x += (mouse.targetX - mouse.x) * 0.12
-      mouse.y += (mouse.targetY - mouse.y) * 0.12
-      
-      if (glowRef.current) {
-        glowRef.current.style.transform = `translate(${mouse.x - 150}px, ${mouse.y - 150}px)`
-      }
-      
-      animationRef.current = requestAnimationFrame(animate)
-    }
-    
-    animationRef.current = requestAnimationFrame(animate)
-    return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current)
-    }
-  }, [])
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    mouseRef.current.targetX = e.clientX
-    mouseRef.current.targetY = e.clientY
-    
-    const now = Date.now()
-    if (now - lastParticleTime.current > 80 && Math.random() > 0.6) {
-      lastParticleTime.current = now
-      const newParticle: Particle = {
-        id: now + Math.random(),
-        x: e.clientX,
-        y: e.clientY,
-        size: 3 + Math.random() * 5,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        life: 100,
-      }
-      setParticles(prev => [...prev.slice(-12), newParticle])
-    }
-  }, [])
-
-  const handleClick = useCallback((e: MouseEvent) => {
-    const target = e.target as HTMLElement
-    if (target.closest('button, a, input, select, textarea')) return
-
-    const newRipple = { id: Date.now(), x: e.clientX, y: e.clientY }
-    setRipples(prev => [...prev, newRipple])
-    setTimeout(() => {
-      setRipples(prev => prev.filter(r => r.id !== newRipple.id))
-    }, 800)
-
-    const burst = Array.from({ length: 5 }, (_, i) => ({
-      id: Date.now() + i,
-      x: e.clientX + (Math.random() - 0.5) * 30,
-      y: e.clientY + (Math.random() - 0.5) * 30,
-      size: 4 + Math.random() * 6,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      life: 100,
-    }))
-    setParticles(prev => [...prev.slice(-8), ...burst])
-  }, [])
-
-  useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove, { passive: true })
-    window.addEventListener('click', handleClick)
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('click', handleClick)
-    }
-  }, [handleMouseMove, handleClick])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setParticles(prev => 
-        prev.map(p => ({ ...p, life: p.life - 8 })).filter(p => p.life > 0)
-      )
-    }, 60)
-    return () => clearInterval(interval)
-  }, [])
-
-  return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      {blobs.map((blob) => (
-        <div
-          key={blob.id}
-          className={`absolute rounded-full bg-gradient-to-br ${blob.color} blur-3xl animate-blob`}
-          style={{
-            width: `${blob.size}px`,
-            height: `${blob.size}px`,
-            left: `${blob.left}%`,
-            top: `${blob.top}%`,
-            animationDelay: `${blob.delay}s`,
-            animationDuration: `${blob.duration}s`,
-          }}
-        />
-      ))}
-
-      <div
-        ref={glowRef}
-        className="absolute rounded-full blur-3xl will-change-transform"
-        style={{
-          width: '300px',
-          height: '300px',
-          left: 0,
-          top: 0,
-          background: 'radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 70%)',
-        }}
-      />
-
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="absolute rounded-full"
-          style={{
-            width: `${p.size}px`,
-            height: `${p.size}px`,
-            left: p.x - p.size / 2,
-            top: p.y - p.size / 2,
-            backgroundColor: p.color,
-            opacity: p.life / 100 * 0.7,
-            transform: `scale(${p.life / 100})`,
-            filter: 'blur(1px)',
-          }}
-        />
-      ))}
-
-      {ripples.map((r) => (
-        <div
-          key={r.id}
-          className="absolute rounded-full border-2 border-orange-400/40 animate-ripple"
-          style={{
-            left: r.x,
-            top: r.y,
-            transform: 'translate(-50%, -50%)',
-          }}
-        />
-      ))}
-    </div>
-  )
-}
+/**
+ * LoginPage - Vintage Letterhead Style
+ * Features:
+ * - Paper texture background
+ * - Typewriter form inputs
+ * - Stamp-style login button
+ * - Coffee stain decoration
+ */
 
 const FUN_MESSAGES = [
   "Nhậu đi, lo gì!",
@@ -245,67 +68,118 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-background px-4 overflow-hidden">
-      {/* Warm gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
-      <InteractiveBackground />
+    <div className="relative min-h-screen flex items-center justify-center bg-background texture-paper overflow-hidden">
+      {/* Aged vignette effect */}
+      <div className="fixed inset-0 pointer-events-none texture-aged" />
+      
+      {/* Decorative corner ornaments */}
+      <div className="fixed top-4 left-4 text-2xl text-primary/20 select-none">❧</div>
+      <div className="fixed top-4 right-16 text-2xl text-primary/20 select-none rotate-180">❧</div>
+      <div className="fixed bottom-4 left-4 text-2xl text-primary/20 select-none rotate-180">❧</div>
+      <div className="fixed bottom-4 right-4 text-2xl text-primary/20 select-none">❧</div>
       
       {/* Dark mode toggle */}
       <button
         onClick={toggleTheme}
-        className="absolute top-4 right-4 z-20 p-2 rounded-full bg-card/90 backdrop-blur-sm shadow-md hover:scale-110 transition-transform border border-border/50"
+        className="fixed top-4 right-4 z-20 p-2 rounded-sm bg-card border-2 border-border shadow-paper hover:shadow-lifted transition-all"
         title={theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
       >
         {theme === 'dark' ? (
-          <Sun className="h-5 w-5 text-warning" />
+          <Sun className="h-5 w-5 text-warning" strokeWidth={1.5} />
         ) : (
-          <Moon className="h-5 w-5 text-foreground" />
+          <Moon className="h-5 w-5 text-foreground" strokeWidth={1.5} />
         )}
       </button>
 
-      {/* Login Card - Minimalist Retro */}
-      <Card className="w-full max-w-md relative z-10 shadow-xl border-border/50">
-        <CardHeader className="text-center pb-2">
-          <div className="mx-auto mb-2 text-5xl animate-bounce">
-            🍻
+      {/* Login Card - Document/Letterhead Style */}
+      <div className="w-full max-w-md relative z-10 mx-4">
+        {/* Paper card with coffee stain */}
+        <div className="card-paper p-8 texture-coffee animate-paper-slide">
+          {/* Letterhead */}
+          <div className="text-center mb-8 border-b-2 border-double border-border pb-6">
+            <div className="text-5xl mb-3 animate-bounce">🍺</div>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">
+              SplitBuddy
+            </h1>
+            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+              Bill Splitting System
+            </p>
           </div>
-          <CardTitle className="text-3xl font-logo gradient-text leading-relaxed">SplitBuddy</CardTitle>
-          <CardDescription className="transition-all duration-500 font-body text-muted-foreground">{funMessage}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="font-medium">Email</Label>
+
+          {/* Fun message - typewriter style */}
+          <div className="text-center mb-6">
+            <p className="text-sm italic text-muted-foreground animate-ink-fade">
+              "{funMessage}"
+            </p>
+          </div>
+
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email field */}
+            <div className="field-vintage">
+              <Label htmlFor="email" className="text-xs uppercase tracking-widest text-muted-foreground mb-2 block">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="nhập cái i meo dô"
+                placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="input-vintage w-full bg-transparent"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password" className="font-medium">Mật khẩu</Label>
+
+            {/* Password field */}
+            <div className="field-vintage">
+              <Label htmlFor="password" className="text-xs uppercase tracking-widest text-muted-foreground mb-2 block">
+                Mật khẩu
+              </Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="chỗ này nhập cái mẹt khẻu dô"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="input-vintage w-full bg-transparent"
               />
             </div>
-            <Button type="submit" className="w-full btn-gradient" disabled={isLoading}>
-              {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+
+            {/* Submit button - Stamp style */}
+            <Button 
+              type="submit" 
+              variant="stamp"
+              className="w-full mt-6" 
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-pulse">...</span>
+                  Đang xử lý
+                </span>
+              ) : (
+                'Đăng nhập'
+              )}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground font-body">
-            Liên hệ quản trị viên để được cấp tài khoản <br />
-            Cụ thể là ai thì chưa biết... hẹ hẹ..
-          </p>
-        </CardContent>
-      </Card>
+
+          {/* Footer note */}
+          <div className="mt-8 pt-4 border-t border-dashed border-border/50 text-center">
+            <p className="text-xs text-muted-foreground">
+              Liên hệ quản trị viên để được cấp tài khoản
+            </p>
+            <p className="text-[10px] text-muted-foreground/60 mt-1 italic">
+              Est. 2024 • Made with ☕
+            </p>
+          </div>
+        </div>
+
+        {/* Shadow pages underneath */}
+        <div className="absolute -bottom-1 left-2 right-2 h-2 bg-secondary/50 rounded-b-sm -z-10" />
+        <div className="absolute -bottom-2 left-4 right-4 h-2 bg-secondary/30 rounded-b-sm -z-20" />
+      </div>
     </div>
   )
 }
