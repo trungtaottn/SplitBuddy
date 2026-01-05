@@ -3,9 +3,31 @@
 //! This module provides functionality to log security-sensitive and
 //! business-critical actions for compliance and debugging purposes.
 
+use axum::http::HeaderMap;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
+
+/// Extract client IP and User-Agent from request headers
+pub fn extract_client_info(headers: &HeaderMap) -> (Option<String>, Option<String>) {
+    let ip = headers
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.split(',').next().unwrap_or(s).trim().to_string())
+        .or_else(|| {
+            headers
+                .get("x-real-ip")
+                .and_then(|v| v.to_str().ok())
+                .map(String::from)
+        });
+
+    let user_agent = headers
+        .get("user-agent")
+        .and_then(|v| v.to_str().ok())
+        .map(String::from);
+
+    (ip, user_agent)
+}
 
 /// Audit log action types
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -192,30 +214,6 @@ impl AuditLogBuilder {
 
         Ok(id)
     }
-}
-
-/// Convenience function to quickly log an action
-pub async fn log_action(
-    pool: &PgPool,
-    user_id: Uuid,
-    user_email: Option<String>,
-    action: AuditAction,
-    entity_type: AuditEntityType,
-    entity_id: Option<Uuid>,
-    description: Option<String>,
-) -> Result<Uuid, sqlx::Error> {
-    let mut builder = AuditLogBuilder::new(action, entity_type)
-        .user(user_id, user_email);
-    
-    if let Some(id) = entity_id {
-        builder = builder.entity_id(id);
-    }
-    
-    if let Some(desc) = description {
-        builder = builder.description(desc);
-    }
-    
-    builder.save(pool).await
 }
 
 /// Query audit logs with filtering

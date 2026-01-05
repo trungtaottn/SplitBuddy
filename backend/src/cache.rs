@@ -1,7 +1,11 @@
 use moka::future::Cache;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use uuid::Uuid;
+
+use crate::api::sessions::ParticipantResponse;
+use crate::domain::session::SessionStatus;
 
 /// Cached feature flag data
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -13,6 +17,21 @@ pub struct CachedFeatureFlag {
     pub enabled: bool,
 }
 
+/// Cached session detail data
+#[derive(Clone, Debug)]
+pub struct CachedSession {
+    pub id: Uuid,
+    pub name: String,
+    pub location: Option<String>,
+    pub status: SessionStatus,
+    pub created_by: Uuid,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub session_date: chrono::NaiveDate,
+    pub total_amount: Decimal,
+    pub group_id: Option<Uuid>,
+    pub participants: Vec<ParticipantResponse>,
+}
+
 /// Application cache manager using moka
 #[derive(Clone)]
 pub struct AppCache {
@@ -20,6 +39,8 @@ pub struct AppCache {
     pub feature_flags: Cache<String, CachedFeatureFlag>,
     /// Cache for all feature flags list
     pub all_features: Cache<String, Vec<CachedFeatureFlag>>,
+    /// Cache for session details - key is session UUID
+    pub sessions: Cache<Uuid, CachedSession>,
 }
 
 impl AppCache {
@@ -35,6 +56,11 @@ impl AppCache {
                 .time_to_live(Duration::from_secs(60))
                 .max_capacity(1)
                 .build(),
+            // Session details cache - 5 minute TTL, max 500 entries
+            sessions: Cache::builder()
+                .time_to_live(Duration::from_secs(300))
+                .max_capacity(500)
+                .build(),
         }
     }
 
@@ -48,6 +74,21 @@ impl AppCache {
     pub async fn invalidate_feature_flag(&self, key: &str) {
         self.feature_flags.invalidate(key).await;
         self.all_features.invalidate_all();
+    }
+
+    /// Get cached session
+    pub async fn get_session(&self, session_id: Uuid) -> Option<CachedSession> {
+        self.sessions.get(&session_id).await
+    }
+
+    /// Cache a session
+    pub async fn cache_session(&self, session: CachedSession) {
+        self.sessions.insert(session.id, session).await;
+    }
+
+    /// Invalidate a specific session cache
+    pub async fn invalidate_session(&self, session_id: Uuid) {
+        self.sessions.invalidate(&session_id).await;
     }
 }
 

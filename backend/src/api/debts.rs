@@ -8,6 +8,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::api::response::{ok, ApiResponse};
+use crate::api::ws::WsEvent;
 use crate::api::AppState;
 use crate::domain::debt::DebtStatus;
 use crate::error::AppError;
@@ -108,6 +109,12 @@ async fn request_settle(
 
     let debt = repo.request_settlement(debt_id, auth_user.user_id).await?;
 
+    // Broadcast WebSocket event
+    state.ws_manager.broadcast_to_session(
+        debt.session_id,
+        WsEvent::DebtUpdated { session_id: debt.session_id, debt_id: debt.id }
+    ).await;
+
     Ok(ok(SettleResponse {
         debt_id: debt.id,
         status: debt.status,
@@ -123,6 +130,12 @@ async fn confirm_settle(
     let repo = DebtRepository::new(state.pool.clone());
 
     let debt = repo.confirm_settlement(debt_id, auth_user.user_id).await?;
+
+    // Broadcast WebSocket event
+    state.ws_manager.broadcast_to_session(
+        debt.session_id,
+        WsEvent::DebtUpdated { session_id: debt.session_id, debt_id: debt.id }
+    ).await;
 
     Ok(ok(SettleResponse {
         debt_id: debt.id,
@@ -141,6 +154,12 @@ async fn settle_guest_debt(
     let repo = DebtRepository::new(state.pool.clone());
 
     let debt = repo.settle_guest_debt(debt_id, auth_user.user_id).await?;
+
+    // Broadcast WebSocket event
+    state.ws_manager.broadcast_to_session(
+        debt.session_id,
+        WsEvent::DebtUpdated { session_id: debt.session_id, debt_id: debt.id }
+    ).await;
 
     Ok(ok(SettleResponse {
         debt_id: debt.id,

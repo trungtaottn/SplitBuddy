@@ -7,7 +7,7 @@ use sqlx::postgres::PgPoolOptions;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tower_http::services::{ServeDir, ServeFile};
-use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer, key_extractor::KeyExtractor};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -27,6 +27,36 @@ use cache::AppCache;
 use config::Config;
 use openapi::ApiDoc;
 use sqlx::PgPool;
+
+/// Custom key extractor that works with localhost and proxied requests
+#[derive(Clone)]
+struct RealIpKeyExtractor;
+
+impl KeyExtractor for RealIpKeyExtractor {
+    type Key = String;
+
+    fn extract<T>(&self, req: &axum::http::Request<T>) -> Result<Self::Key, tower_governor::GovernorError> {
+        // Try X-Forwarded-For first (for proxied requests)
+        if let Some(forwarded) = req.headers().get("x-forwarded-for") {
+            if let Ok(value) = forwarded.to_str() {
+                if let Some(ip) = value.split(',').next() {
+                    return Ok(ip.trim().to_string());
+                }
+            }
+        }
+        
+        // Try X-Real-IP
+        if let Some(real_ip) = req.headers().get("x-real-ip") {
+            if let Ok(value) = real_ip.to_str() {
+                return Ok(value.to_string());
+            }
+        }
+        
+        // Fallback to a default key for localhost/direct connections
+        // This is safe because we're rate limiting all local requests together
+        Ok("local".to_string())
+    }
+}
 
 // Middleware to add no-cache headers for HTML files (forces browser to check for updates)
 async fn add_cache_headers(request: Request, next: Next) -> Response<Body> {
@@ -154,13 +184,32 @@ async fn main() -> anyhow::Result<()> {
 
     // Configure CORS - use specific origins from config instead of Any
     let cors = {
-        use axum::http::HeaderValue;
+        use axum::http::{HeaderName, HeaderValue, Method};
         use tower_http::cors::AllowOrigin;
         
         let origins: Vec<HeaderValue> = config.cors_origins
             .iter()
             .filter_map(|origin| origin.parse().ok())
             .collect();
+        
+        // Common headers that frontend typically needs
+        let allowed_headers = [
+            HeaderName::from_static("content-type"),
+            HeaderName::from_static("authorization"),
+            HeaderName::from_static("accept"),
+            HeaderName::from_static("origin"),
+            HeaderName::from_static("x-requested-with"),
+        ];
+        
+        // Common methods
+        let allowed_methods = [
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+            Method::PATCH,
+            Method::OPTIONS,
+        ];
         
         if origins.is_empty() {
             tracing::warn!("No valid CORS origins configured, allowing all origins (not recommended for production)");
@@ -172,8 +221,8 @@ async fn main() -> anyhow::Result<()> {
             tracing::info!("CORS configured for origins: {:?}", config.cors_origins);
             CorsLayer::new()
                 .allow_origin(AllowOrigin::list(origins))
-                .allow_methods(Any)
-                .allow_headers(Any)
+                .allow_methods(allowed_methods)
+                .allow_headers(allowed_headers)
                 .allow_credentials(true)
         }
     };
@@ -181,11 +230,12 @@ async fn main() -> anyhow::Result<()> {
     // Create uploads directory if it doesn't exist
     tokio::fs::create_dir_all("uploads/avatars").await.ok();
 
-    // Configure rate limiting
+    // Configure rate limiting with custom key extractor for localhost handling
     let governor_conf = Arc::new(
         GovernorConfigBuilder::default()
             .per_second(config.rate_limit_requests_per_second)
             .burst_size(config.rate_limit_burst_size)
+            .key_extractor(RealIpKeyExtractor)
             .finish()
             .expect("Failed to create rate limiter config"),
     );
@@ -219,8 +269,8 @@ async fn main() -> anyhow::Result<()> {
         .with_state(app_state)
         .fallback_service(static_service)
         .layer(axum_mw::from_fn(add_cache_headers))
-        .layer(GovernorLayer { config: governor_conf })
         .layer(cors)
+        .layer(GovernorLayer { config: governor_conf })
         .layer(TraceLayer::new_for_http());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));

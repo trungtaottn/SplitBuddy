@@ -1,5 +1,5 @@
 use axum::{
-    extract::{DefaultBodyLimit, Multipart, Path, State},
+    extract::{DefaultBodyLimit, Multipart, Path, Query, State},
     routing::{delete, get, post, put},
     Json, Router,
 };
@@ -14,6 +14,34 @@ use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::audit::{fetch_audit_logs, AuditLogQuery, AuditLogEntry};
 use crate::utils::password::hash_password;
+
+/// Pagination query parameters
+#[derive(Debug, Deserialize)]
+pub struct PaginationQuery {
+    #[serde(default = "default_page")]
+    pub page: i64,
+    #[serde(default = "default_limit")]
+    pub limit: i64,
+}
+
+fn default_page() -> i64 { 1 }
+fn default_limit() -> i64 { 20 }
+
+/// Pagination metadata
+#[derive(Debug, Serialize)]
+pub struct PaginationMeta {
+    pub page: i64,
+    pub per_page: i64,
+    pub total: i64,
+    pub total_pages: i64,
+}
+
+/// Paginated response wrapper
+#[derive(Debug, Serialize)]
+pub struct PaginatedResponse<T> {
+    pub data: T,
+    pub pagination: PaginationMeta,
+}
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -61,8 +89,13 @@ fn require_admin(auth_user: &AuthUser) -> Result<(), AppError> {
 async fn list_users(
     State(state): State<AppState>,
     auth_user: AuthUser,
-) -> Result<Json<ApiResponse<Vec<UserResponse>>>, AppError> {
+    Query(pagination): Query<PaginationQuery>,
+) -> Result<Json<ApiResponse<PaginatedResponse<Vec<UserResponse>>>>, AppError> {
     require_admin(&auth_user)?;
+
+    let page = pagination.page.max(1);
+    let limit = pagination.limit.clamp(1, 100);
+    let offset = (page - 1) * limit;
 
     let users: Vec<UserResponse> = sqlx::query_as(
         r#"
@@ -70,12 +103,31 @@ async fn list_users(
         FROM users
         WHERE role != 'admin'
         ORDER BY created_at DESC
+        LIMIT $1 OFFSET $2
         "#
     )
+    .bind(limit)
+    .bind(offset)
     .fetch_all(&state.pool)
     .await?;
 
-    Ok(ok(users))
+    let total: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*)::bigint FROM users WHERE role != 'admin'"#
+    )
+    .fetch_one(&state.pool)
+    .await?;
+
+    let total_pages = (total + limit - 1) / limit;
+
+    Ok(ok(PaginatedResponse {
+        data: users,
+        pagination: PaginationMeta {
+            page,
+            per_page: limit,
+            total,
+            total_pages,
+        },
+    }))
 }
 
 async fn create_user(
@@ -230,16 +282,32 @@ pub struct MusicTrackResponse {
 
 async fn list_music(
     State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<MusicTrackResponse>>>, AppError> {
+    Query(pagination): Query<PaginationQuery>,
+) -> Result<Json<ApiResponse<PaginatedResponse<Vec<MusicTrackResponse>>>>, AppError> {
+    let page = pagination.page.max(1);
+    let limit = pagination.limit.clamp(1, 100);
+    let offset = (page - 1) * limit;
+
     let tracks: Vec<MusicTrack> = sqlx::query_as(
         r#"
         SELECT id, name, filename, file_path, file_size, duration_seconds, uploaded_by, created_at
         FROM music_tracks
         ORDER BY created_at ASC
+        LIMIT $1 OFFSET $2
         "#
     )
+    .bind(limit)
+    .bind(offset)
     .fetch_all(&state.pool)
     .await?;
+
+    let total: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*)::bigint FROM music_tracks"#
+    )
+    .fetch_one(&state.pool)
+    .await?;
+
+    let total_pages = (total + limit - 1) / limit;
 
     let response: Vec<MusicTrackResponse> = tracks
         .into_iter()
@@ -255,7 +323,15 @@ async fn list_music(
         })
         .collect();
 
-    Ok(ok(response))
+    Ok(ok(PaginatedResponse {
+        data: response,
+        pagination: PaginationMeta {
+            page,
+            per_page: limit,
+            total,
+            total_pages,
+        },
+    }))
 }
 
 async fn upload_music(

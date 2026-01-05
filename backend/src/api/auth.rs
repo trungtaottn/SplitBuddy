@@ -169,10 +169,13 @@ async fn get_features(
 ) -> Result<Json<ApiResponse<Vec<FeatureFlagPublic>>>, AppError> {
     use crate::cache::CachedFeatureFlag;
     
+    tracing::info!("get_features handler called");
+    
     // Try to get from cache first
     const CACHE_KEY: &str = "all_public_features";
     
     if let Some(cached) = state.cache.all_features.get(CACHE_KEY).await {
+        tracing::info!("Cache hit for features");
         // Convert cached features to public format
         let features: Vec<FeatureFlagPublic> = cached
             .iter()
@@ -184,12 +187,20 @@ async fn get_features(
         return Ok(ok(features));
     }
     
+    tracing::info!("Cache miss, fetching from database");
+    
     // Cache miss - fetch from database
     let features: Vec<FeatureFlagPublic> = sqlx::query_as(
         r#"SELECT key, enabled FROM feature_flags ORDER BY key ASC"#
     )
     .fetch_all(&state.pool)
-    .await?;
+    .await
+    .map_err(|e| {
+        tracing::error!("Database error fetching features: {:?}", e);
+        AppError::Database(e)
+    })?;
+    
+    tracing::info!("Fetched {} features from database", features.len());
 
     // Store in cache for future requests
     let cached_features: Vec<CachedFeatureFlag> = features
