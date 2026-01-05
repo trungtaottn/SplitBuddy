@@ -10,10 +10,12 @@ pub mod bills;
 pub mod debts;
 pub mod games;
 pub mod groups;
+pub mod personas;
 pub mod response;
 pub mod sessions;
 pub mod uploads;
 pub mod users;
+pub mod wrapped;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -32,4 +34,6 @@ pub fn routes() -> Router<AppState> {
         .nest("/ai", ai::routes())
         .nest("/games", games::routes())
         .nest("/uploads", uploads::routes())
+        .nest("/personas", personas::routes())
+        .nest("/wrapped", wrapped::routes())
 }

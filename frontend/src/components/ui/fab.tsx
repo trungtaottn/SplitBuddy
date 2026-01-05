@@ -3,6 +3,11 @@ import { Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { haptics } from '@/utils/haptics'
 
+/**
+ * FAB - Vintage Paper Style
+ * Uses sepia monochrome colors with paper texture
+ */
+
 interface FabAction {
   icon: ReactNode
   label: string
@@ -34,7 +39,7 @@ export function Fab({ actions, className }: FabProps) {
       {/* Backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/20 z-40 animate-in fade-in duration-200"
+          className="fixed inset-0 bg-foreground/10 z-40 animate-in fade-in duration-200"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -52,14 +57,14 @@ export function Fab({ actions, className }: FabProps) {
               className="flex items-center gap-3 animate-in slide-in-from-bottom duration-200"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <span className="bg-white dark:bg-gray-800 dark:text-gray-200 px-3 py-1.5 rounded-lg shadow-md text-sm font-medium whitespace-nowrap">
+              <span className="bg-card border border-border px-3 py-1.5 rounded-sm shadow-paper text-xs font-semibold uppercase tracking-wider whitespace-nowrap">
                 {action.label}
               </span>
               <button
                 onClick={() => handleAction(action)}
                 className={cn(
-                  'w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110',
-                  action.color || 'bg-primary text-white'
+                  'w-11 h-11 rounded-sm shadow-paper flex items-center justify-center transition-all hover:scale-105 hover:shadow-lifted border-2',
+                  action.color || 'bg-card border-primary text-primary'
                 )}
               >
                 {action.icon}
@@ -68,17 +73,17 @@ export function Fab({ actions, className }: FabProps) {
           ))}
         </div>
 
-        {/* Main FAB button */}
+        {/* Main FAB button - Vintage stamp style */}
         <button
           onClick={toggleOpen}
           className={cn(
-            'w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-300',
-            'bg-gradient-to-r from-orange-500 to-red-500 text-white',
-            'hover:shadow-2xl hover:scale-105 active:scale-95',
-            isOpen && 'rotate-45 bg-gray-700'
+            'w-12 h-12 rounded-sm shadow-paper flex items-center justify-center transition-all duration-200',
+            'bg-primary text-primary-foreground border-2 border-primary',
+            'hover:shadow-lifted hover:scale-105 active:scale-95',
+            isOpen && 'rotate-45 bg-muted text-muted-foreground border-muted-foreground'
           )}
         >
-          {isOpen ? <X className="h-6 w-6" /> : <Plus className="h-6 w-6" />}
+          {isOpen ? <X className="h-5 w-5" strokeWidth={1.5} /> : <Plus className="h-5 w-5" strokeWidth={1.5} />}
         </button>
       </div>
     </>
@@ -105,9 +110,9 @@ export function SimpleFab({ icon, onClick, label, className }: SimpleFabProps) {
       title={label}
       className={cn(
         'fixed bottom-20 right-4 z-50 md:bottom-6',
-        'w-14 h-14 rounded-full shadow-xl flex items-center justify-center',
-        'bg-gradient-to-r from-orange-500 to-red-500 text-white',
-        'hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200',
+        'w-12 h-12 rounded-sm shadow-paper flex items-center justify-center',
+        'bg-primary text-primary-foreground border-2 border-primary',
+        'hover:shadow-lifted hover:scale-105 active:scale-95 transition-all duration-200',
         className
       )}
     >

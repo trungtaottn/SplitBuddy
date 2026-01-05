@@ -28,7 +28,7 @@ export const MOOD_CONFIGS: Record<MoodType, MoodConfig> = {
   happy: {
     name: 'happy',
     nameVi: 'Vui vẻ',
-    emoji: '😊',
+    emoji: '',
     theme: {
       primary: '#f97316', // orange-500
       secondary: '#fbbf24', // amber-400
@@ -51,7 +51,7 @@ export const MOOD_CONFIGS: Record<MoodType, MoodConfig> = {
   sad: {
     name: 'sad',
     nameVi: 'Buồn',
-    emoji: '😢',
+    emoji: '',
     theme: {
       primary: '#3b82f6', // blue-500
       secondary: '#60a5fa', // blue-400
@@ -74,7 +74,7 @@ export const MOOD_CONFIGS: Record<MoodType, MoodConfig> = {
   tired: {
     name: 'tired',
     nameVi: 'Mệt mỏi',
-    emoji: '😴',
+    emoji: '',
     theme: {
       primary: '#8b5cf6', // violet-500
       secondary: '#a78bfa', // violet-400
@@ -97,7 +97,7 @@ export const MOOD_CONFIGS: Record<MoodType, MoodConfig> = {
   stressed: {
     name: 'stressed',
     nameVi: 'Căng thẳng',
-    emoji: '😰',
+    emoji: '' ,
     theme: {
       primary: '#10b981', // emerald-500
       secondary: '#34d399', // emerald-400
@@ -143,7 +143,7 @@ export const MOOD_CONFIGS: Record<MoodType, MoodConfig> = {
   neutral: {
     name: 'neutral',
     nameVi: 'Bình thường',
-    emoji: '😐',
+    emoji: '',
     theme: {
       primary: '#6b7280', // gray-500
       secondary: '#9ca3af', // gray-400

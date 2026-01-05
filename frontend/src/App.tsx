@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import { MoodProvider } from './contexts/MoodContext'
@@ -6,17 +7,32 @@ import { FeatureFlagsProvider } from './contexts/FeatureFlagsContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { Toaster } from './components/ui/toaster'
 import { MoodEffects } from './components/MoodEffects'
-
-import LoginPage from './pages/LoginPage'
-import DashboardPage from './pages/DashboardPage'
-import SessionDetailPage from './pages/SessionDetailPage'
-import DebtsPage from './pages/DebtsPage'
-import GroupsPage from './pages/GroupsPage'
-import GroupDebtsPage from './pages/GroupDebtsPage'
-import AdminPage from './pages/AdminPage'
-import GamesPage from './pages/GamesPage'
-import ProfilePage from './pages/ProfilePage'
+import { InstallPrompt } from './components/InstallPrompt'
+import { OfflineIndicator } from './components/OfflineIndicator'
+import { OnboardingProvider } from './components/Onboarding'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import AppLayout from './components/layout/AppLayout'
+import { PageSkeleton } from './components/ui/skeleton'
+
+// Lazy load pages for code splitting
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const SessionDetailPage = lazy(() => import('./pages/SessionDetailPage'))
+const DebtsPage = lazy(() => import('./pages/DebtsPage'))
+const GroupsPage = lazy(() => import('./pages/GroupsPage'))
+const GroupDebtsPage = lazy(() => import('./pages/GroupDebtsPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
+const GamesPage = lazy(() => import('./pages/GamesPage'))
+const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+
+// Loading fallback component
+function PageLoader() {
+  return (
+    <div className="animate-in fade-in duration-300">
+      <PageSkeleton />
+    </div>
+  )
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -43,7 +59,11 @@ function AdminRedirect() {
     return <Navigate to="/admin" replace />
   }
   
-  return <DashboardPage />
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <DashboardPage />
+    </Suspense>
+  )
 }
 
 function App() {
@@ -52,8 +72,21 @@ function App() {
       <FeatureFlagsProvider>
         <MoodProvider>
           <MusicProvider>
+          <OnboardingProvider>
+          {/* PWA Indicators */}
+          <OfflineIndicator />
+          
+          {/* Global Error Boundary */}
+          <ErrorBoundary>
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
+            <Route 
+              path="/login" 
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <LoginPage />
+                </Suspense>
+              } 
+            />
             <Route
               path="/"
               element={
@@ -63,17 +96,72 @@ function App() {
               }
             >
               <Route index element={<AdminRedirect />} />
-              <Route path="sessions/:id" element={<SessionDetailPage />} />
-              <Route path="debts" element={<DebtsPage />} />
-              <Route path="groups" element={<GroupsPage />} />
-              <Route path="groups/:groupId/debts" element={<GroupDebtsPage />} />
-              <Route path="games" element={<GamesPage />} />
-              <Route path="profile" element={<ProfilePage />} />
-              <Route path="admin" element={<AdminPage />} />
+              <Route 
+                path="sessions/:id" 
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <SessionDetailPage />
+                  </Suspense>
+                } 
+              />
+              <Route 
+                path="debts" 
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <DebtsPage />
+                  </Suspense>
+                } 
+              />
+              <Route 
+                path="groups" 
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <GroupsPage />
+                  </Suspense>
+                } 
+              />
+              <Route 
+                path="groups/:groupId/debts" 
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <GroupDebtsPage />
+                  </Suspense>
+                } 
+              />
+              <Route 
+                path="games" 
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <GamesPage />
+                  </Suspense>
+                } 
+              />
+              <Route 
+                path="profile" 
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <ProfilePage />
+                  </Suspense>
+                } 
+              />
+              <Route 
+                path="admin" 
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <AdminPage />
+                  </Suspense>
+                } 
+              />
             </Route>
           </Routes>
+          </ErrorBoundary>
+          
           <MoodEffects />
           <Toaster />
+          
+          {/* PWA Install Prompt */}
+          <InstallPrompt />
+          </OnboardingProvider>
           </MusicProvider>
         </MoodProvider>
       </FeatureFlagsProvider>

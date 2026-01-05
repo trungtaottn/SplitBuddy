@@ -1,7 +1,17 @@
-import { Link } from 'react-router-dom'
-import { MapPin, Calendar, ArrowRight } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { MapPin, Calendar, ArrowRight, TrendingDown, TrendingUp, Pencil, Trash2 } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { cn } from '@/lib/utils'
+import { SwipeActions } from '@/components/ui/SwipeActions'
+import { triggerHaptic } from '@/hooks/useHaptic'
+
+/**
+ * SessionCard - Vintage Receipt/Note Style
+ * Features:
+ * - Paper card with aged effect
+ * - Typewriter typography
+ * - Stamp-style status badges
+ */
 
 interface Participant {
   id: string
@@ -19,20 +29,22 @@ interface SessionCardProps {
   participants: Participant[]
   user_debt?: number
   user_owed?: number
+  settled_amount?: number
 }
 
+// Vintage Status Badges
 const STATUS_CONFIG = {
   active: {
-    label: 'Đang diễn ra',
-    className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    label: 'ACTIVE',
+    className: 'badge-stamp text-success border-success rotate-[-2deg]',
   },
   settled: {
-    label: 'Đã xong',
-    className: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+    label: 'DONE',
+    className: 'badge-stamp text-muted-foreground border-muted-foreground rotate-[1deg]',
   },
   pending: {
-    label: 'Chờ thanh toán',
-    className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    label: 'PENDING',
+    className: 'badge-stamp text-warning border-warning rotate-[-1deg]',
   },
 }
 
@@ -45,22 +57,22 @@ function AvatarStack({ participants, max = 4 }: { participants: Participant[]; m
       {displayed.map((p, i) => (
         <div
           key={p.id}
-          className="relative h-8 w-8 rounded-full border-2 border-white dark:border-gray-800 overflow-hidden bg-gradient-to-br from-orange-400 to-pink-500"
+          className="relative h-7 w-7 rounded-sm border-2 border-card overflow-hidden bg-primary"
           style={{ zIndex: max - i }}
           title={p.name}
         >
           {p.avatar_url ? (
             <img src={p.avatar_url} alt={p.name} className="h-full w-full object-cover" />
           ) : (
-            <div className="h-full w-full flex items-center justify-center text-white text-xs font-bold">
+            <div className="h-full w-full flex items-center justify-center text-primary-foreground text-xs font-bold">
               {p.name.charAt(0).toUpperCase()}
             </div>
           )}
         </div>
       ))}
       {remaining > 0 && (
-        <div className="relative h-8 w-8 rounded-full border-2 border-white dark:border-gray-800 bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
-          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">+{remaining}</span>
+        <div className="relative h-7 w-7 rounded-sm border-2 border-card bg-secondary flex items-center justify-center">
+          <span className="text-[10px] font-semibold text-secondary-foreground">+{remaining}</span>
         </div>
       )}
     </div>
@@ -77,6 +89,7 @@ export function SessionCard({
   participants,
   user_debt = 0,
   user_owed = 0,
+  settled_amount = 0,
 }: SessionCardProps) {
   const statusConfig = STATUS_CONFIG[status]
   const formattedDate = new Date(date).toLocaleDateString('vi-VN', {
@@ -85,65 +98,158 @@ export function SessionCard({
     year: 'numeric',
   })
 
+  // Calculate settlement progress
+  const totalDebts = total_amount > 0 ? total_amount : 1
+  const settlementProgress = Math.min(100, Math.round((settled_amount / totalDebts) * 100))
+  const hasDebtInfo = user_debt > 0 || user_owed > 0
+
   return (
     <Link
       to={`/sessions/${id}`}
       className="block group h-full"
     >
-      <div className="rounded-xl border bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/50 space-y-3 h-full flex flex-col">
+      {/* Vintage Paper Card */}
+      <div className="card-paper p-4 space-y-3 h-full flex flex-col card-lift">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0 overflow-hidden">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-primary transition-colors">
-              🍺 {name}
+            <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors uppercase tracking-wide text-sm">
+              📋 {name}
             </h3>
-            <div className="mt-1 text-sm text-gray-500 dark:text-gray-400 space-y-0.5">
+            <div className="mt-2 text-xs text-muted-foreground space-y-1">
               {location && (
-                <div className="flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span>{location}</span>
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="h-3 w-3 flex-shrink-0" strokeWidth={1.5} />
+                  <span className="truncate">{location}</span>
                 </div>
               )}
-              <div className="flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3 w-3 flex-shrink-0" strokeWidth={1.5} />
                 <span>{formattedDate}</span>
               </div>
             </div>
           </div>
-          <span className={cn('px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap', statusConfig.className)}>
+          <span className={cn('text-[10px]', statusConfig.className)}>
             {statusConfig.label}
           </span>
         </div>
 
+        {/* Divider - dotted line like receipt */}
+        <div className="hr-dotted" />
+
         {/* Participants */}
-        <div className="flex-1">
+        <div className="flex items-center justify-between">
           <AvatarStack participants={participants} max={5} />
+          <span className="text-xs text-muted-foreground">
+            {participants.length} người
+          </span>
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-between items-center pt-2 border-t dark:border-gray-700 mt-auto">
-          <span className="font-semibold text-gray-900 dark:text-gray-100">
-            {formatCurrency(total_amount)}
-          </span>
-          <div className="flex items-center gap-2 text-sm">
+        {/* Settlement Progress */}
+        {total_amount > 0 && status !== 'settled' && (
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[10px] text-muted-foreground uppercase tracking-wider">
+              <span>Progress</span>
+              <span>{settlementProgress}%</span>
+            </div>
+            <div className="h-1.5 bg-secondary rounded-none overflow-hidden border border-border">
+              <div 
+                className={cn(
+                  "h-full transition-all duration-500",
+                  settlementProgress === 100 
+                    ? "bg-success" 
+                    : settlementProgress > 50 
+                      ? "bg-warning" 
+                      : "bg-primary"
+                )}
+                style={{ width: `${settlementProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Debt Info */}
+        {hasDebtInfo && (
+          <div className="flex flex-wrap gap-2">
             {user_debt > 0 && (
-              <span className="text-red-500 dark:text-red-400">
-                Bạn nợ {formatCurrency(user_debt)}
-              </span>
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-destructive/10 text-destructive text-[10px] font-semibold uppercase">
+                <TrendingDown className="h-3 w-3" strokeWidth={1.5} />
+                <span>Nợ {formatCurrency(user_debt)}</span>
+              </div>
             )}
             {user_owed > 0 && (
-              <span className="text-green-500 dark:text-green-400">
-                Được nợ {formatCurrency(user_owed)}
-              </span>
+              <div className="flex items-center gap-1 px-2 py-0.5 bg-success/10 text-success text-[10px] font-semibold uppercase">
+                <TrendingUp className="h-3 w-3" strokeWidth={1.5} />
+                <span>Được {formatCurrency(user_owed)}</span>
+              </div>
             )}
-            {user_debt === 0 && user_owed === 0 && status !== 'settled' && (
-              <span className="text-gray-400"></span>
-            )}
-            <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-primary group-hover:translate-x-1 transition-all" />
           </div>
+        )}
+
+        {/* Footer - Total */}
+        <div className="flex justify-between items-center pt-3 border-t-2 border-double border-border mt-auto">
+          <div>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Total</span>
+            <span className="font-bold text-lg text-foreground">
+              {formatCurrency(total_amount)}
+            </span>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" strokeWidth={1.5} />
         </div>
       </div>
     </Link>
+  )
+}
+
+// Swipeable version of SessionCard for mobile
+interface SwipeableSessionCardProps extends SessionCardProps {
+  onDelete?: () => void
+  enableSwipe?: boolean
+}
+
+export function SwipeableSessionCard({
+  onDelete,
+  enableSwipe = true,
+  ...props
+}: SwipeableSessionCardProps) {
+  const navigate = useNavigate()
+  
+  if (!enableSwipe) {
+    return <SessionCard {...props} />
+  }
+
+  const rightActions = onDelete ? [
+    {
+      icon: <Trash2 className="h-5 w-5" strokeWidth={1.5} />,
+      label: 'Xóa',
+      onClick: () => {
+        triggerHaptic('heavy')
+        onDelete()
+      },
+      color: 'red' as const,
+    },
+  ] : []
+
+  const leftActions = [
+    {
+      icon: <Pencil className="h-5 w-5" strokeWidth={1.5} />,
+      label: 'Sửa',
+      onClick: () => {
+        triggerHaptic('tap')
+        navigate(`/sessions/${props.id}`)
+      },
+      color: 'blue' as const,
+    },
+  ]
+
+  return (
+    <SwipeActions
+      leftActions={leftActions}
+      rightActions={rightActions}
+      className="rounded-sm overflow-hidden"
+    >
+      <SessionCard {...props} />
+    </SwipeActions>
   )
 }
 
@@ -163,24 +269,24 @@ export function SessionCardCompact({
 
   return (
     <Link to={`/sessions/${id}`} className="block group">
-      <div className="rounded-lg border bg-white dark:bg-gray-800 p-3 hover:shadow-sm transition-all flex items-center gap-3">
+      <div className="rounded-sm bg-card border border-border p-3 hover:shadow-paper transition-all flex items-center gap-3">
         <div className="flex -space-x-1">
           {participants.slice(0, 3).map((p) => (
             <div
               key={p.id}
-              className="h-6 w-6 rounded-full border border-white dark:border-gray-800 bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-[10px] font-bold"
+              className="h-6 w-6 rounded-sm border border-card bg-primary flex items-center justify-center text-primary-foreground text-[10px] font-bold"
             >
               {p.name.charAt(0).toUpperCase()}
             </div>
           ))}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{name}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{formattedDate}</p>
+          <p className="font-semibold text-sm truncate group-hover:text-primary transition-colors uppercase tracking-wide">{name}</p>
+          <p className="text-xs text-muted-foreground">{formattedDate}</p>
         </div>
         <div className="text-right">
-          <p className="font-semibold text-sm">{formatCurrency(total_amount)}</p>
-          <span className={cn('text-[10px] px-1.5 py-0.5 rounded', statusConfig.className)}>
+          <p className="font-bold text-sm">{formatCurrency(total_amount)}</p>
+          <span className={cn('text-[9px]', statusConfig.className)}>
             {statusConfig.label}
           </span>
         </div>

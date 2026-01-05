@@ -96,9 +96,9 @@ export function CategoriesGame({ onClose }: CategoriesGameProps) {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between font-heading">
           <div className="flex items-center gap-2">
-            <List className="h-5 w-5 text-teal-500" />
+            <List className="h-5 w-5 text-success" />
             Categories
           </div>
           {onClose && (
@@ -111,37 +111,37 @@ export function CategoriesGame({ onClose }: CategoriesGameProps) {
       <CardContent className="space-y-4">
         {/* Timer Display */}
         <div className="text-center">
-          <div className={`text-7xl font-black transition-colors ${
-            timeLeft <= 2 ? 'text-red-500 animate-pulse' : 
-            timeLeft <= 3 ? 'text-orange-500' : 
-            'text-teal-500'
+          <div className={`text-7xl font-heading font-black font-mono transition-colors ${
+            timeLeft <= 2 ? 'text-destructive animate-pulse' : 
+            timeLeft <= 3 ? 'text-warning' : 
+            'text-success'
           }`}>
             {timeLeft}
           </div>
-          <p className="text-sm text-muted-foreground">giây</p>
+          <p className="text-sm text-muted-foreground font-body">giây</p>
         </div>
 
         {/* Category Display */}
         {currentCategory ? (
-          <div className="p-4 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl border-2 border-teal-200 text-center">
-            <p className="text-sm text-teal-600 mb-1">Chủ đề:</p>
-            <p className="text-2xl font-bold text-teal-800">{currentCategory.name}</p>
-            <p className="text-xs text-muted-foreground mt-2">VD: {currentCategory.examples}</p>
+          <div className="card-paper p-4 rounded-xl border-2 border-success/30 text-center">
+            <p className="text-sm text-success mb-1 font-body">Chủ đề:</p>
+            <p className="text-2xl font-heading font-bold text-foreground">{currentCategory.name}</p>
+            <p className="text-xs text-muted-foreground mt-2 font-body">VD: {currentCategory.examples}</p>
           </div>
         ) : (
-          <div className="p-4 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 text-center">
-            <p className="text-muted-foreground">Bấm "Chủ đề mới" để bắt đầu!</p>
+          <div className="p-4 bg-secondary/50 rounded-xl border-2 border-dashed border-border text-center">
+            <p className="text-muted-foreground font-body">Bấm "Chủ đề mới" để bắt đầu!</p>
           </div>
         )}
 
         {/* Round Over Message */}
         {roundOver && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-center animate-bounce">
+          <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-center animate-bounce">
             <div className="flex items-center justify-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <p className="text-lg font-bold text-red-600">HẾT GIỞ!</p>
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <p className="text-lg font-heading font-bold text-destructive">HẾT GIỞ!</p>
             </div>
-            <p className="text-sm text-red-500">Người này phải uống!</p>
+            <p className="text-sm text-destructive font-body">Người này phải uống!</p>
           </div>
         )}
 
@@ -150,7 +150,8 @@ export function CategoriesGame({ onClose }: CategoriesGameProps) {
           {!isPlaying ? (
             <Button 
               onClick={startTimer} 
-              className="gap-2 bg-teal-500 hover:bg-teal-600"
+              variant="stamp"
+              className="gap-2"
               disabled={!currentCategory}
             >
               <Play className="h-4 w-4" />
@@ -179,12 +180,12 @@ export function CategoriesGame({ onClose }: CategoriesGameProps) {
         </Button>
 
         {/* Rules */}
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+        <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg text-sm">
           <div className="flex items-start gap-2">
-            <Beer className="h-4 w-4 text-amber-600 mt-0.5" />
+            <Beer className="h-4 w-4 text-warning mt-0.5" />
             <div>
-              <p className="font-medium text-amber-800">Luật chơi:</p>
-              <p className="text-amber-700">Lần lượt kể tên theo chủ đề. Hết giờ hoặc lặp lại = Uống!</p>
+              <p className="font-medium text-warning font-body">Luật chơi:</p>
+              <p className="text-muted-foreground font-body">Lần lượt kể tên theo chủ đề. Hết giờ hoặc lặp lại = Uống!</p>
             </div>
           </div>
         </div>

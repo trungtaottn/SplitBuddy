@@ -32,6 +32,14 @@ export default {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
@@ -48,11 +56,33 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Vintage Paper specific colors
+        paper: {
+          DEFAULT: "hsl(40 35% 94%)",
+          dark: "hsl(38 25% 88%)",
+          cream: "hsl(40 30% 91%)",
+        },
+        ink: {
+          DEFAULT: "hsl(35 20% 22%)",
+          light: "hsl(35 15% 40%)",
+          sepia: "hsl(28 65% 26%)",
+        },
+      },
+      fontFamily: {
+        mono: ['var(--font-mono)', 'monospace'],
+        sans: ['var(--font-mono)', 'monospace'],
+        serif: ['var(--font-mono)', 'monospace'],
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "var(--radius-lg)",
+        md: "var(--radius)",
+        sm: "var(--radius-sm)",
+        none: "0",
+      },
+      boxShadow: {
+        'paper': 'var(--shadow-paper)',
+        'stack': 'var(--shadow-stack)',
+        'lifted': 'var(--shadow-lifted)',
       },
       keyframes: {
         "accordion-down": {

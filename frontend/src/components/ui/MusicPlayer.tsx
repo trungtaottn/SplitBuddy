@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useMusic } from '@/contexts/MusicContext'
 import { 
   Play, 
@@ -6,13 +6,19 @@ import {
   SkipBack, 
   SkipForward, 
   Volume2, 
-  VolumeX,
-  ChevronUp,
-  ChevronDown
+  VolumeX
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
+
+/**
+ * MusicPlayer - Vintage Paper Style
+ * Features:
+ * - Paper card design
+ * - Sepia monochrome colors
+ * - Typewriter typography
+ */
 
 export function MusicPlayer() {
   const { 
@@ -30,6 +36,24 @@ export function MusicPlayer() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [prevVolume, setPrevVolume] = useState(volume)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsExpanded(false)
+      }
+    }
+
+    if (isExpanded) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isExpanded])
 
   const handleMuteToggle = () => {
     if (isMuted) {
@@ -52,58 +76,64 @@ export function MusicPlayer() {
   if (tracks.length === 0) return null
 
   return (
-    <div className="fixed bottom-20 md:bottom-4 right-4 z-50">
-      {/* Expanded Panel */}
+    <div ref={containerRef} className="fixed bottom-20 md:bottom-4 left-4 z-50">
+      {/* Expanded Panel - Vintage Paper Style */}
       <div 
         className={cn(
-          "absolute bottom-full right-0 mb-2 w-72 rounded-xl shadow-2xl overflow-hidden transition-all duration-300",
-          "bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg border border-gray-200 dark:border-gray-700",
-          isExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
+          "absolute bottom-full left-0 mb-2 w-72 overflow-hidden transition-all duration-300 ease-out",
+          "card-paper",
+          isExpanded ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95 pointer-events-none"
         )}
       >
-        {/* Track Info with Vinyl Disc */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-4">
-            {/* Vinyl Disc Animation */}
-            <div className="relative w-16 h-16 shrink-0">
-              {/* Outer disc */}
-              <div 
-                className={cn(
-                  "absolute inset-0 rounded-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900",
-                  "shadow-lg border-4 border-gray-700",
-                  isPlaying && "animate-spin-slow"
-                )}
-                style={{ animationDuration: '3s' }}
-              >
-                {/* Vinyl grooves */}
-                <div className="absolute inset-2 rounded-full border border-gray-600/30" />
-                <div className="absolute inset-4 rounded-full border border-gray-600/20" />
-                <div className="absolute inset-6 rounded-full border border-gray-600/30" />
+        {/* Track Info */}
+        <div className="p-4 border-b-2 border-dotted border-border">
+          <div className="flex items-center gap-3">
+            {/* Vintage Vinyl Record - Spinning when playing */}
+            <div className="relative w-16 h-16 flex-shrink-0">
+              {/* Vinyl Record */}
+              <div className={cn(
+                "w-20 h-20 rounded-full border-4 border-border bg-gradient-to-br from-foreground/20 to-foreground/5",
+                "relative overflow-hidden shadow-lg",
+                isPlaying && "animate-spin"
+              )} style={{ animationDuration: '3s' }}>
+                {/* Record grooves */}
+                <div className="absolute inset-2 rounded-full border-2 border-border/50" />
+                <div className="absolute inset-4 rounded-full border border-border/30" />
+                <div className="absolute inset-6 rounded-full border border-border/20" />
                 
                 {/* Center label */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center shadow-inner">
-                    <div className="w-2 h-2 rounded-full bg-gray-900" />
+                  <div className="w-8 h-8 rounded-full bg-primary/20 border-2 border-primary/50 flex items-center justify-center">
+                    <div className="w-3 h-3 rounded-full bg-primary" />
                   </div>
                 </div>
               </div>
               
-              {/* Reflection highlight */}
-              <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />
+              {/* Needle arm (static, doesn't spin) */}
+              {isPlaying && (
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-foreground/60 origin-top rotate-12" />
+              )}
             </div>
             
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">
+              <p className="font-semibold text-sm truncate uppercase tracking-wide">
                 {currentTrack?.name || 'Không có bài hát'}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
                 {tracks.length} bài hát
               </p>
               {isPlaying && (
                 <div className="flex items-center gap-1 mt-1">
-                  <span className="w-1 h-3 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1 h-3 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1 h-3 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  {[0, 1, 2, 3].map((i) => (
+                    <span 
+                      key={i}
+                      className="w-0.5 bg-primary rounded-none animate-bounce" 
+                      style={{ 
+                        animationDelay: `${i * 100}ms`,
+                        height: `${6 + Math.random() * 6}px`
+                      }} 
+                    />
+                  ))}
                 </div>
               )}
             </div>
@@ -112,49 +142,49 @@ export function MusicPlayer() {
 
         {/* Controls */}
         <div className="p-4">
-          <div className="flex items-center justify-center gap-4 mb-4">
+          <div className="flex items-center justify-center gap-3">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-10 w-10"
+              className="h-10 w-10 rounded-sm"
               onClick={prevTrack}
             >
-              <SkipBack className="h-5 w-5" />
+              <SkipBack className="h-5 w-5" strokeWidth={1.5} />
             </Button>
             <Button 
-              variant="default" 
+              variant="stamp" 
               size="icon" 
-              className="h-12 w-12 rounded-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+              className="h-12 w-12 rounded-sm"
               onClick={toggle}
             >
               {isPlaying ? (
-                <Pause className="h-6 w-6 text-white" />
+                <Pause className="h-5 w-5" strokeWidth={1.5} />
               ) : (
-                <Play className="h-6 w-6 text-white ml-0.5" />
+                <Play className="h-5 w-5 ml-0.5" strokeWidth={1.5} />
               )}
             </Button>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-10 w-10"
+              className="h-10 w-10 rounded-sm"
               onClick={nextTrack}
             >
-              <SkipForward className="h-5 w-5" />
+              <SkipForward className="h-5 w-5" strokeWidth={1.5} />
             </Button>
           </div>
 
           {/* Volume */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mt-4">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8 shrink-0"
+              className="h-9 w-9 shrink-0 rounded-sm"
               onClick={handleMuteToggle}
             >
               {isMuted || volume === 0 ? (
-                <VolumeX className="h-4 w-4" />
+                <VolumeX className="h-5 w-5" strokeWidth={1.5} />
               ) : (
-                <Volume2 className="h-4 w-4" />
+                <Volume2 className="h-5 w-5" strokeWidth={1.5} />
               )}
             </Button>
             <Slider
@@ -164,76 +194,79 @@ export function MusicPlayer() {
               step={0.01}
               className="flex-1"
             />
-            <span className="text-xs text-muted-foreground w-8 text-right">
-              {Math.round((isMuted ? 0 : volume) * 100)}%
-            </span>
           </div>
         </div>
 
         {/* Track List */}
-        <div className="max-h-40 overflow-y-auto border-t border-gray-200 dark:border-gray-700">
+        <div className="max-h-32 overflow-y-auto border-t-2 border-dotted border-border">
           {tracks.map((track, index) => (
             <button
               key={track.id}
               className={cn(
-                "w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
-                "flex items-center gap-2",
-                currentTrack?.id === track.id && "bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400"
+                "w-full px-3 py-2 text-left text-xs hover:bg-secondary transition-colors",
+                "flex items-center gap-2 border-b border-border/30 last:border-b-0",
+                currentTrack?.id === track.id && "bg-primary/10 text-primary"
               )}
               onClick={() => selectTrack(track)}
             >
-              <span className="w-5 text-center text-xs text-muted-foreground">
+              <span className="w-4 text-center text-[10px] text-muted-foreground">
                 {index + 1}
               </span>
               <span className="flex-1 truncate">{track.name}</span>
               {currentTrack?.id === track.id && isPlaying && (
-                <span className="text-xs">🎵</span>
+                <span className="text-[10px]">♪</span>
               )}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Floating Button with Mini Vinyl */}
+      {/* Floating Button - Vintage Style */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
-          "relative flex items-center gap-2 px-3 py-2 rounded-full shadow-lg transition-all duration-300",
-          "bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg border border-gray-200 dark:border-gray-700",
-          "hover:shadow-xl hover:scale-105",
-          isPlaying && "ring-2 ring-orange-400 ring-offset-2 dark:ring-offset-gray-900"
+          "group flex items-center gap-2 h-11 px-4 rounded-sm transition-all duration-200",
+          "bg-card border-2 border-border shadow-paper",
+          "hover:shadow-lifted hover:border-primary/50",
+          isPlaying && "border-primary/50"
         )}
       >
-        {/* Mini Vinyl Disc */}
-        <div className="relative w-10 h-10">
-          <div 
-            className={cn(
-              "absolute inset-0 rounded-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900",
-              "border-2 border-gray-600",
-              isPlaying && "animate-spin-slow"
-            )}
-          >
-            {/* Grooves */}
-            <div className="absolute inset-1 rounded-full border border-gray-600/30" />
-            <div className="absolute inset-2 rounded-full border border-gray-600/20" />
-            {/* Center */}
+        {/* Icon - Mini Vinyl Record */}
+        <div className="relative w-6 h-6 flex-shrink-0">
+          <div className={cn(
+            "w-6 h-6 rounded-full border border-primary/50 bg-gradient-to-br from-foreground/20 to-foreground/5",
+            "relative overflow-hidden",
+            isPlaying && "animate-spin"
+          )} style={{ animationDuration: '2s' }}>
+            {/* Center dot */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-3 h-3 rounded-full bg-gradient-to-br from-orange-400 to-pink-500">
-                <div className="w-1 h-1 rounded-full bg-gray-900 mx-auto mt-1" />
-              </div>
+              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
             </div>
           </div>
-          {/* Highlight */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none" />
+          {/* Needle */}
+          {isPlaying && (
+            <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-px h-3 bg-primary/60 origin-top rotate-12" />
+          )}
         </div>
         
-        <span className="text-sm font-medium max-w-24 truncate hidden sm:block">
-          {currentTrack?.name || 'Nhạc nền'}
+        <span className="text-xs font-semibold uppercase tracking-wider max-w-20 truncate text-foreground">
+          {isPlaying ? (currentTrack?.name || 'Playing') : 'Music'}
         </span>
-        {isExpanded ? (
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
-        ) : (
-          <ChevronUp className="w-4 h-4 text-muted-foreground" />
+        
+        {/* Sound wave indicator when playing */}
+        {isPlaying && (
+          <div className="flex items-center gap-0.5 h-4">
+            {[0, 1, 2].map((i) => (
+              <span 
+                key={i}
+                className="w-0.5 bg-primary rounded-none animate-bounce" 
+                style={{ 
+                  animationDelay: `${i * 150}ms`,
+                  height: `${5 + i * 2}px`
+                }} 
+              />
+            ))}
+          </div>
         )}
       </button>
     </div>

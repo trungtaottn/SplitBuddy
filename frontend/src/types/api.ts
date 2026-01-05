@@ -46,6 +46,12 @@ export type SessionStatus = 'active' | 'closed'
 export type ParticipantRole = 'owner' | 'member'
 export type DebtStatus = 'pending' | 'settlement_requested' | 'settled'
 
+export interface ParticipantBasicInfo {
+  id: string
+  name: string
+  avatar_url?: string | null
+}
+
 export interface Session {
   id: string
   name: string
@@ -56,6 +62,11 @@ export interface Session {
   session_date: string
   participant_count: number
   total_amount: string
+  // Enhanced fields for better UX
+  participants: ParticipantBasicInfo[]
+  my_debt: string       // How much current user owes in this session
+  my_owed: string       // How much current user is owed in this session
+  settled_amount: string // Total amount already settled
 }
 
 export interface SessionDetail {
@@ -329,4 +340,110 @@ export interface FeatureFlag {
 export interface FeatureFlagPublic {
   key: string
   enabled: boolean
+}
+
+// Personas & Achievements
+export interface UserPersona {
+  user_id: string
+  avatar_style: string
+  avatar_accessories: string[]
+  avatar_background: string
+  avatar_frame: string
+  level: number
+  xp: number
+  current_title: string | null
+  display_badges: string[]
+}
+
+export interface PersonaWithUser {
+  user_id: string
+  full_name: string
+  email: string
+  avatar_url: string | null
+  persona: UserPersona
+  achievements_count: number
+}
+
+export interface Achievement {
+  code: string
+  name: string
+  description: string | null
+  icon: string
+  category: string
+  xp_reward: number
+}
+
+export interface UserAchievement {
+  code: string
+  name: string
+  description: string | null
+  icon: string
+  category: string
+  unlocked_at: string
+}
+
+export interface UpdatePersonaRequest {
+  avatar_style?: string
+  avatar_accessories?: string[]
+  avatar_background?: string
+  avatar_frame?: string
+  current_title?: string
+  display_badges?: string[]
+}
+
+export interface PersonaLeaderboardEntry {
+  rank: number
+  user_id: string
+  full_name: string
+  avatar_url: string | null
+  level: number
+  xp: number
+  current_title: string | null
+}
+
+// Wrapped Stats
+export interface WrappedStats {
+  total_sessions: number
+  total_spent: number
+  total_received: number
+  avg_per_session: number
+  favorite_day: string | null
+  favorite_month: string | null
+  peak_month: string | null
+  peak_month_number: number | null
+  peak_month_sessions: number | null
+  late_night_sessions: number
+  unique_partners: number
+  top_partner: PartnerStat | null
+  top_3_partners: PartnerStat[]
+  groups_count: number
+  favorite_group: GroupStat | null
+  unique_locations: number
+  favorite_location: string | null
+  achievements_earned: number
+  top_achievement: string | null
+  biggest_session: SessionStat | null
+  longest_streak_weeks: number
+  generous_score: number
+  titles: string[]
+}
+
+export interface PartnerStat {
+  user_id: string
+  name: string
+  sessions_together: number
+  total_spent_together: number
+}
+
+export interface GroupStat {
+  group_id: string
+  name: string
+  sessions_count: number
+}
+
+export interface SessionStat {
+  session_id: string
+  name: string
+  total_amount: number
+  date: string
 }

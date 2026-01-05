@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,8 @@ import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
 import { SessionCard } from '@/components/SessionCard'
 import { EmptyState } from '@/components/EmptyState'
 import { SessionListSkeleton } from '@/components/ui/skeleton'
+import { useOnboarding } from '@/components/Onboarding'
+import { staggerContainer, staggerItem } from '@/components/PageTransition'
 import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupDetail, PaginatedResponse } from '@/types/api'
 
 export default function DashboardPage() {
@@ -26,12 +29,28 @@ export default function DashboardPage() {
   const [guestNames, setGuestNames] = useState<string[]>([])
   const [newGuestName, setNewGuestName] = useState('')
   const queryClient = useQueryClient()
+  const { startOnboarding } = useOnboarding()
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [currentPage, setCurrentPage] = useState(1)
   const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  // Auto-start onboarding for new users
+  useEffect(() => {
+    const hasCompletedOnboarding = localStorage.getItem('splitbuddy-onboarding-completed')
+    const hasSeenOnboarding = localStorage.getItem('splitbuddy-onboarding-shown')
+    
+    if (!hasCompletedOnboarding && !hasSeenOnboarding) {
+      // Delay to let the page load first
+      const timer = setTimeout(() => {
+        localStorage.setItem('splitbuddy-onboarding-shown', 'true')
+        startOnboarding()
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [startOnboarding])
 
   // Debounce search
   useEffect(() => {
@@ -152,52 +171,68 @@ export default function DashboardPage() {
         onViewDebts={() => navigate('/debts')}
       />
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <FunTooltip messages={FUN_MESSAGES.debtOwed}>
-          <Card className="border shadow-sm hover:shadow-md transition-shadow cursor-pointer hover-pulse">
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/30">
-                <TrendingDown className="h-6 w-6 text-red-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Bạn đang nợ</p>
-                <p className="text-2xl font-bold text-red-500">
-                  {debts ? formatCurrency(debts.total_i_owe) : '0đ'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </FunTooltip>
-        <FunTooltip messages={FUN_MESSAGES.debtOwing}>
-          <Card className="border shadow-sm hover:shadow-md transition-shadow cursor-pointer hover-pulse">
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-50 dark:bg-green-900/30">
-                <TrendingUp className="h-6 w-6 text-green-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Bạn được nợ</p>
-                <p className="text-2xl font-bold text-green-500">
-                  {debts ? formatCurrency(debts.total_owed_to_me) : '0đ'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </FunTooltip>
-      </div>
+      {/* Debt Summary Cards - Minimalist Retro */}
+      <motion.div 
+        className="grid gap-4 md:grid-cols-2"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={staggerItem}>
+          <FunTooltip messages={FUN_MESSAGES.debtOwed}>
+            <Card className="card-interactive cursor-pointer animate-card-lift">
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10">
+                  <TrendingDown className="h-6 w-6 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground font-body">Bạn đang nợ</p>
+                  <p className="text-2xl font-bold text-destructive font-mono">
+                    {debts ? formatCurrency(debts.total_i_owe) : '0đ'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </FunTooltip>
+        </motion.div>
+        <motion.div variants={staggerItem}>
+          <FunTooltip messages={FUN_MESSAGES.debtOwing}>
+            <Card className="card-interactive cursor-pointer animate-card-lift">
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success/10">
+                  <TrendingUp className="h-6 w-6 text-success" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground font-body">Bạn được nợ</p>
+                  <p className="text-2xl font-bold text-success font-mono">
+                    {debts ? formatCurrency(debts.total_owed_to_me) : '0đ'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </FunTooltip>
+        </motion.div>
+      </motion.div>
 
+      {/* Section Header - Retro Typography */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-          <Beer className="h-5 w-5" /> Cuộc nhậu của tôi
+        <h2 className="text-xl font-heading font-semibold text-foreground flex items-center gap-2">
+          <Beer className="h-5 w-5 text-primary" /> Cuộc nhậu của tôi
         </h2>
         <FunTooltip messages={FUN_MESSAGES.createSession}>
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2 bg-orange-500 hover:bg-orange-600 rounded-lg hover-wiggle font-bold">
-            <Plus className="h-4 w-4" />
+          <Button 
+            onClick={() => setShowCreateModal(true)} 
+            variant="stamp"
+            className="gap-2"
+            data-onboarding="create-session"
+          >
+            <Plus className="h-4 w-4" strokeWidth={1.5} />
             Nhậu đê...
           </Button>
         </FunTooltip>
       </div>
 
-      {/* Search & Filter */}
+      {/* Search & Filter - Retro Style */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -212,7 +247,7 @@ export default function DashboardPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="h-10 rounded-sm border-0 border-b-2 border-border bg-transparent px-2 py-2 text-sm transition-all hover:border-foreground/40 focus:border-primary focus:outline-none uppercase tracking-wide"
           >
             <option value="">Tất cả</option>
             <option value="active">Đang diễn ra</option>
@@ -220,7 +255,7 @@ export default function DashboardPage() {
           </select>
         </div>
         {pagination && (
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1 text-sm text-muted-foreground font-body">
             <span>{pagination.total} kết quả</span>
           </div>
         )}
@@ -252,7 +287,7 @@ export default function DashboardPage() {
           />
         )
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sessions?.map((session) => (
             <FunTooltip key={session.id} messages={FUN_MESSAGES.sessionCard}>
               <SessionCard
@@ -262,13 +297,10 @@ export default function DashboardPage() {
                 date={session.session_date}
                 status={session.status === 'closed' ? 'settled' : 'active'}
                 total_amount={Number(session.total_amount) || 0}
-                participants={[
-                  // Mock participants for now - API should return this
-                  ...Array.from({ length: Math.min(session.participant_count || 1, 5) }).map((_, i) => ({
-                    id: `p${i}`,
-                    name: `Người ${i + 1}`,
-                  })),
-                ]}
+                participants={session.participants || []}
+                user_debt={Number(session.my_debt) || 0}
+                user_owed={Number(session.my_owed) || 0}
+                settled_amount={Number(session.settled_amount) || 0}
               />
             </FunTooltip>
           ))}
@@ -424,13 +456,13 @@ export default function DashboardPage() {
                       {guestNames.map((name, index) => (
                         <div
                           key={index}
-                          className="flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/30 px-3 py-1 text-sm text-orange-700 dark:text-orange-300"
+                          className="flex items-center gap-1 rounded-sm bg-secondary border border-border px-2.5 py-1 text-xs font-medium text-foreground"
                         >
                           <span>👤 {name}</span>
                           <button
                             type="button"
                             onClick={() => removeGuest(index)}
-                            className="ml-1 text-orange-500 hover:text-orange-700"
+                            className="ml-1 text-muted-foreground hover:text-destructive"
                           >
                             ✕
                           </button>

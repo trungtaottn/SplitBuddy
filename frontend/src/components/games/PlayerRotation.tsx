@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowRight, RotateCcw, Shuffle, X, Users, Crown, SkipForward } from 'lucide-react'
@@ -20,6 +20,24 @@ export function PlayerRotation({ onClose, onPlayerSelected }: PlayerRotationProp
   const [currentIndex, setCurrentIndex] = useState(0)
   const [newName, setNewName] = useState('')
   const [isAnimating, setIsAnimating] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
+        onClose?.()
+      }
+    }
+
+    if (onClose) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [onClose])
 
   const addPlayer = () => {
     if (!newName.trim()) return
@@ -82,12 +100,12 @@ export function PlayerRotation({ onClose, onPlayerSelected }: PlayerRotationProp
   const roundComplete = players.length > 0 && players.every(p => p.played > 0)
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card ref={cardRef} className="w-full max-w-md mx-auto">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-blue-500" />
-            Lượt chơi
+        <CardTitle className="flex items-center justify-between font-heading">
+          <div className="flex items-center gap-3">
+            <Users className="h-7 w-7 text-primary" strokeWidth={2} />
+            <span className="text-xl">Lượt chơi</span>
           </div>
           {onClose && (
             <Button variant="ghost" size="sm" onClick={onClose}>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
@@ -8,6 +9,10 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, Plus, UserPlus, Trash2, BarChart3, Beer } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
+import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/EmptyState'
+import { Celebration } from '@/components/ui/Celebration'
+import { staggerContainer, staggerItem } from '@/components/PageTransition'
 import type { Group, GroupDetail, ApiResponse, CreateGroupDto, AddMemberDto, GroupMember } from '@/types/api'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -53,6 +58,7 @@ export default function GroupsPage() {
       setShowCreateModal(false)
       setGroupName('')
       setGroupDescription('')
+      setShowCelebration(true)
       toast.success('Tạo nhóm thành công!')
     },
     onError: () => {
@@ -172,47 +178,82 @@ export default function GroupsPage() {
     setShowDetailModal(true)
   }
 
+  // State for celebration
+  const [showCelebration, setShowCelebration] = useState(false)
+
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-56" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-xl border border-border/40 bg-card p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Skeleton variant="circular" className="h-8 w-8" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+              <Skeleton className="h-4 w-full" />
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-6 w-24 rounded-full" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-8 w-10" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      {/* Header - Retro Typography */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Nhóm nhậu</h1>
-          <p className="text-muted-foreground">Đây là nơi chứa các con me men</p>
+          <h1 className="text-2xl font-heading font-semibold text-foreground">Nhóm nhậu</h1>
+          <p className="text-muted-foreground font-body">Đây là nơi chứa các con me men</p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+        <Button onClick={() => setShowCreateModal(true)} className="gap-2 btn-gradient">
           <Plus className="h-4 w-4" />
           Tạo nhóm mới
         </Button>
       </div>
 
+      {/* Celebration effect */}
+      <Celebration show={showCelebration} onComplete={() => setShowCelebration(false)} />
+
       {groups?.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Users className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-            <p className="mt-4 text-lg font-medium">Chưa có nhóm nào</p>
-            <p className="text-muted-foreground">Tạo nhóm để quản lý nơi chứa các con me men dễ dàng hơn</p>
-            <Button onClick={() => setShowCreateModal(true)} className="mt-4 gap-2">
-              <Plus className="h-4 w-4" />
-              Tạo nhóm đầu tiên
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState
+          type="groups"
+          action={{
+            label: 'Tạo nhóm đầu tiên',
+            onClick: () => setShowCreateModal(true),
+          }}
+        />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <motion.div 
+          className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="show"
+        >
           {groups?.map((group) => (
-            <Card
+            <motion.div
               key={group.id}
-              className="cursor-pointer transition-shadow hover:shadow-md"
-              onClick={() => openGroupDetail(group.id)}
+              variants={staggerItem}
             >
+              <Card
+                className="cursor-pointer animate-card-lift"
+                onClick={() => openGroupDetail(group.id)}
+              >
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Users className="h-5 w-5 text-primary" />
@@ -252,8 +293,9 @@ export default function GroupsPage() {
                 </div>
               </CardContent>
             </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* Create Group Modal */}

@@ -1,222 +1,95 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/toaster'
 import { Moon, Sun } from 'lucide-react'
+import { BeerIcon } from '@/components/ui/BeerIcon'
 
-interface Particle {
-  id: number
-  x: number
-  y: number
-  size: number
-  color: string
-  life: number
-}
-
-interface MousePos {
-  x: number
-  y: number
-  targetX: number
-  targetY: number
-}
-
-function InteractiveBackground() {
-  const [particles, setParticles] = useState<Particle[]>([])
-  const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([])
-  
-  const glowRef = useRef<HTMLDivElement>(null)
-  const mouseRef = useRef<MousePos>({ x: 0, y: 0, targetX: 0, targetY: 0 })
-  const animationRef = useRef<number>()
-  const lastParticleTime = useRef(0)
-
-  const colors = ['#f97316', '#ec4899', '#ef4444', '#f59e0b', '#fb7185']
-
-  const blobs = useMemo(() => {
-    const blobColors = [
-      'from-orange-400/10 to-pink-400/10',
-      'from-pink-400/10 to-red-400/10',
-      'from-red-400/10 to-orange-400/10',
-      'from-amber-400/10 to-orange-400/10',
-      'from-rose-400/10 to-pink-400/10',
-    ]
-    return Array.from({ length: 7 }, (_, i) => ({
-      id: i,
-      color: blobColors[i % blobColors.length],
-      size: 200 + Math.random() * 200,
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      delay: Math.random() * 3,
-      duration: 12 + Math.random() * 8,
-    }))
-  }, [])
-
-  // Smooth animation loop
-  useEffect(() => {
-    const animate = () => {
-      const mouse = mouseRef.current
-      mouse.x += (mouse.targetX - mouse.x) * 0.12
-      mouse.y += (mouse.targetY - mouse.y) * 0.12
-      
-      if (glowRef.current) {
-        glowRef.current.style.transform = `translate(${mouse.x - 150}px, ${mouse.y - 150}px)`
-      }
-      
-      animationRef.current = requestAnimationFrame(animate)
-    }
-    
-    animationRef.current = requestAnimationFrame(animate)
-    return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current)
-    }
-  }, [])
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    mouseRef.current.targetX = e.clientX
-    mouseRef.current.targetY = e.clientY
-    
-    const now = Date.now()
-    if (now - lastParticleTime.current > 80 && Math.random() > 0.6) {
-      lastParticleTime.current = now
-      const newParticle: Particle = {
-        id: now + Math.random(),
-        x: e.clientX,
-        y: e.clientY,
-        size: 3 + Math.random() * 5,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        life: 100,
-      }
-      setParticles(prev => [...prev.slice(-12), newParticle])
-    }
-  }, [])
-
-  const handleClick = useCallback((e: MouseEvent) => {
-    const target = e.target as HTMLElement
-    if (target.closest('button, a, input, select, textarea')) return
-
-    const newRipple = { id: Date.now(), x: e.clientX, y: e.clientY }
-    setRipples(prev => [...prev, newRipple])
-    setTimeout(() => {
-      setRipples(prev => prev.filter(r => r.id !== newRipple.id))
-    }, 800)
-
-    const burst = Array.from({ length: 5 }, (_, i) => ({
-      id: Date.now() + i,
-      x: e.clientX + (Math.random() - 0.5) * 30,
-      y: e.clientY + (Math.random() - 0.5) * 30,
-      size: 4 + Math.random() * 6,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      life: 100,
-    }))
-    setParticles(prev => [...prev.slice(-8), ...burst])
-  }, [])
-
-  useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove, { passive: true })
-    window.addEventListener('click', handleClick)
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('click', handleClick)
-    }
-  }, [handleMouseMove, handleClick])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setParticles(prev => 
-        prev.map(p => ({ ...p, life: p.life - 8 })).filter(p => p.life > 0)
-      )
-    }, 60)
-    return () => clearInterval(interval)
-  }, [])
-
-  return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      {blobs.map((blob) => (
-        <div
-          key={blob.id}
-          className={`absolute rounded-full bg-gradient-to-br ${blob.color} blur-3xl animate-blob`}
-          style={{
-            width: `${blob.size}px`,
-            height: `${blob.size}px`,
-            left: `${blob.left}%`,
-            top: `${blob.top}%`,
-            animationDelay: `${blob.delay}s`,
-            animationDuration: `${blob.duration}s`,
-          }}
-        />
-      ))}
-
-      <div
-        ref={glowRef}
-        className="absolute rounded-full blur-3xl will-change-transform"
-        style={{
-          width: '300px',
-          height: '300px',
-          left: 0,
-          top: 0,
-          background: 'radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 70%)',
-        }}
-      />
-
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="absolute rounded-full"
-          style={{
-            width: `${p.size}px`,
-            height: `${p.size}px`,
-            left: p.x - p.size / 2,
-            top: p.y - p.size / 2,
-            backgroundColor: p.color,
-            opacity: p.life / 100 * 0.7,
-            transform: `scale(${p.life / 100})`,
-            filter: 'blur(1px)',
-          }}
-        />
-      ))}
-
-      {ripples.map((r) => (
-        <div
-          key={r.id}
-          className="absolute rounded-full border-2 border-orange-400/40 animate-ripple"
-          style={{
-            left: r.x,
-            top: r.y,
-            transform: 'translate(-50%, -50%)',
-          }}
-        />
-      ))}
-    </div>
-  )
-}
+/**
+ * LoginPage - Vintage Letterhead Style
+ * Features:
+ * - Paper texture background
+ * - Typewriter form inputs
+ * - Stamp-style login button
+ * - Coffee stain decoration
+ */
 
 const FUN_MESSAGES = [
   "Nhậu đi, lo gì!",
-  "Chia tiền công bằng, ai cũng vui!",
   "Không say không về!",
-  "Một người vì mọi người, mọi người vì bia!",
-  "Cuộc đời ngắn lắm, nhậu đi đừng ngại!",
   "Bia lạnh, bạn bè ấm!",
   "Đăng nhập đi rồi nhậu!",
   "Hôm nay uống gì?",
-  "Cạn ly đi, chuyện đời tính sau!",
   "Tiền chia đều, vui chia đôi!",
-  "Bạn nhậu tốt, bạn đời tốt hơn!",
   "Nhậu hôm nay, lo ngày mai!",
-  "Ai nợ ai, app này biết hết!",
-  "Bia chảy về đâu, tiền chảy về đó!",
-  "Đừng để bạn bè chờ lâu!",
+  "Ai nợ ai, app biết hết!",
+  "Đừng để bạn bè chờ!",
+  "Cạn ly đi, tính sau!",
+  "Nhậu đi đừng ngại!",
+  "Bia chảy, tiền chảy!",
+  "Bạn nhậu tốt nhất!",
+  "Uống có trách nhiệm nhé!",
+  "Chia bill rõ ràng nào!",
+  "Nhậu vui, nhớ về!",
+  "Bia ngon, bạn thân!",
+  "Cạn ly, cạn túi!",
+  "Nhậu đi, sống vui!",
+  "Bia lạnh, tình nóng!",
+  "Uống đi, lo sau!",
+  "Nhậu đã, về sau!",
+  "Bia ngon, bạn tốt!",
+  "Cạn ly, vui vẻ!",
+  "Nhậu đi, đừng sợ!",
 ]
+
+// Animation variants for staggered entrance
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+}
+
+const logoVariants = {
+  hidden: { opacity: 0, y: -20, rotate: -2 },
+  visible: { opacity: 1, y: 0, rotate: 0 },
+}
+
+const titleVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 },
+}
+
+const sloganVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 },
+}
+
+const formVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: { opacity: 1, x: 0 },
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [funMessage, setFunMessage] = useState('')
+  const [focusedField, setFocusedField] = useState<string | null>(null)
   const { login } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
@@ -236,73 +109,239 @@ export default function LoginPage() {
     try {
       await login(email, password)
       toast.success('Đăng nhập thành công!')
-      navigate('/')
+      navigate('/', { replace: true })
     } catch {
       toast.error('Email hoặc mật khẩu không đúng')
-    } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-orange-50 via-pink-50 to-red-50 dark:from-orange-950/50 dark:via-pink-950/50 dark:to-red-950/50 px-4 overflow-hidden">
-      <InteractiveBackground />
+    <div className="relative min-h-screen flex items-center justify-center bg-background texture-paper overflow-hidden">
+      {/* Aged vignette effect with breathing animation */}
+      <div className="fixed inset-0 pointer-events-none texture-aged animate-breathing" />
+      
+      {/* Film grain overlay */}
+      <div className="fixed inset-0 pointer-events-none animate-film-grain opacity-[0.03]" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+        backgroundSize: '200px 200px',
+      }} />
+      
+      {/* Decorative corner ornaments with float animation */}
+      <motion.div 
+        className="fixed top-4 left-4 text-2xl text-primary/20 select-none animate-float-subtle"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1, delay: 0.5 }}
+      >
+        ❧
+      </motion.div>
+      <motion.div 
+        className="fixed top-4 right-16 text-2xl text-primary/20 select-none rotate-180 animate-float-subtle"
+        style={{ animationDelay: '0.5s' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1, delay: 0.7 }}
+      >
+        ❧
+      </motion.div>
+      <motion.div 
+        className="fixed bottom-4 left-4 text-2xl text-primary/20 select-none rotate-180 animate-float-subtle"
+        style={{ animationDelay: '1s' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1, delay: 0.9 }}
+      >
+        ❧
+      </motion.div>
+      <motion.div 
+        className="fixed bottom-4 right-4 text-2xl text-primary/20 select-none animate-float-subtle"
+        style={{ animationDelay: '1.5s' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1, delay: 1.1 }}
+      >
+        ❧
+      </motion.div>
       
       {/* Dark mode toggle */}
       <button
         onClick={toggleTheme}
-        className="absolute top-4 right-4 z-20 p-2 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-lg hover:scale-110 transition-transform"
+        className="fixed top-4 right-4 z-20 p-2 rounded-sm bg-card border-2 border-border shadow-paper hover:shadow-lifted transition-all"
         title={theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
       >
         {theme === 'dark' ? (
-          <Sun className="h-5 w-5 text-yellow-500" />
+          <Sun className="h-5 w-5 text-warning" strokeWidth={1.5} />
         ) : (
-          <Moon className="h-5 w-5 text-gray-700" />
+          <Moon className="h-5 w-5 text-foreground" strokeWidth={1.5} />
         )}
       </button>
 
-      <Card className="w-full max-w-md relative z-10 shadow-xl">
-        <CardHeader className="text-center pb-2">
-          <div className="mx-auto mb-1 text-4xl animate-bounce">
-            🍻
+      {/* Login Card - Document/Letterhead Style */}
+      <motion.div 
+        className="w-full max-w-md relative z-10 mx-4"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {/* Paper card with coffee stain */}
+        <motion.div 
+          className="card-paper p-8 texture-coffee"
+          variants={itemVariants}
+        >
+          {/* Letterhead */}
+          <div className="text-center mb-8 border-b-2 border-double border-border pb-6">
+            <motion.div 
+              className="flex justify-center mb-3"
+              variants={logoVariants}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+            >
+              <BeerIcon size={64} animated />
+            </motion.div>
+            <motion.h1 
+              className="text-2xl font-bold tracking-tight mb-1 overflow-hidden"
+              variants={titleVariants}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+            >
+              Split Buddy<span className="cursor-blink"></span>
+            </motion.h1>
+            <motion.p 
+              className="text-xs uppercase tracking-[0.3em] text-muted-foreground mt-4"
+              variants={sloganVariants}
+              transition={{ duration: 0.5, ease: 'easeOut', delay: 0.4 }}
+            >
+              Nhậu đi chứ nhìn cái gì hả? 
+            </motion.p>
           </div>
-          <CardTitle className="text-2xl font-logo gradient-text leading-relaxed">SplitBuddy</CardTitle>
-          <CardDescription className="transition-all duration-500">{funMessage}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+
+          {/* Fun message - typewriter style */}
+          <motion.div 
+            className="text-center mb-6"
+            variants={itemVariants}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            key={funMessage}
+          >
+            <p className="text-lg italic text-muted-foreground animate-ink-fade">
+              "{funMessage}"
+            </p>
+          </motion.div>
+
+          {/* Login Form */}
+          <motion.form 
+            onSubmit={handleSubmit} 
+            className="space-y-5"
+            variants={containerVariants}
+          >
+            {/* Email field */}
+            <motion.div 
+              className="field-vintage"
+              variants={formVariants}
+            >
+              <Label 
+                htmlFor="email" 
+                className={`text-xs uppercase tracking-widest text-muted-foreground mb-2 block transition-all ${
+                  focusedField === 'email' ? 'text-primary' : ''
+                }`}
+              >
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="nhập cái i meo dô"
+                placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onFocus={() => setFocusedField('email')}
+                onBlur={() => setFocusedField(null)}
                 required
+                className={`input-vintage w-full bg-transparent transition-all ${
+                  focusedField === 'email' ? 'animate-underline-draw' : ''
+                }`}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Mật khẩu</Label>
+            </motion.div>
+
+            {/* Password field */}
+            <motion.div 
+              className="field-vintage"
+              variants={formVariants}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+            >
+              <Label 
+                htmlFor="password" 
+                className={`text-xs uppercase tracking-widest text-muted-foreground mb-2 block transition-all ${
+                  focusedField === 'password' ? 'text-primary' : ''
+                }`}
+              >
+                Mật khẩu
+              </Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="chỗ này nhập cái mẹt khẻu dô"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onFocus={() => setFocusedField('password')}
+                onBlur={() => setFocusedField(null)}
                 required
+                className={`input-vintage w-full bg-transparent transition-all ${
+                  focusedField === 'password' ? 'animate-underline-draw' : ''
+                }`}
               />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
-            </Button>
-          </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Liên hệ quản trị viên để được cấp tài khoản <br />
-            Cụ thể là ai thì chưa biết... hẹ hẹ..
-          </p>
-        </CardContent>
-      </Card>
+            </motion.div>
+
+            {/* Submit button - Stamp style */}
+            <motion.div 
+              variants={itemVariants}
+              whileHover={{ scale: 1.02, rotate: -1 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Button 
+                type="submit" 
+                variant="stamp"
+                className="w-full mt-6 hover:shadow-lifted transition-all hover:-translate-y-1" 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-pulse">...</span>
+                    Đang xử lý
+                  </span>
+                ) : (
+                  'Đăng nhập'
+                )}
+              </Button>
+            </motion.div>
+          </motion.form>
+
+          {/* Footer note */}
+          <motion.div 
+            className="mt-8 pt-4 border-t border-dashed border-border/50 text-center"
+            variants={itemVariants}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+          >
+            <p className="text-xs text-muted-foreground">
+              Liên hệ quản trị viên để được cấp tài khoản
+            </p>
+            <p className="text-[10px] text-muted-foreground/60 mt-1 italic">
+              Est. 2024 • Made with ☕
+            </p>
+          </motion.div>
+        </motion.div>
+
+        {/* Shadow pages underneath */}
+        <motion.div 
+          className="absolute -bottom-1 left-2 right-2 h-2 bg-secondary/50 rounded-b-sm -z-10"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2 }}
+        />
+        <motion.div 
+          className="absolute -bottom-2 left-4 right-4 h-2 bg-secondary/30 rounded-b-sm -z-20"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.4 }}
+        />
+      </motion.div>
     </div>
   )
 }

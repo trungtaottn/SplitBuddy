@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,8 +8,10 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/toaster'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
-import { User, Lock, Camera, Save, Eye, EyeOff, Loader2, Palette } from 'lucide-react'
-import type { ApiResponse } from '@/types/api'
+import { User, Lock, Camera, Save, Eye, EyeOff, Loader2, Palette, Sparkles, Trophy, Star, Lightbulb, HelpCircle } from 'lucide-react'
+import WrappedModal from '@/components/WrappedModal'
+import { useOnboarding } from '@/components/Onboarding'
+import type { ApiResponse, PersonaWithUser, UserAchievement } from '@/types/api'
 
 interface UserProfile {
   id: string
@@ -23,6 +25,34 @@ export default function ProfilePage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showWrapped, setShowWrapped] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
+
+  // Fetch app version
+  useEffect(() => {
+    fetch('/version.json')
+      .then(res => res.json())
+      .then(data => setAppVersion(data.version))
+      .catch(() => setAppVersion('unknown'))
+  }, [])
+
+  // Fetch persona
+  const { data: persona } = useQuery({
+    queryKey: ['persona', 'me'],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<PersonaWithUser>>('/personas/me')
+      return res.data.data
+    },
+  })
+
+  // Fetch achievements
+  const { data: achievements } = useQuery({
+    queryKey: ['achievements', 'me'],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<UserAchievement[]>>('/personas/achievements/me')
+      return res.data.data
+    },
+  })
   
   // Profile form state
   const [fullName, setFullName] = useState(user?.full_name || '')
@@ -162,37 +192,38 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">Tài khoản của tôi</h1>
+      {/* Page Header - Retro Typography */}
+      <h1 className="text-2xl font-heading font-semibold text-foreground">Tài khoản của tôi</h1>
 
       {/* Avatar & Basic Info */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <User className="h-5 w-5" />
+            <User className="h-5 w-5 text-primary" />
             Thông tin cá nhân
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleUpdateProfile} className="space-y-4">
-            {/* Avatar */}
+            {/* Avatar - Retro style with warm colors */}
             <div className="flex items-center gap-4">
               <div className="relative">
                 {(avatarPreview || avatarUrl) ? (
                   <img
                     src={avatarPreview || avatarUrl}
                     alt="Avatar"
-                    className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
+                    className="w-20 h-20 rounded-full object-cover border-2 border-border"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center text-white text-2xl font-bold">
+                  <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-2xl font-bold font-heading">
                     {getInitials(fullName || user?.full_name || 'U')}
                   </div>
                 )}
-                <label className="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-gray-700 rounded-full shadow-md flex items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600">
+                <label className="absolute bottom-0 right-0 w-8 h-8 bg-card rounded-full shadow-md flex items-center justify-center cursor-pointer hover:bg-secondary border border-border transition-colors">
                   {uploadAvatar.isPending ? (
-                    <Loader2 className="h-4 w-4 text-gray-600 dark:text-gray-400 animate-spin" />
+                    <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
                   ) : (
-                    <Camera className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                    <Camera className="h-4 w-4 text-muted-foreground" />
                   )}
                   <input
                     ref={fileInputRef}
@@ -339,6 +370,125 @@ export default function ProfilePage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Persona & Achievements */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Trophy className="h-5 w-5" />
+            Hồ sơ & Thành tích
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Level & XP */}
+          {persona && (
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-yellow-500" />
+                <span className="font-bold">Level {persona.persona.level}</span>
+              </div>
+              <div className="flex-1">
+                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-orange-500 to-pink-500 transition-all"
+                    style={{ width: `${(persona.persona.xp % 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{persona.persona.xp} XP</p>
+              </div>
+            </div>
+          )}
+
+          {/* Current Title */}
+          {persona?.persona.current_title && (
+            <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-lg p-3">
+              <p className="text-sm text-gray-500">Danh hiệu hiện tại</p>
+              <p className="font-bold text-purple-600 dark:text-purple-400">
+                {persona.persona.current_title}
+              </p>
+            </div>
+          )}
+
+          {/* Achievements */}
+          {achievements && achievements.length > 0 && (
+            <div>
+              <p className="text-sm text-gray-500 mb-2">Thành tích ({achievements.length})</p>
+              <div className="flex flex-wrap gap-2">
+                {achievements.slice(0, 6).map((a) => (
+                  <div 
+                    key={a.code}
+                    className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1"
+                    title={a.description || a.name}
+                  >
+                    <span>{a.icon}</span>
+                    <span className="text-sm">{a.name}</span>
+                  </div>
+                ))}
+                {achievements.length > 6 && (
+                  <div className="text-sm text-gray-500 flex items-center">
+                    +{achievements.length - 6} more
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Wrapped Button */}
+          <Button 
+            onClick={() => setShowWrapped(true)}
+            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            Xem Wrapped {new Date().getFullYear()}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Help & Support */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <HelpCircle className="h-5 w-5" />
+            Trợ giúp
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <ResetOnboardingButton />
+        </CardContent>
+      </Card>
+
+      {/* Version Info */}
+      <div className="text-center text-xs text-gray-400 py-4">
+        <p>Split Buddy v{appVersion}</p>
+      </div>
+
+      {/* Wrapped Modal */}
+      <WrappedModal 
+        isOpen={showWrapped} 
+        onClose={() => setShowWrapped(false)} 
+      />
     </div>
+  )
+}
+
+// Reset onboarding button component
+function ResetOnboardingButton() {
+  const { startOnboarding } = useOnboarding()
+  
+  const handleReset = () => {
+    localStorage.removeItem('splitbuddy-onboarding-completed')
+    localStorage.removeItem('splitbuddy-onboarding-shown')
+    startOnboarding()
+  }
+  
+  return (
+    <Button 
+      variant="outline" 
+      className="w-full gap-2"
+      onClick={handleReset}
+    >
+      <Lightbulb className="h-4 w-4" />
+      Xem lại hướng dẫn sử dụng
+    </Button>
   )
 }

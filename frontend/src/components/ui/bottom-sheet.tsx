@@ -68,50 +68,54 @@ export function BottomSheet({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop with blur */}
       <div 
-        className="fixed inset-0 bg-black/50 z-50 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-in fade-in duration-200"
         onClick={onClose}
       />
 
-      {/* Sheet */}
+      {/* Sheet - Minimalist Retro Style */}
       <div
         ref={sheetRef}
         className={cn(
-          'fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 rounded-t-3xl',
+          'fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-[24px]',
           'max-h-[90vh] overflow-hidden flex flex-col',
           'animate-in slide-in-from-bottom duration-300',
-          'transition-transform',
+          'transition-transform shadow-xl border-t border-border/50',
           className
         )}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Handle */}
+        {/* Handle - Drag indicator */}
         {showHandle && (
           <div className="flex justify-center pt-3 pb-2">
-            <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full" />
+            <div className="w-10 h-1 bg-border rounded-full" />
           </div>
         )}
 
-        {/* Header */}
+        {/* Header - Retro typography */}
         {title && (
-          <div className="flex items-center justify-between px-4 py-3 border-b dark:border-gray-700">
-            <h3 className="text-lg font-semibold">{title}</h3>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border/50">
+            <h3 className="text-lg font-heading font-semibold text-foreground">{title}</h3>
             <button 
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+              className="p-2 hover:bg-secondary rounded-full transition-colors"
+              aria-label="Đóng"
             >
-              <X className="h-5 w-5" />
+              <X className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-5 font-body">
           {children}
         </div>
+
+        {/* Safe area padding for mobile devices with notch */}
+        <div className="pb-safe" />
       </div>
     </>
   )
