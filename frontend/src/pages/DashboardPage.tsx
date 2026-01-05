@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,7 @@ import { SessionCard } from '@/components/SessionCard'
 import { EmptyState } from '@/components/EmptyState'
 import { SessionListSkeleton } from '@/components/ui/skeleton'
 import { useOnboarding } from '@/components/Onboarding'
+import { staggerContainer, staggerItem } from '@/components/PageTransition'
 import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupDetail, PaginatedResponse } from '@/types/api'
 
 export default function DashboardPage() {
@@ -170,38 +172,47 @@ export default function DashboardPage() {
       />
 
       {/* Debt Summary Cards - Minimalist Retro */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <FunTooltip messages={FUN_MESSAGES.debtOwed}>
-          <Card className="card-interactive cursor-pointer">
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10">
-                <TrendingDown className="h-6 w-6 text-destructive" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground font-body">Bạn đang nợ</p>
-                <p className="text-2xl font-bold text-destructive font-mono">
-                  {debts ? formatCurrency(debts.total_i_owe) : '0đ'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </FunTooltip>
-        <FunTooltip messages={FUN_MESSAGES.debtOwing}>
-          <Card className="card-interactive cursor-pointer">
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success/10">
-                <TrendingUp className="h-6 w-6 text-success" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground font-body">Bạn được nợ</p>
-                <p className="text-2xl font-bold text-success font-mono">
-                  {debts ? formatCurrency(debts.total_owed_to_me) : '0đ'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </FunTooltip>
-      </div>
+      <motion.div 
+        className="grid gap-4 md:grid-cols-2"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={staggerItem}>
+          <FunTooltip messages={FUN_MESSAGES.debtOwed}>
+            <Card className="card-interactive cursor-pointer animate-card-lift">
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10">
+                  <TrendingDown className="h-6 w-6 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground font-body">Bạn đang nợ</p>
+                  <p className="text-2xl font-bold text-destructive font-mono">
+                    {debts ? formatCurrency(debts.total_i_owe) : '0đ'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </FunTooltip>
+        </motion.div>
+        <motion.div variants={staggerItem}>
+          <FunTooltip messages={FUN_MESSAGES.debtOwing}>
+            <Card className="card-interactive cursor-pointer animate-card-lift">
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success/10">
+                  <TrendingUp className="h-6 w-6 text-success" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground font-body">Bạn được nợ</p>
+                  <p className="text-2xl font-bold text-success font-mono">
+                    {debts ? formatCurrency(debts.total_owed_to_me) : '0đ'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </FunTooltip>
+        </motion.div>
+      </motion.div>
 
       {/* Section Header - Retro Typography */}
       <div className="flex items-center justify-between">

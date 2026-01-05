@@ -58,12 +58,11 @@ export default function FunTooltip({
       
       {isVisible && createPortal(
         <div 
-          className="fixed z-[9999] pointer-events-none"
+          className="fixed z-[9999] pointer-events-none animate-paper-entrance"
           style={{
             left: mousePos.x,
             top: mousePos.y - 10,
             transform: 'translate(-50%, -100%)',
-            animation: 'tooltipFadeIn 0.15s ease-out'
           }}
         >
           {/* Vintage note style tooltip */}

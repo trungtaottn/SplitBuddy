@@ -164,6 +164,39 @@ export default function AppLayout() {
         id="main-content" 
         tabIndex={-1} 
         className="container mx-auto px-4 py-6 md:py-8 focus:outline-none relative z-10"
+        ref={(el) => {
+          if (el) {
+            // #region agent log
+            const rect = el.getBoundingClientRect();
+            const logData = {
+              location: 'AppLayout.tsx:163',
+              message: 'Main container dimensions check',
+              data: {
+                width: rect.width,
+                height: rect.height,
+                left: rect.left,
+                top: rect.top,
+                windowWidth: window.innerWidth,
+                windowHeight: window.innerHeight,
+                computedStyle: {
+                  maxWidth: window.getComputedStyle(el).maxWidth,
+                  transform: window.getComputedStyle(el).transform,
+                  position: window.getComputedStyle(el).position
+                },
+                hypothesisId: 'C'
+              },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'run1'
+            };
+            fetch('http://127.0.0.1:7242/ingest/dcc7d1a6-1b54-4d53-9642-62624ca717d1', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(logData)
+            }).catch(() => {});
+            // #endregion
+          }
+        }}
       >
         <AnimatedOutlet />
       </main>
@@ -257,6 +290,9 @@ export default function AppLayout() {
       
       {/* Background Music Player */}
       <MusicPlayer />
+      
+      {/* Portal for FABs - rendered outside main container */}
+      <div id="fab-portal" />
     </div>
   )
 }

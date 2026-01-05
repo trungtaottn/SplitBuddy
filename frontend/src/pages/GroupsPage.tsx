@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ import { toast } from '@/components/ui/toaster'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { Celebration } from '@/components/ui/Celebration'
+import { staggerContainer, staggerItem } from '@/components/PageTransition'
 import type { Group, GroupDetail, ApiResponse, CreateGroupDto, AddMemberDto, GroupMember } from '@/types/api'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -237,13 +239,21 @@ export default function GroupsPage() {
           }}
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <motion.div 
+          className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="show"
+        >
           {groups?.map((group) => (
-            <Card
+            <motion.div
               key={group.id}
-              className="cursor-pointer transition-shadow hover:shadow-md"
-              onClick={() => openGroupDetail(group.id)}
+              variants={staggerItem}
             >
+              <Card
+                className="cursor-pointer animate-card-lift"
+                onClick={() => openGroupDetail(group.id)}
+              >
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Users className="h-5 w-5 text-primary" />
@@ -283,8 +293,9 @@ export default function GroupsPage() {
                 </div>
               </CardContent>
             </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* Create Group Modal */}

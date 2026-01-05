@@ -42,8 +42,9 @@ const buttonVariants = cva(
           'bg-primary text-primary-foreground',
           'border-2 border-primary',
           'shadow-none',
-          'hover:rotate-[-2deg] hover:scale-[1.02] hover:shadow-[3px_3px_0_hsl(var(--foreground)/0.2)]',
-          'active:rotate-0 active:scale-[0.98] active:shadow-none',
+          'transition-all duration-200 ease-out',
+          'hover:rotate-[-2deg] hover:scale-[1.02] hover:shadow-[3px_3px_0_hsl(var(--foreground)/0.2)] hover:-translate-y-0.5',
+          'active:rotate-0 active:scale-[0.98] active:shadow-none active:translate-y-0',
         ],
         // Destructive - Warning stamp
         destructive: [

@@ -92,7 +92,7 @@ export function MusicPlayer() {
             <div className="relative w-16 h-16 flex-shrink-0">
               {/* Vinyl Record */}
               <div className={cn(
-                "w-16 h-16 rounded-full border-4 border-border bg-gradient-to-br from-foreground/20 to-foreground/5",
+                "w-20 h-20 rounded-full border-4 border-border bg-gradient-to-br from-foreground/20 to-foreground/5",
                 "relative overflow-hidden shadow-lg",
                 isPlaying && "animate-spin"
               )} style={{ animationDuration: '3s' }}>
@@ -103,15 +103,15 @@ export function MusicPlayer() {
                 
                 {/* Center label */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-6 h-6 rounded-full bg-primary/20 border-2 border-primary/50 flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
+                  <div className="w-8 h-8 rounded-full bg-primary/20 border-2 border-primary/50 flex items-center justify-center">
+                    <div className="w-3 h-3 rounded-full bg-primary" />
                   </div>
                 </div>
               </div>
               
               {/* Needle arm (static, doesn't spin) */}
               {isPlaying && (
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-foreground/60 origin-top rotate-12" />
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-foreground/60 origin-top rotate-12" />
               )}
             </div>
             
@@ -141,50 +141,50 @@ export function MusicPlayer() {
         </div>
 
         {/* Controls */}
-        <div className="p-3">
-          <div className="flex items-center justify-center gap-2">
+        <div className="p-4">
+          <div className="flex items-center justify-center gap-3">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8 rounded-sm"
+              className="h-10 w-10 rounded-sm"
               onClick={prevTrack}
             >
-              <SkipBack className="h-4 w-4" strokeWidth={1.5} />
+              <SkipBack className="h-5 w-5" strokeWidth={1.5} />
             </Button>
             <Button 
               variant="stamp" 
               size="icon" 
-              className="h-10 w-10 rounded-sm"
+              className="h-12 w-12 rounded-sm"
               onClick={toggle}
             >
               {isPlaying ? (
-                <Pause className="h-4 w-4" strokeWidth={1.5} />
+                <Pause className="h-5 w-5" strokeWidth={1.5} />
               ) : (
-                <Play className="h-4 w-4 ml-0.5" strokeWidth={1.5} />
+                <Play className="h-5 w-5 ml-0.5" strokeWidth={1.5} />
               )}
             </Button>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8 rounded-sm"
+              className="h-10 w-10 rounded-sm"
               onClick={nextTrack}
             >
-              <SkipForward className="h-4 w-4" strokeWidth={1.5} />
+              <SkipForward className="h-5 w-5" strokeWidth={1.5} />
             </Button>
           </div>
 
           {/* Volume */}
-          <div className="flex items-center gap-2 mt-3">
+          <div className="flex items-center gap-3 mt-4">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-7 w-7 shrink-0 rounded-sm"
+              className="h-9 w-9 shrink-0 rounded-sm"
               onClick={handleMuteToggle}
             >
               {isMuted || volume === 0 ? (
-                <VolumeX className="h-3.5 w-3.5" strokeWidth={1.5} />
+                <VolumeX className="h-5 w-5" strokeWidth={1.5} />
               ) : (
-                <Volume2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                <Volume2 className="h-5 w-5" strokeWidth={1.5} />
               )}
             </Button>
             <Slider
@@ -225,44 +225,44 @@ export function MusicPlayer() {
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
-          "group flex items-center gap-2 h-9 px-3 rounded-sm transition-all duration-200",
+          "group flex items-center gap-2 h-11 px-4 rounded-sm transition-all duration-200",
           "bg-card border-2 border-border shadow-paper",
           "hover:shadow-lifted hover:border-primary/50",
           isPlaying && "border-primary/50"
         )}
       >
         {/* Icon - Mini Vinyl Record */}
-        <div className="relative w-5 h-5 flex-shrink-0">
+        <div className="relative w-6 h-6 flex-shrink-0">
           <div className={cn(
-            "w-5 h-5 rounded-full border border-primary/50 bg-gradient-to-br from-foreground/20 to-foreground/5",
+            "w-6 h-6 rounded-full border border-primary/50 bg-gradient-to-br from-foreground/20 to-foreground/5",
             "relative overflow-hidden",
             isPlaying && "animate-spin"
           )} style={{ animationDuration: '2s' }}>
             {/* Center dot */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-1 h-1 rounded-full bg-primary" />
+              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
             </div>
           </div>
           {/* Needle */}
           {isPlaying && (
-            <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-px h-2 bg-primary/60 origin-top rotate-12" />
+            <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-px h-3 bg-primary/60 origin-top rotate-12" />
           )}
         </div>
         
-        <span className="text-[10px] font-semibold uppercase tracking-wider max-w-16 truncate text-foreground">
+        <span className="text-xs font-semibold uppercase tracking-wider max-w-20 truncate text-foreground">
           {isPlaying ? (currentTrack?.name || 'Playing') : 'Music'}
         </span>
         
         {/* Sound wave indicator when playing */}
         {isPlaying && (
-          <div className="flex items-center gap-0.5 h-3">
+          <div className="flex items-center gap-0.5 h-4">
             {[0, 1, 2].map((i) => (
               <span 
                 key={i}
                 className="w-0.5 bg-primary rounded-none animate-bounce" 
                 style={{ 
                   animationDelay: `${i * 150}ms`,
-                  height: `${4 + i * 2}px`
+                  height: `${5 + i * 2}px`
                 }} 
               />
             ))}

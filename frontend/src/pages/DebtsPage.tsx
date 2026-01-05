@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { motion } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
 import { cn } from '@/lib/utils'
 import { DebtCardSkeleton, StatsSkeleton } from '@/components/ui/skeleton'
+import { staggerContainer, staggerItem } from '@/components/PageTransition'
 import type { DebtSummary, ApiResponse, SessionDebt } from '@/types/api'
 
 type TabType = 'summary' | 'sessions'
@@ -537,8 +539,8 @@ export default function DebtsPage() {
             </Card>
           </div>
 
-      {/* Debts I Owe - Mobile Optimized Cards */}
-      <div className="space-y-4">
+          {/* Debts I Owe - Mobile Optimized Cards */}
+          <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-red-600 dark:text-red-400">
             <ArrowUpRight className="h-5 w-5" />
@@ -557,20 +559,30 @@ export default function DebtsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <motion.div 
+            className="grid gap-3 sm:grid-cols-2"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+          >
             {debts?.i_owe.map((debt) => (
-              <DebtCard
+              <motion.div
                 key={debt.id}
-                type="owe"
-                counterpartName={debt.counterpart_name}
-                sessionName={debt.session_name}
-                amount={debt.amount}
-                status={debt.status}
-                onSettle={() => requestSettle.mutate(debt.id)}
-                isSettling={requestSettle.isPending}
-              />
+                variants={staggerItem}
+                className="animate-card-lift"
+              >
+                <DebtCard
+                  type="owe"
+                  counterpartName={debt.counterpart_name}
+                  sessionName={debt.session_name}
+                  amount={debt.amount}
+                  status={debt.status}
+                  onSettle={() => requestSettle.mutate(debt.id)}
+                  isSettling={requestSettle.isPending}
+                />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
 
@@ -594,20 +606,30 @@ export default function DebtsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <motion.div 
+            className="grid gap-3 sm:grid-cols-2"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+          >
             {debts?.owed_to_me.map((debt) => (
-              <DebtCard
+              <motion.div
                 key={debt.id}
-                type="owed"
-                counterpartName={debt.counterpart_name}
-                sessionName={debt.session_name}
-                amount={debt.amount}
-                status={debt.status}
-                onSettle={() => confirmSettle.mutate(debt.id)}
-                isSettling={confirmSettle.isPending}
-              />
+                variants={staggerItem}
+                className="animate-card-lift"
+              >
+                <DebtCard
+                  type="owed"
+                  counterpartName={debt.counterpart_name}
+                  sessionName={debt.session_name}
+                  amount={debt.amount}
+                  status={debt.status}
+                  onSettle={() => confirmSettle.mutate(debt.id)}
+                  isSettling={confirmSettle.isPending}
+                />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
         </>

@@ -9,13 +9,15 @@ export function Toaster() {
       richColors
       toastOptions={{
         style: {
-          background: 'white',
-          border: '1px solid #e5e7eb',
-          borderRadius: '12px',
+          background: 'hsl(var(--card))',
+          border: '2px solid hsl(var(--border))',
+          borderRadius: '0',
           padding: '12px 16px',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+          boxShadow: 'var(--shadow-lifted)',
+          fontFamily: 'var(--font-mono)',
         },
-        className: 'toast-custom',
+        className: 'toast-retro animate-paper-fold',
+        duration: 4000,
       }}
     />
   )

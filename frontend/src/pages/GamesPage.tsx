@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
@@ -349,10 +351,32 @@ export default function GamesPage() {
       case 'medium': return 'Trung bình'
       case 'hard': return 'Khó'
       case 'extreme': return 'Cực khó'
-      case '18+': return '18+ 🔞'
+      case '18+': return '18+'
       default: return 'Không xác định'
     }
   }
+
+  // #region agent log
+  useEffect(() => {
+    const logData = {
+      location: 'GamesPage.tsx:358',
+      message: 'GamesPage render - checking container structure',
+      data: {
+        windowWidth: typeof window !== 'undefined' ? window.innerWidth : 0,
+        windowHeight: typeof window !== 'undefined' ? window.innerHeight : 0,
+        hypothesisId: 'A'
+      },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'run1'
+    };
+    fetch('http://127.0.0.1:7242/ingest/dcc7d1a6-1b54-4d53-9642-62624ca717d1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(logData)
+    }).catch(() => {});
+  }, []);
+  // #endregion
 
   return (
     <div className="space-y-6">
@@ -388,7 +412,7 @@ export default function GamesPage() {
             }`}
             title={adultContentEnabled ? 'Tắt nội dung 18+' : 'Bật nội dung 18+'}
           >
-            🔞 18+
+            18+
           </button>
         </div>
 
@@ -582,108 +606,310 @@ export default function GamesPage() {
         </Card>
       </div>
 
-      {/* Kings Cup Modal */}
-      {showKingsCup && (
-        <div 
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
-          onClick={() => setShowKingsCup(false)}
-        >
-          <div onClick={(e) => e.stopPropagation()}>
-            <KingsCup onClose={() => setShowKingsCup(false)} />
-          </div>
-        </div>
-      )}
+      {/* Kings Cup Modal - Rendered via Portal */}
+      <AnimatePresence>
+        {showKingsCup && typeof document !== 'undefined' && (
+          <>
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[60]"
+                onClick={() => setShowKingsCup(false)}
+              />,
+              document.body
+            )}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 flex items-center justify-center z-[70] pointer-events-none"
+                onClick={() => setShowKingsCup(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="pointer-events-auto"
+                >
+                  <KingsCup onClose={() => setShowKingsCup(false)} />
+                </motion.div>
+              </motion.div>,
+              document.body
+            )}
+          </>
+        )}
+      </AnimatePresence>
 
-      {/* Most Likely To Modal */}
-      {showMostLikelyTo && (
-        <div 
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
-          onClick={() => setShowMostLikelyTo(false)}
-        >
-          <div onClick={(e) => e.stopPropagation()}>
-            <MostLikelyTo onClose={() => setShowMostLikelyTo(false)} />
-          </div>
-        </div>
-      )}
+      {/* Most Likely To Modal - Rendered via Portal */}
+      <AnimatePresence>
+        {showMostLikelyTo && typeof document !== 'undefined' && (
+          <>
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[60]"
+                onClick={() => setShowMostLikelyTo(false)}
+              />,
+              document.body
+            )}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 flex items-center justify-center z-[70] pointer-events-none"
+                onClick={() => setShowMostLikelyTo(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="pointer-events-auto"
+                >
+                  <MostLikelyTo onClose={() => setShowMostLikelyTo(false)} />
+                </motion.div>
+              </motion.div>,
+              document.body
+            )}
+          </>
+        )}
+      </AnimatePresence>
 
-      {/* Categories Modal */}
-      {showCategories && (
-        <div 
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
-          onClick={() => setShowCategories(false)}
-        >
-          <div onClick={(e) => e.stopPropagation()}>
-            <CategoriesGame onClose={() => setShowCategories(false)} />
-          </div>
-        </div>
-      )}
+      {/* Categories Modal - Rendered via Portal */}
+      <AnimatePresence>
+        {showCategories && typeof document !== 'undefined' && (
+          <>
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[60]"
+                onClick={() => setShowCategories(false)}
+              />,
+              document.body
+            )}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 flex items-center justify-center z-[70] pointer-events-none"
+                onClick={() => setShowCategories(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="pointer-events-auto"
+                >
+                  <CategoriesGame onClose={() => setShowCategories(false)} />
+                </motion.div>
+              </motion.div>,
+              document.body
+            )}
+          </>
+        )}
+      </AnimatePresence>
 
-      {/* High or Low Modal */}
-      {showHighOrLow && (
-        <div 
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
-          onClick={() => setShowHighOrLow(false)}
-        >
-          <div onClick={(e) => e.stopPropagation()}>
-            <HighOrLow onClose={() => setShowHighOrLow(false)} />
-          </div>
-        </div>
-      )}
+      {/* High or Low Modal - Rendered via Portal */}
+      <AnimatePresence>
+        {showHighOrLow && typeof document !== 'undefined' && (
+          <>
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[60]"
+                onClick={() => setShowHighOrLow(false)}
+              />,
+              document.body
+            )}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 flex items-center justify-center z-[70] pointer-events-none"
+                onClick={() => setShowHighOrLow(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="pointer-events-auto"
+                >
+                  <HighOrLow onClose={() => setShowHighOrLow(false)} />
+                </motion.div>
+              </motion.div>,
+              document.body
+            )}
+          </>
+        )}
+      </AnimatePresence>
 
-      {/* Floating Action Buttons */}
-      <div className="fixed bottom-4 right-4 z-40 flex flex-col gap-3">
-        <Button
-          onClick={() => setShowPlayerRotation(true)}
-          variant="stamp"
-          className="rounded-full h-16 w-16 shadow-lg p-0 flex items-center justify-center"
-          title="Quản lý lượt chơi"
-        >
-          <Users className="h-8 w-8" strokeWidth={2} />
-        </Button>
-        <Button
-          onClick={() => setShowDrinkingCounter(true)}
-          variant="stamp"
-          className="rounded-full h-16 w-16 shadow-lg p-0 flex items-center justify-center"
-          title="Đếm số ly"
-        >
-          <BeerIcon size={32} />
-        </Button>
-      </div>
-
-      {/* Player Rotation Modal */}
-      {showPlayerRotation && (
-        <div 
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
-          onClick={() => setShowPlayerRotation(false)}
-        >
-          <div onClick={(e) => e.stopPropagation()}>
-            <PlayerRotation onClose={() => setShowPlayerRotation(false)} />
-          </div>
-        </div>
-      )}
-
-      {/* Drinking Counter Modal */}
-      {showDrinkingCounter && (
-        <div 
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
-          onClick={() => setShowDrinkingCounter(false)}
-        >
-          <div onClick={(e) => e.stopPropagation()}>
-            <DrinkingCounter onClose={() => setShowDrinkingCounter(false)} />
-          </div>
-        </div>
-      )}
-
-      {/* Wheel Modal */}
-      {showWheel && (
-        <div 
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
-          onClick={() => setShowWheel(false)}
-        >
-          <Card 
-            className="card-paper max-w-md w-full mx-4 border-2 border-success/50 shadow-2xl max-h-[90vh] overflow-y-auto relative"
-            onClick={(e) => e.stopPropagation()}
+      {/* Floating Action Buttons - Rendered via Portal */}
+      {typeof document !== 'undefined' && createPortal(
+        <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-3">
+          <Button
+            onClick={() => setShowPlayerRotation(true)}
+            variant="stamp"
+            className="rounded-full h-16 w-16 shadow-lg p-0 flex items-center justify-center"
+            title="Quản lý lượt chơi"
           >
+            <Users className="h-8 w-8" strokeWidth={2} />
+          </Button>
+          <Button
+            onClick={() => setShowDrinkingCounter(true)}
+            variant="stamp"
+            className="rounded-full h-16 w-16 shadow-lg p-0 flex items-center justify-center"
+            title="Đếm số ly"
+          >
+            <BeerIcon size={32} />
+          </Button>
+        </div>,
+        document.body
+      )}
+
+      {/* Player Rotation Modal - Rendered via Portal */}
+      <AnimatePresence>
+        {showPlayerRotation && typeof document !== 'undefined' && (
+          <>
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[60]"
+                onClick={() => setShowPlayerRotation(false)}
+              />,
+              document.body
+            )}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 flex items-center justify-center z-[70] pointer-events-none"
+                onClick={() => setShowPlayerRotation(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="pointer-events-auto"
+                >
+                  <PlayerRotation onClose={() => setShowPlayerRotation(false)} />
+                </motion.div>
+              </motion.div>,
+              document.body
+            )}
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Drinking Counter Modal - Rendered via Portal */}
+      <AnimatePresence>
+        {showDrinkingCounter && typeof document !== 'undefined' && (
+          <>
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[60]"
+                onClick={() => setShowDrinkingCounter(false)}
+              />,
+              document.body
+            )}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 flex items-center justify-center z-[70] pointer-events-none"
+                onClick={() => setShowDrinkingCounter(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="pointer-events-auto"
+                >
+                  <DrinkingCounter onClose={() => setShowDrinkingCounter(false)} />
+                </motion.div>
+              </motion.div>,
+              document.body
+            )}
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Wheel Modal - Rendered via Portal */}
+      <AnimatePresence>
+        {showWheel && typeof document !== 'undefined' && (
+          <>
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[60]"
+                onClick={() => setShowWheel(false)}
+              />,
+              document.body
+            )}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 flex items-center justify-center z-[70] pointer-events-none"
+                onClick={() => setShowWheel(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="pointer-events-auto"
+                >
+                  <Card 
+                    className="card-paper max-w-md w-full mx-4 border-2 border-success/50 shadow-2xl max-h-[90vh] overflow-y-auto relative"
+                  >
             <CardHeader className="pb-2">
               <Button
                 variant="ghost"
@@ -778,19 +1004,48 @@ export default function GamesPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      )}
+                </motion.div>
+              </motion.div>,
+              document.body
+            )}
+          </>
+        )}
+      </AnimatePresence>
 
-      {/* Game Result Overlay */}
-      {gamePhase === 'revealed' && (gameContent || diceResult) && (
-        <div 
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-md"
-          onClick={closeGame}
-        >
-          <Card 
-            className="card-paper max-w-lg w-full mx-4 border-2 border-warning/50 shadow-2xl animate-paper-slide"
-            onClick={(e) => e.stopPropagation()}
-          >
+      {/* Game Result Overlay - Rendered via Portal */}
+      <AnimatePresence>
+        {gamePhase === 'revealed' && (gameContent || diceResult) && typeof document !== 'undefined' && (
+          <>
+            {/* Full screen blur overlay */}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-40"
+              />,
+              document.body
+            )}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 flex items-center justify-center z-50"
+                onClick={closeGame}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Card 
+                    className="card-paper max-w-lg w-full mx-4 border-2 border-warning/50 shadow-2xl"
+                  >
             <CardHeader className="pb-2">
               <CardTitle className="text-center flex items-center justify-center gap-2 font-heading">
                 {currentGame === 'truth_or_dare' && (
@@ -928,23 +1183,52 @@ export default function GamesPage() {
                 </Button>
               </div>
             </CardContent>
-          </Card>
-        </div>
-      )}
+                </Card>
+              </motion.div>
+              </motion.div>,
+              document.body
+            )}
+          </>
+        )}
+      </AnimatePresence>
 
-      {/* Confirmation Modal */}
-      {pendingGame && (
-        <div 
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
-          onClick={() => {
-            setPendingGame(null)
-            setGamePhase('idle')
-          }}
-        >
-          <Card 
-            className="card-paper max-w-md w-full animate-paper-slide border-2 border-warning/50 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+      {/* Confirmation Modal - Rendered via Portal */}
+      <AnimatePresence>
+        {pendingGame && typeof document !== 'undefined' && (
+          <>
+            {/* Full screen blur overlay */}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-40"
+              />,
+              document.body
+            )}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 flex items-center justify-center z-50 p-4"
+                onClick={() => {
+                  setPendingGame(null)
+                  setGamePhase('idle')
+                }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Card 
+                    className="card-paper max-w-md w-full border-2 border-warning/50 shadow-2xl"
+                  >
             <CardContent className="p-6 text-center space-y-4">
               <div className="h-20 w-20 mx-auto rounded-full bg-warning/10 flex items-center justify-center animate-bounce border-2 border-warning/30">
                 <GameIcon type={pendingGame} className="h-10 w-10 text-warning" />
@@ -981,13 +1265,38 @@ export default function GamesPage() {
                 </Button>
               </div>
             </CardContent>
-          </Card>
-        </div>
-      )}
+                </Card>
+              </motion.div>
+              </motion.div>,
+              document.body
+            )}
+          </>
+        )}
+      </AnimatePresence>
 
-      {/* Loading Suspense Overlay - Vintage Paper Style */}
-      {(gamePhase === 'loading' || gamePhase === 'countdown') && activeGame && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-md texture-paper">
+      {/* Loading Suspense Overlay - Vintage Paper Style - Rendered via Portal */}
+      <AnimatePresence>
+        {(gamePhase === 'loading' || gamePhase === 'countdown') && activeGame && typeof document !== 'undefined' && (
+          <>
+            {/* Full screen blur overlay */}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-40"
+              />,
+              document.body
+            )}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 flex items-center justify-center z-50 texture-paper"
+              >
           <div className="text-center space-y-6">
             {gamePhase === 'loading' ? (
               <>
@@ -1086,19 +1395,46 @@ export default function GamesPage() {
               </>
             ) : null}
           </div>
-        </div>
-      )}
+              </motion.div>,
+              document.body
+            )}
+          </>
+        )}
+      </AnimatePresence>
 
-      {/* Rules Modal */}
-      {showRules && (
-        <div 
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" 
-          onClick={() => setShowRules(null)}
-        >
-          <Card 
-            className="card-paper max-w-md w-full animate-paper-slide" 
-            onClick={(e) => e.stopPropagation()}
-          >
+      {/* Rules Modal - Rendered via Portal */}
+      <AnimatePresence>
+        {showRules && typeof document !== 'undefined' && (
+          <>
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-40"
+              />,
+              document.body
+            )}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 flex items-center justify-center z-50 p-4"
+                onClick={() => setShowRules(null)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Card 
+                    className="card-paper max-w-md w-full"
+                  >
             <CardHeader className="relative">
               <button 
                 className="absolute top-4 right-4 p-1 rounded-full hover:bg-secondary/50 transition-colors"
@@ -1123,27 +1459,55 @@ export default function GamesPage() {
                 Đã hiểu! 🍻
               </Button>
             </CardContent>
-          </Card>
-        </div>
-      )}
+                </Card>
+              </motion.div>
+              </motion.div>,
+              document.body
+            )}
+          </>
+        )}
+      </AnimatePresence>
 
-      {/* Adult Content Warning Modal */}
-      {showAdultWarning && (
-        <div 
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" 
-          onClick={() => setShowAdultWarning(false)}
-        >
-          <Card 
-            className="card-paper max-w-md w-full animate-paper-slide border-2 border-destructive/50" 
-            onClick={(e) => e.stopPropagation()}
-          >
+      {/* Adult Content Warning Modal - Rendered via Portal */}
+      <AnimatePresence>
+        {showAdultWarning && typeof document !== 'undefined' && (
+          <>
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-40"
+              />,
+              document.body
+            )}
+            {createPortal(
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 flex items-center justify-center z-50 p-4"
+                onClick={() => setShowAdultWarning(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Card 
+                    className="card-paper max-w-md w-full border-2 border-destructive/50"
+                  >
             <CardHeader className="text-center">
               <div className="mx-auto h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mb-2 border-2 border-destructive/30">
-                <span className="text-3xl">🔞</span>
+                <span className="text-3xl">18+</span>
               </div>
-              <CardTitle className="text-destructive font-heading">Cảnh báo nội dung người lớn</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+                <CardTitle className="text-destructive font-heading">Cảnh báo nội dung người lớn</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
               <div className="bg-destructive/10 rounded-lg p-4 text-sm text-destructive border border-destructive/30">
                 <p className="font-semibold mb-2 flex items-center gap-2 font-body">
                   <AlertCircle className="h-4 w-4" /> Lưu ý quan trọng:
@@ -1179,9 +1543,14 @@ export default function GamesPage() {
                 </Button>
               </div>
             </CardContent>
-          </Card>
-        </div>
-      )}
+                </Card>
+              </motion.div>
+              </motion.div>,
+              document.body
+            )}
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

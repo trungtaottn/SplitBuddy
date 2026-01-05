@@ -130,7 +130,7 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
           <div className="space-y-4">
             <div className="text-center">
               <p className="text-base font-medium">
-                Chào <span className="text-primary font-bold">{firstName}</span>! 👋
+                Chào <span className="text-primary font-bold">{firstName}</span>!
               </p>
               <p className="text-sm text-muted-foreground mt-1 italic">
                 Hôm nay tâm trạng thế nào?

@@ -1,24 +1,78 @@
 import { motion, AnimatePresence, Variants, Transition } from 'framer-motion'
 import { useLocation, useOutlet } from 'react-router-dom'
-import { ReactNode, useRef, cloneElement } from 'react'
+import { ReactNode, useRef, useState, useEffect } from 'react'
 
-// Page transition variants - simple fade for smooth feel
+// Page transition variants - smooth fade with subtle scale
 const pageVariants: Variants = {
   initial: {
     opacity: 0,
+    scale: 0.98,
   },
   in: {
     opacity: 1,
+    scale: 1,
   },
   out: {
     opacity: 0,
+    scale: 0.98,
   },
 }
 
+// Paper slide variant - smooth slide with subtle scale and translate
+const paperSlideVariants: Variants = {
+  initial: {
+    opacity: 0,
+    x: 12,
+    y: 4,
+    scale: 0.98,
+  },
+  in: {
+    opacity: 1,
+    x: 0,
+    y: 0,
+    scale: 1,
+  },
+  out: {
+    opacity: 0,
+    x: -12,
+    y: -4,
+    scale: 0.98,
+  },
+}
+
+// Fade variant - smooth fade with subtle scale
+const fadeTextureVariants: Variants = {
+  initial: {
+    opacity: 0,
+    scale: 0.98,
+  },
+  in: {
+    opacity: 1,
+    scale: 1,
+  },
+  out: {
+    opacity: 0,
+    scale: 0.98,
+  },
+}
+
+// Optimized transitions for smooth animations (balanced duration + natural easing)
 const pageTransition: Transition = {
   type: 'tween',
-  ease: 'easeInOut',
-  duration: 0.15,
+  ease: [0.25, 0.1, 0.25, 1], // Natural ease-in-out
+  duration: 0.3, // Slightly longer for smoothness
+}
+
+const paperSlideTransition: Transition = {
+  type: 'tween',
+  ease: [0.25, 0.1, 0.25, 1], // Natural ease-in-out
+  duration: 0.3, // Slightly longer for smoothness
+}
+
+const fadeTextureTransition: Transition = {
+  type: 'tween',
+  ease: [0.25, 0.1, 0.25, 1], // Natural ease-in-out
+  duration: 0.3, // Slightly longer for smoothness
 }
 
 /**
@@ -31,38 +85,60 @@ const pageTransition: Transition = {
 export function AnimatedOutlet() {
   const location = useLocation()
   const outlet = useOutlet()
+  const [transitionType, setTransitionType] = useState<'pageTurn' | 'paperSlide' | 'fade'>('paperSlide')
+  const prevPathname = useRef<string>('')
   
-  // Cache outlets by location key - this is the magic!
-  // When AnimatePresence keeps an old key mounted for exit animation,
-  // we render the cached outlet for that key (the old page)
-  const outletCache = useRef<Map<string | undefined, React.ReactElement | null>>(new Map())
+  // Detect navigation direction and choose transition
+  useEffect(() => {
+    if (prevPathname.current) {
+      // Simple heuristic: use page turn for major navigation, paper slide for minor
+      const isMajorNav = location.pathname.split('/').length !== prevPathname.current.split('/').length
+      setTransitionType(isMajorNav ? 'pageTurn' : 'paperSlide')
+    }
+    prevPathname.current = location.pathname
+  }, [location.pathname])
   
-  // Always store current outlet for current location
-  if (outlet) {
-    outletCache.current.set(location.key, cloneElement(outlet, { key: location.key }))
+  const getVariants = () => {
+    switch (transitionType) {
+      case 'pageTurn':
+        return pageVariants
+      case 'paperSlide':
+        return paperSlideVariants
+      default:
+        return fadeTextureVariants
+    }
+  }
+  
+  const getTransition = () => {
+    switch (transitionType) {
+      case 'pageTurn':
+        return pageTransition
+      case 'paperSlide':
+        return paperSlideTransition
+      default:
+        return fadeTextureTransition
+    }
   }
 
+  if (!outlet) return null
+
   return (
-    <AnimatePresence 
-      mode="wait"
-      onExitComplete={() => {
-        // Clean up old cache entries, keep only current
-        const currentOutlet = outletCache.current.get(location.key)
-        outletCache.current.clear()
-        if (currentOutlet) {
-          outletCache.current.set(location.key, currentOutlet)
-        }
-      }}
-    >
+    <AnimatePresence mode="wait" initial={false}>
       <motion.div
-        key={location.key}
+        key={location.pathname}
         initial="initial"
         animate="in"
         exit="out"
-        variants={pageVariants}
-        transition={pageTransition}
+        variants={getVariants()}
+        transition={getTransition()}
+        style={{
+          willChange: 'opacity, transform',
+          backfaceVisibility: 'hidden',
+          WebkitFontSmoothing: 'antialiased',
+          transformOrigin: 'center center',
+        }}
       >
-        {outletCache.current.get(location.key) ?? outlet}
+        {outlet}
       </motion.div>
     </AnimatePresence>
   )
@@ -132,20 +208,21 @@ export const staggerContainer: Variants = {
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
     },
   },
 }
 
 export const staggerItem: Variants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 15 },
   show: { 
     opacity: 1, 
     y: 0,
     transition: {
-      type: 'spring',
-      stiffness: 300,
-      damping: 24,
+      type: 'tween',
+      ease: [0.25, 0.1, 0.25, 1],
+      duration: 0.4,
     },
   },
 }
