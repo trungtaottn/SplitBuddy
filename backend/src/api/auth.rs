@@ -6,10 +6,12 @@ use validator::Validate;
 
 use crate::api::response::{created, ok, ApiResponse};
 use crate::api::AppState;
+use crate::audit::{AuditAction, AuditEntityType, AuditLogBuilder};
 use crate::domain::user::User;
 use crate::error::AppError;
 use crate::middleware::auth::create_token;
 use crate::repository::user_repo::UserRepository;
+use crate::utils::password::{hash_password, verify_password};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -99,7 +101,15 @@ pub async fn register(
         .create(&payload.email, &password_hash, &payload.full_name)
         .await?;
 
-    let token = create_token(&state.config, user.id)?;
+    // Audit log: new user registration
+    let _ = AuditLogBuilder::new(AuditAction::Register, AuditEntityType::User)
+        .user(user.id, Some(user.email.clone()))
+        .entity_id(user.id)
+        .description(format!("New user registered: {}", user.email))
+        .save(&state.pool)
+        .await;
+
+    let token = create_token(&state.config, user.id, &user.role)?;
 
     Ok(created(AuthResponse {
         user: user.into(),
@@ -132,7 +142,14 @@ pub async fn login(
         return Err(AppError::InvalidCredentials);
     }
 
-    let token = create_token(&state.config, user.id)?;
+    // Audit log: successful login
+    let _ = AuditLogBuilder::new(AuditAction::Login, AuditEntityType::User)
+        .user(user.id, Some(user.email.clone()))
+        .entity_id(user.id)
+        .save(&state.pool)
+        .await;
+
+    let token = create_token(&state.config, user.id, &user.role)?;
 
     Ok(ok(AuthResponse {
         user: user.into(),
@@ -140,37 +157,8 @@ pub async fn login(
     }))
 }
 
-fn hash_password(password: &str) -> Result<String, AppError> {
-    use argon2::{
-        password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
-        Argon2,
-    };
-
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
-
-    argon2
-        .hash_password(password.as_bytes(), &salt)
-        .map(|hash| hash.to_string())
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("Password hashing failed: {}", e)))
-}
-
-fn verify_password(password: &str, hash: &str) -> Result<bool, AppError> {
-    use argon2::{
-        password_hash::{PasswordHash, PasswordVerifier},
-        Argon2,
-    };
-
-    let parsed_hash = PasswordHash::new(hash)
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("Invalid password hash: {}", e)))?;
-
-    Ok(Argon2::default()
-        .verify_password(password.as_bytes(), &parsed_hash)
-        .is_ok())
-}
-
-// Feature flags - public endpoint (no auth required)
-#[derive(Serialize, sqlx::FromRow)]
+// Feature flags - public endpoint (no auth required) - with caching
+#[derive(Serialize, sqlx::FromRow, Clone)]
 pub struct FeatureFlagPublic {
     pub key: String,
     pub enabled: bool,
@@ -179,11 +167,54 @@ pub struct FeatureFlagPublic {
 async fn get_features(
     State(state): State<AppState>,
 ) -> Result<Json<ApiResponse<Vec<FeatureFlagPublic>>>, AppError> {
+    use crate::cache::CachedFeatureFlag;
+    
+    tracing::info!("get_features handler called");
+    
+    // Try to get from cache first
+    const CACHE_KEY: &str = "all_public_features";
+    
+    if let Some(cached) = state.cache.all_features.get(CACHE_KEY).await {
+        tracing::info!("Cache hit for features");
+        // Convert cached features to public format
+        let features: Vec<FeatureFlagPublic> = cached
+            .iter()
+            .map(|f| FeatureFlagPublic {
+                key: f.key.clone(),
+                enabled: f.enabled,
+            })
+            .collect();
+        return Ok(ok(features));
+    }
+    
+    tracing::info!("Cache miss, fetching from database");
+    
+    // Cache miss - fetch from database
     let features: Vec<FeatureFlagPublic> = sqlx::query_as(
         r#"SELECT key, enabled FROM feature_flags ORDER BY key ASC"#
     )
     .fetch_all(&state.pool)
-    .await?;
+    .await
+    .map_err(|e| {
+        tracing::error!("Database error fetching features: {:?}", e);
+        AppError::Database(e)
+    })?;
+    
+    tracing::info!("Fetched {} features from database", features.len());
+
+    // Store in cache for future requests
+    let cached_features: Vec<CachedFeatureFlag> = features
+        .iter()
+        .map(|f| CachedFeatureFlag {
+            id: uuid::Uuid::nil(), // We don't have ID in public view
+            key: f.key.clone(),
+            name: f.key.clone(),
+            description: None,
+            enabled: f.enabled,
+        })
+        .collect();
+    
+    state.cache.all_features.insert(CACHE_KEY.to_string(), cached_features).await;
 
     Ok(ok(features))
 }

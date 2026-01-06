@@ -86,7 +86,7 @@ fn get_random_slogan() -> String {
 }
 
 async fn get_greeting(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _auth_user: AuthUser,
     Json(payload): Json<GreetingRequest>,
 ) -> Result<Json<ApiResponse<GreetingResponse>>, AppError> {
@@ -94,7 +94,7 @@ async fn get_greeting(
     
     let (message, suggestion, action) = if let Some(api_key) = openai_key {
         // Use OpenAI for personalized greeting
-        match generate_ai_greeting(&api_key, &payload.user_name, payload.mood.as_deref()).await {
+        match generate_ai_greeting(&state.http_client, &api_key, &payload.user_name, payload.mood.as_deref()).await {
             Ok(result) => result,
             Err(_) => generate_fallback_greeting(&payload.user_name, payload.mood.as_deref()),
         }
@@ -149,11 +149,11 @@ fn generate_fallback_greeting(name: &str, mood: Option<&str>) -> (String, Option
 }
 
 async fn generate_ai_greeting(
+    client: &reqwest::Client,
     api_key: &str,
     name: &str,
     mood: Option<&str>,
 ) -> Result<(String, Option<String>, Option<String>), AppError> {
-    let client = reqwest::Client::new();
     
     let first_name = name.split_whitespace().last().unwrap_or(name);
     let mood_context = mood.map(|m| format!("Người dùng đang cảm thấy: {}", m)).unwrap_or_default();
@@ -215,14 +215,14 @@ Nếu người dùng vui -> gợi ý tạo cuộc nhậu ăn mừng."#, first_na
 }
 
 async fn chat(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _auth_user: AuthUser,
     Json(payload): Json<ChatRequest>,
 ) -> Result<Json<ApiResponse<ChatResponse>>, AppError> {
     let openai_key = std::env::var("OPENAI_API_KEY").ok();
     
     let (reply, action) = if let Some(api_key) = openai_key {
-        match generate_ai_chat(&api_key, &payload.message, payload.context.as_deref()).await {
+        match generate_ai_chat(&state.http_client, &api_key, &payload.message, payload.context.as_deref()).await {
             Ok(result) => result,
             Err(_) => (
                 "Xin lỗi, tôi đang bận nhậu, thử lại sau nhé!".to_string(),
@@ -263,11 +263,11 @@ fn generate_fallback_chat(message: &str) -> (String, Option<String>) {
 }
 
 async fn generate_ai_chat(
+    client: &reqwest::Client,
     api_key: &str,
     message: &str,
     context: Option<&str>,
 ) -> Result<(String, Option<String>), AppError> {
-    let client = reqwest::Client::new();
 
     let system_prompt = r#"Bạn là trợ lý vui vẻ của app chia tiền nhậu SplitBuddy.
 Phong cách: Thân thiện, hài hước, tự nhiên, dùng emoji.
