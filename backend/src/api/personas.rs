@@ -281,10 +281,11 @@ async fn check_achievements(
     .unwrap_or(None);
 
     if let Some((created_at,)) = user_created {
-        if created_at
-            < chrono::DateTime::parse_from_rfc3339("2026-06-01T00:00:00Z")
-                .unwrap()
-                .with_timezone(&chrono::Utc)
+        // Static date string - use expect() since this is a compile-time constant
+        let founding_cutoff = chrono::DateTime::parse_from_rfc3339("2026-06-01T00:00:00Z")
+            .expect("Static date string should always parse")
+            .with_timezone(&chrono::Utc);
+        if created_at < founding_cutoff
             && try_unlock_achievement(&state.pool, auth_user.user_id, "founding_member").await
         {
             newly_unlocked.push("founding_member".to_string());

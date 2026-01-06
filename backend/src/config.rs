@@ -12,6 +12,9 @@ pub struct Config {
     pub cors_origins: Vec<String>,
     pub rate_limit_requests_per_second: u64,
     pub rate_limit_burst_size: u32,
+    // HTTP client settings
+    pub http_timeout_seconds: u64,
+    pub http_connect_timeout_seconds: u64,
 }
 
 impl Config {
@@ -41,8 +44,15 @@ impl Config {
             // Security settings
             admin_default_password: env::var("ADMIN_DEFAULT_PASSWORD")
                 .unwrap_or_else(|_| {
-                    tracing::warn!("⚠️  ADMIN_DEFAULT_PASSWORD not set, using default. Change this in production!");
-                    "Admin123!Secure".to_string()
+                    // Enforce password in production
+                    if env::var("RUST_ENV").unwrap_or_default() == "production"
+                        || env::var("HEROKU").is_ok()
+                        || env::var("RAILWAY_ENVIRONMENT").is_ok()
+                    {
+                        panic!("ADMIN_DEFAULT_PASSWORD must be set in production!");
+                    }
+                    tracing::warn!("⚠️  Using development default password - CHANGE IN PRODUCTION!");
+                    "DevAdmin123!".to_string()
                 }),
             cors_origins,
             rate_limit_requests_per_second: env::var("RATE_LIMIT_RPS")
@@ -53,6 +63,15 @@ impl Config {
                 .unwrap_or_else(|_| "30".to_string())
                 .parse()
                 .unwrap_or(30),
+            // HTTP client settings (for OpenAI, external APIs)
+            http_timeout_seconds: env::var("HTTP_TIMEOUT_SECONDS")
+                .unwrap_or_else(|_| "30".to_string())
+                .parse()
+                .unwrap_or(30),
+            http_connect_timeout_seconds: env::var("HTTP_CONNECT_TIMEOUT_SECONDS")
+                .unwrap_or_else(|_| "10".to_string())
+                .parse()
+                .unwrap_or(10),
         })
     }
 }

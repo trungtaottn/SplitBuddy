@@ -38,6 +38,8 @@ pub enum WsEvent {
     GameEvent { session_id: Uuid, event_type: String },
     /// User achievement unlocked
     AchievementUnlocked { user_id: Uuid, achievement_id: Uuid },
+    /// New notification received
+    NotificationReceived { notification_id: Uuid, title: String, notification_type: String },
     /// Connection established confirmation
     Connected { user_id: Uuid },
     /// Error message
@@ -128,6 +130,20 @@ impl WsManager {
         if let Some(user) = connections.get_mut(&user_id) {
             user.session_subscriptions.retain(|&id| id != session_id);
         }
+    }
+
+    /// Broadcast shutdown event to all connected clients
+    pub async fn broadcast_shutdown(&self) {
+        let connections = self.connections.read().await;
+        let shutdown_event = WsEvent::Error {
+            message: "Server is shutting down".to_string(),
+        };
+        
+        for user_id in connections.keys() {
+            let _ = self.tx.send((*user_id, shutdown_event.clone()));
+        }
+        
+        tracing::info!("📢 Broadcast shutdown to {} connected clients", connections.len());
     }
 }
 
