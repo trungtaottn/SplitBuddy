@@ -79,6 +79,7 @@ export interface SessionDetail {
   session_date: string
   participants: Participant[]
   total_amount: string
+  group_id: string | null
 }
 
 export interface Participant {
@@ -122,6 +123,7 @@ export interface DebtItem {
   counterpart_name: string
   amount: string
   status: DebtStatus
+  is_guest: boolean
 }
 
 export interface DebtSummary {
@@ -333,6 +335,7 @@ export interface FeatureFlag {
   name: string
   description: string | null
   enabled: boolean
+  module: string | null
   created_at: string
   updated_at: string
 }

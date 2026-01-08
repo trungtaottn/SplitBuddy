@@ -22,6 +22,9 @@ pub enum AppError {
     #[error("Bill not found: {bill_id}")]
     BillNotFound { bill_id: Uuid },
 
+    #[error("Game content not found for type: {game_type}")]
+    GameContentNotFound { game_type: String },
+
     #[error("Invalid bill amount: {amount}. Must be greater than 0")]
     InvalidBillAmount { amount: Decimal },
 
@@ -45,6 +48,9 @@ pub enum AppError {
 
     #[error("Token expired")]
     TokenExpired,
+
+    #[error("Feature disabled: {feature}")]
+    FeatureDisabled { feature: String },
 
     #[error("Internal server error")]
     Internal(#[from] anyhow::Error),
@@ -76,6 +82,7 @@ impl AppError {
             AppError::UserNotFound { .. } => "E_USER_NOT_FOUND",
             AppError::SessionNotFound { .. } => "E_SESSION_NOT_FOUND",
             AppError::BillNotFound { .. } => "E_BILL_NOT_FOUND",
+            AppError::GameContentNotFound { .. } => "E_GAME_CONTENT_NOT_FOUND",
             AppError::InvalidBillAmount { .. } => "E_BILL_INVALID_AMOUNT",
             AppError::Unauthorized { .. } => "E_AUTH_UNAUTHORIZED",
             AppError::Forbidden { .. } => "E_AUTH_FORBIDDEN",
@@ -84,6 +91,7 @@ impl AppError {
             AppError::EmailAlreadyExists { .. } => "E_USER_EMAIL_EXISTS",
             AppError::InvalidToken => "E_AUTH_INVALID_TOKEN",
             AppError::TokenExpired => "E_AUTH_TOKEN_EXPIRED",
+            AppError::FeatureDisabled { .. } => "E_FEATURE_DISABLED",
             AppError::Internal(_) => "E_INTERNAL",
         }
     }
@@ -94,6 +102,7 @@ impl AppError {
             AppError::UserNotFound { .. } => StatusCode::NOT_FOUND,
             AppError::SessionNotFound { .. } => StatusCode::NOT_FOUND,
             AppError::BillNotFound { .. } => StatusCode::NOT_FOUND,
+            AppError::GameContentNotFound { .. } => StatusCode::NOT_FOUND,
             AppError::InvalidBillAmount { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             AppError::Unauthorized { .. } => StatusCode::UNAUTHORIZED,
             AppError::Forbidden { .. } => StatusCode::FORBIDDEN,
@@ -102,6 +111,7 @@ impl AppError {
             AppError::EmailAlreadyExists { .. } => StatusCode::CONFLICT,
             AppError::InvalidToken => StatusCode::UNAUTHORIZED,
             AppError::TokenExpired => StatusCode::UNAUTHORIZED,
+            AppError::FeatureDisabled { .. } => StatusCode::SERVICE_UNAVAILABLE,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -109,6 +119,19 @@ impl AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
+        // Log errors for debugging
+        match &self {
+            AppError::Database(e) => {
+                tracing::error!("Database error: {:?}", e);
+            }
+            AppError::Internal(e) => {
+                tracing::error!("Internal error: {:?}", e);
+            }
+            _ => {
+                tracing::warn!("Application error: {}", self);
+            }
+        }
+        
         let status = self.status_code();
         let error_response = ErrorResponse {
             error: ErrorDetail {

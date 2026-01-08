@@ -127,20 +127,22 @@ async fn get_my_wrapped(
     let stats = generate_wrapped_stats(&state.pool, auth_user.user_id, year, &period).await?;
 
     // Cache it
-    let _ = sqlx::query(
-        r#"
-        INSERT INTO user_wrapped (user_id, year, period, stats)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (user_id, year, period) 
-        DO UPDATE SET stats = $4, generated_at = NOW()
-        "#,
-    )
-    .bind(auth_user.user_id)
-    .bind(year)
-    .bind(&period)
-    .bind(serde_json::to_value(&stats).unwrap())
-    .execute(&state.pool)
-    .await;
+    if let Ok(stats_json) = serde_json::to_value(&stats) {
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO user_wrapped (user_id, year, period, stats)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (user_id, year, period) 
+            DO UPDATE SET stats = $4, generated_at = NOW()
+            "#,
+        )
+        .bind(auth_user.user_id)
+        .bind(year)
+        .bind(&period)
+        .bind(stats_json)
+        .execute(&state.pool)
+        .await;
+    }
 
     Ok(Json(ApiResponse::new(stats)))
 }
@@ -157,20 +159,22 @@ async fn generate_wrapped(
     let stats = generate_wrapped_stats(&state.pool, auth_user.user_id, year, &period).await?;
 
     // Update cache
-    let _ = sqlx::query(
-        r#"
-        INSERT INTO user_wrapped (user_id, year, period, stats)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (user_id, year, period) 
-        DO UPDATE SET stats = $4, generated_at = NOW()
-        "#,
-    )
-    .bind(auth_user.user_id)
-    .bind(year)
-    .bind(&period)
-    .bind(serde_json::to_value(&stats).unwrap())
-    .execute(&state.pool)
-    .await;
+    if let Ok(stats_json) = serde_json::to_value(&stats) {
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO user_wrapped (user_id, year, period, stats)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (user_id, year, period) 
+            DO UPDATE SET stats = $4, generated_at = NOW()
+            "#,
+        )
+        .bind(auth_user.user_id)
+        .bind(year)
+        .bind(&period)
+        .bind(stats_json)
+        .execute(&state.pool)
+        .await;
+    }
 
     Ok(Json(ApiResponse::new(stats)))
 }

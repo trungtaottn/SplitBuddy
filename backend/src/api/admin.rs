@@ -1,5 +1,5 @@
 use axum::{
-    extract::{DefaultBodyLimit, Multipart, Path, State},
+    extract::{DefaultBodyLimit, Multipart, Path, Query, State},
     routing::{delete, get, post, put},
     Json, Router,
 };
@@ -12,16 +12,49 @@ use crate::api::response::{ok, ApiResponse};
 use crate::api::AppState;
 use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
+use crate::audit::{fetch_audit_logs, AuditLogQuery, AuditLogEntry};
+use crate::utils::password::hash_password;
+
+/// Pagination query parameters
+#[derive(Debug, Deserialize)]
+pub struct PaginationQuery {
+    #[serde(default = "default_page")]
+    pub page: i64,
+    #[serde(default = "default_limit")]
+    pub limit: i64,
+}
+
+fn default_page() -> i64 { 1 }
+fn default_limit() -> i64 { 20 }
+
+/// Pagination metadata
+#[derive(Debug, Serialize)]
+pub struct PaginationMeta {
+    pub page: i64,
+    pub per_page: i64,
+    pub total: i64,
+    pub total_pages: i64,
+}
+
+/// Paginated response wrapper
+#[derive(Debug, Serialize)]
+pub struct PaginatedResponse<T> {
+    pub data: T,
+    pub pagination: PaginationMeta,
+}
 
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/users", get(list_users).post(create_user))
         .route("/users/:id/password", put(reset_password))
         .route("/features", get(list_features))
+        .route("/features/toggle-all", put(toggle_all_features))
+        .route("/features/module/:module", put(toggle_module_features))
         .route("/features/:key", put(toggle_feature))
         .route("/music/url", post(add_music_url)) // Must be before /music/:id
         .route("/music/:id", delete(delete_music))
         .route("/music", get(list_music).post(upload_music).layer(DefaultBodyLimit::max(50 * 1024 * 1024))) // 50MB limit
+        .route("/audit-logs", get(get_audit_logs))
 }
 
 #[derive(Serialize, sqlx::FromRow)]
@@ -58,8 +91,13 @@ fn require_admin(auth_user: &AuthUser) -> Result<(), AppError> {
 async fn list_users(
     State(state): State<AppState>,
     auth_user: AuthUser,
-) -> Result<Json<ApiResponse<Vec<UserResponse>>>, AppError> {
+    Query(pagination): Query<PaginationQuery>,
+) -> Result<Json<ApiResponse<PaginatedResponse<Vec<UserResponse>>>>, AppError> {
     require_admin(&auth_user)?;
+
+    let page = pagination.page.max(1);
+    let limit = pagination.limit.clamp(1, 100);
+    let offset = (page - 1) * limit;
 
     let users: Vec<UserResponse> = sqlx::query_as(
         r#"
@@ -67,12 +105,31 @@ async fn list_users(
         FROM users
         WHERE role != 'admin'
         ORDER BY created_at DESC
+        LIMIT $1 OFFSET $2
         "#
     )
+    .bind(limit)
+    .bind(offset)
     .fetch_all(&state.pool)
     .await?;
 
-    Ok(ok(users))
+    let total: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*)::bigint FROM users WHERE role != 'admin'"#
+    )
+    .fetch_one(&state.pool)
+    .await?;
+
+    let total_pages = (total + limit - 1) / limit;
+
+    Ok(ok(PaginatedResponse {
+        data: users,
+        pagination: PaginationMeta {
+            page,
+            per_page: limit,
+            total,
+            total_pages,
+        },
+    }))
 }
 
 async fn create_user(
@@ -96,17 +153,8 @@ async fn create_user(
         });
     }
 
-    // Hash password
-    use argon2::{
-        password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
-        Argon2,
-    };
-
-    let salt = SaltString::generate(&mut OsRng);
-    let password_hash = Argon2::default()
-        .hash_password(payload.password.as_bytes(), &salt)
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to hash password: {}", e)))?
-        .to_string();
+    // Hash password using shared utility
+    let password_hash = hash_password(&payload.password)?;
 
     let id = Uuid::new_v4();
     let user: UserResponse = sqlx::query_as(
@@ -134,16 +182,8 @@ async fn reset_password(
 ) -> Result<Json<ApiResponse<()>>, AppError> {
     require_admin(&auth_user)?;
 
-    use argon2::{
-        password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
-        Argon2,
-    };
-
-    let salt = SaltString::generate(&mut OsRng);
-    let password_hash = Argon2::default()
-        .hash_password(payload.new_password.as_bytes(), &salt)
-        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to hash password: {}", e)))?
-        .to_string();
+    // Hash password using shared utility
+    let password_hash = hash_password(&payload.new_password)?;
 
     sqlx::query!(
         "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2",
@@ -158,13 +198,14 @@ async fn reset_password(
 
 // Feature Flags
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Serialize, sqlx::FromRow, Clone)]
 pub struct FeatureFlag {
     pub id: Uuid,
     pub key: String,
     pub name: String,
     pub description: Option<String>,
     pub enabled: bool,
+    pub module: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -182,9 +223,9 @@ async fn list_features(
 
     let features: Vec<FeatureFlag> = sqlx::query_as(
         r#"
-        SELECT id, key, name, description, enabled, created_at, updated_at
+        SELECT id, key, name, description, enabled, module, created_at, updated_at
         FROM feature_flags
-        ORDER BY key ASC
+        ORDER BY module ASC, key ASC
         "#
     )
     .fetch_all(&state.pool)
@@ -206,7 +247,7 @@ async fn toggle_feature(
         UPDATE feature_flags 
         SET enabled = $1, updated_at = NOW()
         WHERE key = $2
-        RETURNING id, key, name, description, enabled, created_at, updated_at
+        RETURNING id, key, name, description, enabled, module, created_at, updated_at
         "#
     )
     .bind(payload.enabled)
@@ -214,7 +255,69 @@ async fn toggle_feature(
     .fetch_one(&state.pool)
     .await?;
 
+    // Invalidate cache when feature flag is updated
+    state.cache.invalidate_feature_flag(&key).await;
+    tracing::info!("Feature flag '{}' updated to {}, cache invalidated", key, payload.enabled);
+
     Ok(ok(feature))
+}
+
+#[derive(Serialize)]
+pub struct BulkToggleResponse {
+    pub updated_count: i64,
+    pub module: Option<String>,
+}
+
+/// Toggle all features on/off
+async fn toggle_all_features(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Json(payload): Json<ToggleFeatureRequest>,
+) -> Result<Json<ApiResponse<BulkToggleResponse>>, AppError> {
+    require_admin(&auth_user)?;
+
+    let result = sqlx::query(
+        "UPDATE feature_flags SET enabled = $1, updated_at = NOW()"
+    )
+    .bind(payload.enabled)
+    .execute(&state.pool)
+    .await?;
+
+    // Invalidate all feature caches
+    state.cache.invalidate_feature_flags().await;
+    tracing::info!("All feature flags updated to {}, cache invalidated", payload.enabled);
+
+    Ok(ok(BulkToggleResponse {
+        updated_count: result.rows_affected() as i64,
+        module: None,
+    }))
+}
+
+/// Toggle all features in a specific module
+async fn toggle_module_features(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(module): Path<String>,
+    Json(payload): Json<ToggleFeatureRequest>,
+) -> Result<Json<ApiResponse<BulkToggleResponse>>, AppError> {
+    require_admin(&auth_user)?;
+
+    let result = sqlx::query(
+        "UPDATE feature_flags SET enabled = $1, updated_at = NOW() WHERE module = $2"
+    )
+    .bind(payload.enabled)
+    .bind(&module)
+    .execute(&state.pool)
+    .await?;
+
+    // Invalidate all feature caches
+    state.cache.invalidate_feature_flags().await;
+    tracing::info!("Module '{}' feature flags updated to {}, cache invalidated", module, payload.enabled);
+
+    Ok(ok(BulkToggleResponse {
+        updated_count: result.rows_affected() as i64,
+        module: Some(module),
+    }))
 }
 
 // Music Management
@@ -240,16 +343,32 @@ pub struct MusicTrackResponse {
 
 async fn list_music(
     State(state): State<AppState>,
-) -> Result<Json<ApiResponse<Vec<MusicTrackResponse>>>, AppError> {
+    Query(pagination): Query<PaginationQuery>,
+) -> Result<Json<ApiResponse<PaginatedResponse<Vec<MusicTrackResponse>>>>, AppError> {
+    let page = pagination.page.max(1);
+    let limit = pagination.limit.clamp(1, 100);
+    let offset = (page - 1) * limit;
+
     let tracks: Vec<MusicTrack> = sqlx::query_as(
         r#"
         SELECT id, name, filename, file_path, file_size, duration_seconds, uploaded_by, created_at
         FROM music_tracks
         ORDER BY created_at ASC
+        LIMIT $1 OFFSET $2
         "#
     )
+    .bind(limit)
+    .bind(offset)
     .fetch_all(&state.pool)
     .await?;
+
+    let total: i64 = sqlx::query_scalar(
+        r#"SELECT COUNT(*)::bigint FROM music_tracks"#
+    )
+    .fetch_one(&state.pool)
+    .await?;
+
+    let total_pages = (total + limit - 1) / limit;
 
     let response: Vec<MusicTrackResponse> = tracks
         .into_iter()
@@ -265,7 +384,15 @@ async fn list_music(
         })
         .collect();
 
-    Ok(ok(response))
+    Ok(ok(PaginatedResponse {
+        data: response,
+        pagination: PaginationMeta {
+            page,
+            per_page: limit,
+            total,
+            total_pages,
+        },
+    }))
 }
 
 async fn upload_music(
@@ -494,5 +621,37 @@ async fn add_music_url(
         id: track.id,
         name: track.name,
         src: track.filename, // URL is stored in filename
+    }))
+}
+
+// Audit Logs
+
+#[derive(Serialize)]
+pub struct AuditLogsResponse {
+    pub logs: Vec<AuditLogEntry>,
+    pub total: i64,
+    pub page: i64,
+    pub limit: i64,
+}
+
+async fn get_audit_logs(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    axum::extract::Query(query): axum::extract::Query<AuditLogQuery>,
+) -> Result<Json<ApiResponse<AuditLogsResponse>>, AppError> {
+    require_admin(&auth_user)?;
+
+    let page = query.page.unwrap_or(1);
+    let limit = query.limit.unwrap_or(50);
+
+    let (logs, total) = fetch_audit_logs(&state.pool, query)
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to fetch audit logs: {}", e)))?;
+
+    Ok(ok(AuditLogsResponse {
+        logs,
+        total,
+        page,
+        limit,
     }))
 }

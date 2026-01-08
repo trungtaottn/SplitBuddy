@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use rust_decimal::Decimal;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -34,7 +35,7 @@ impl SplitCalculator {
 
         let remainder_cents = (remainder * Decimal::from(100)).to_string();
         if let Ok(cents) = remainder_cents.parse::<i32>() {
-            for i in 0..cents.abs() as usize {
+            for i in 0..cents.unsigned_abs() as usize {
                 if i < splits.len() {
                     splits[i] += Decimal::new(1, 2);
                 }

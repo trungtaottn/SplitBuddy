@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { UserPlus, Key, Users, ToggleLeft, ToggleRight, Settings, Music, Upload, Trash2 } from 'lucide-react'
+import { UserPlus, Key, Users, ToggleLeft, ToggleRight, Settings, Music, Upload, Trash2, Power, PowerOff, ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
 import { useMusic } from '@/contexts/MusicContext'
@@ -45,13 +45,14 @@ export default function AdminPage() {
   const { refresh: refreshFeatureFlags } = useFeatureFlags()
   const { refreshTracks } = useMusic()
 
-  const { data: users, isLoading } = useQuery({
+  const { data: usersData, isLoading } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: async () => {
-      const res = await api.get<ApiResponse<AdminUser[]>>('/admin/users')
+      const res = await api.get<ApiResponse<{ data: AdminUser[], pagination: { total: number } }>>('/admin/users')
       return res.data.data
     },
   })
+  const users = usersData?.data
 
   const { data: features, isLoading: featuresLoading } = useQuery({
     queryKey: ['admin', 'features'],
@@ -61,13 +62,14 @@ export default function AdminPage() {
     },
   })
 
-  const { data: musicTracks, isLoading: musicLoading } = useQuery({
+  const { data: musicData, isLoading: musicLoading } = useQuery({
     queryKey: ['admin', 'music'],
     queryFn: async () => {
-      const res = await api.get<ApiResponse<MusicTrack[]>>('/admin/music')
+      const res = await api.get<ApiResponse<{ data: MusicTrack[], pagination: { total: number } }>>('/admin/music')
       return res.data.data
     },
   })
+  const musicTracks = musicData?.data
 
   const deleteMusic = useMutation({
     mutationFn: async (id: string) => {
@@ -144,6 +146,8 @@ export default function AdminPage() {
     }
   }
 
+  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set())
+
   const toggleFeature = useMutation({
     mutationFn: async ({ key, enabled }: { key: string; enabled: boolean }) => {
       await api.put(`/admin/features/${key}`, { enabled })
@@ -157,6 +161,69 @@ export default function AdminPage() {
       toast.error('Có lỗi xảy ra')
     },
   })
+
+  const toggleAllFeatures = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      await api.put('/admin/features/toggle-all', { enabled })
+    },
+    onSuccess: (_, enabled) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'features'] })
+      refreshFeatureFlags()
+      toast.success(enabled ? 'Đã bật tất cả tính năng!' : 'Đã tắt tất cả tính năng!')
+    },
+    onError: () => {
+      toast.error('Có lỗi xảy ra')
+    },
+  })
+
+  const toggleModuleFeatures = useMutation({
+    mutationFn: async ({ module, enabled }: { module: string; enabled: boolean }) => {
+      await api.put(`/admin/features/module/${module}`, { enabled })
+    },
+    onSuccess: (_, { module, enabled }) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'features'] })
+      refreshFeatureFlags()
+      toast.success(`Đã ${enabled ? 'bật' : 'tắt'} module "${getModuleLabel(module)}"!`)
+    },
+    onError: () => {
+      toast.error('Có lỗi xảy ra')
+    },
+  })
+
+  // Group features by module
+  const featuresByModule = features?.reduce((acc, feature) => {
+    const module = feature.module || 'general'
+    if (!acc[module]) acc[module] = []
+    acc[module].push(feature)
+    return acc
+  }, {} as Record<string, FeatureFlag[]>) || {}
+
+  const getModuleLabel = (module: string) => {
+    const labels: Record<string, string> = {
+      general: '🏠 Chung',
+      sessions: '🍻 Buổi nhậu',
+      groups: '👥 Nhóm',
+      debts: '💰 Công nợ',
+      games: '🎮 Trò chơi',
+    }
+    return labels[module] || module
+  }
+
+  const toggleModuleCollapse = (module: string) => {
+    setCollapsedModules(prev => {
+      const next = new Set(prev)
+      if (next.has(module)) {
+        next.delete(module)
+      } else {
+        next.add(module)
+      }
+      return next
+    })
+  }
+
+  const isModuleFullyEnabled = (module: string) => {
+    return featuresByModule[module]?.every(f => f.enabled) ?? false
+  }
 
   const createUser = useMutation({
     mutationFn: async (data: { email: string; full_name: string; password: string }) => {
@@ -299,38 +366,115 @@ export default function AdminPage() {
           <p className="text-sm text-muted-foreground mb-4">
             Bật/tắt các tính năng cho tất cả người dùng. Tính năng bị tắt sẽ không hiển thị trên ứng dụng.
           </p>
-          <div className="grid gap-3">
-            {features?.map((feature) => (
-              <div
-                key={feature.id}
-                className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex-1">
-                  <div className="font-medium">{feature.name}</div>
-                  {feature.description && (
-                    <div className="text-sm text-muted-foreground">{feature.description}</div>
-                  )}
-                  <div className="text-xs text-muted-foreground mt-1">Key: {feature.key}</div>
-                </div>
-                <Button
-                  variant={feature.enabled ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => toggleFeature.mutate({ key: feature.key, enabled: !feature.enabled })}
-                  disabled={toggleFeature.isPending}
-                  className="gap-2 min-w-[100px]"
+
+          {/* Bulk Actions */}
+          <div className="flex gap-2 mb-4 p-3 rounded-lg border bg-muted/30">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => toggleAllFeatures.mutate(true)}
+              disabled={toggleAllFeatures.isPending}
+              className="gap-2"
+            >
+              <Power className="h-4 w-4" />
+              Bật tất cả
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toggleAllFeatures.mutate(false)}
+              disabled={toggleAllFeatures.isPending}
+              className="gap-2"
+            >
+              <PowerOff className="h-4 w-4" />
+              Tắt tất cả
+            </Button>
+          </div>
+
+          {/* Features grouped by module */}
+          <div className="space-y-4">
+            {Object.entries(featuresByModule).map(([module, moduleFeatures]) => (
+              <div key={module} className="border rounded-lg overflow-hidden">
+                {/* Module Header */}
+                <div 
+                  className="flex items-center justify-between p-3 bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors"
+                  onClick={() => toggleModuleCollapse(module)}
                 >
-                  {feature.enabled ? (
-                    <>
-                      <ToggleRight className="h-4 w-4" />
-                      Bật
-                    </>
-                  ) : (
-                    <>
-                      <ToggleLeft className="h-4 w-4" />
-                      Tắt
-                    </>
-                  )}
-                </Button>
+                  <div className="flex items-center gap-2">
+                    {collapsedModules.has(module) ? (
+                      <ChevronRight className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                    <span className="font-semibold">{getModuleLabel(module)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      ({moduleFeatures.filter(f => f.enabled).length}/{moduleFeatures.length} bật)
+                    </span>
+                  </div>
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant={isModuleFullyEnabled(module) ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => toggleModuleFeatures.mutate({ 
+                        module, 
+                        enabled: !isModuleFullyEnabled(module) 
+                      })}
+                      disabled={toggleModuleFeatures.isPending}
+                      className="gap-1 text-xs h-7"
+                    >
+                      {isModuleFullyEnabled(module) ? (
+                        <>
+                          <ToggleRight className="h-3 w-3" />
+                          Tắt module
+                        </>
+                      ) : (
+                        <>
+                          <ToggleLeft className="h-3 w-3" />
+                          Bật module
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Module Features */}
+                {!collapsedModules.has(module) && (
+                  <div className="divide-y">
+                    {moduleFeatures.map((feature) => (
+                      <div
+                        key={feature.id}
+                        className="flex items-center justify-between p-3 hover:bg-accent/30 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium">{feature.name}</div>
+                          {feature.description && (
+                            <div className="text-sm text-muted-foreground">{feature.description}</div>
+                          )}
+                          <div className="text-xs text-muted-foreground mt-1">Key: {feature.key}</div>
+                        </div>
+                        <Button
+                          variant={feature.enabled ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => toggleFeature.mutate({ key: feature.key, enabled: !feature.enabled })}
+                          disabled={toggleFeature.isPending}
+                          className="gap-2 min-w-[100px]"
+                        >
+                          {feature.enabled ? (
+                            <>
+                              <ToggleRight className="h-4 w-4" />
+                              Bật
+                            </>
+                          ) : (
+                            <>
+                              <ToggleLeft className="h-4 w-4" />
+                              Tắt
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>

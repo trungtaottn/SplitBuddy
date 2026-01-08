@@ -1,26 +1,65 @@
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use axum::{Router, response::Response, middleware::{self as axum_mw, Next}, extract::Request, body::Body};
 use axum::http::header;
 use sqlx::postgres::PgPoolOptions;
+use tokio::signal;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::TraceLayer;
 use tower_http::services::{ServeDir, ServeFile};
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer, key_extractor::KeyExtractor};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 mod api;
+mod audit;
+mod cache;
 mod config;
 mod domain;
 mod error;
+mod metrics;
 mod middleware;
 mod openapi;
 mod repository;
+mod utils;
 
+use cache::AppCache;
 use config::Config;
 use openapi::ApiDoc;
 use sqlx::PgPool;
+
+/// Custom key extractor that works with localhost and proxied requests
+#[derive(Clone)]
+struct RealIpKeyExtractor;
+
+impl KeyExtractor for RealIpKeyExtractor {
+    type Key = String;
+
+    fn extract<T>(&self, req: &axum::http::Request<T>) -> Result<Self::Key, tower_governor::GovernorError> {
+        // Try X-Forwarded-For first (for proxied requests)
+        if let Some(forwarded) = req.headers().get("x-forwarded-for") {
+            if let Ok(value) = forwarded.to_str() {
+                if let Some(ip) = value.split(',').next() {
+                    return Ok(ip.trim().to_string());
+                }
+            }
+        }
+        
+        // Try X-Real-IP
+        if let Some(real_ip) = req.headers().get("x-real-ip") {
+            if let Ok(value) = real_ip.to_str() {
+                return Ok(value.to_string());
+            }
+        }
+        
+        // Fallback to a default key for localhost/direct connections
+        // This is safe because we're rate limiting all local requests together
+        Ok("local".to_string())
+    }
+}
 
 // Middleware to add no-cache headers for HTML files (forces browser to check for updates)
 async fn add_cache_headers(request: Request, next: Next) -> Response<Body> {
@@ -46,7 +85,7 @@ async fn add_cache_headers(request: Request, next: Next) -> Response<Body> {
     response
 }
 
-async fn init_admin_user(pool: &PgPool) -> anyhow::Result<()> {
+async fn init_admin_user(pool: &PgPool, admin_password: &str) -> anyhow::Result<()> {
     use argon2::{
         password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
         Argon2,
@@ -65,10 +104,10 @@ async fn init_admin_user(pool: &PgPool) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // Hash password
+    // Hash password from environment config
     let salt = SaltString::generate(&mut OsRng);
     let password_hash = Argon2::default()
-        .hash_password(b"Admin123", &salt)
+        .hash_password(admin_password.as_bytes(), &salt)
         .map_err(|e| anyhow::anyhow!("Failed to hash password: {}", e))?
         .to_string();
 
@@ -85,7 +124,7 @@ async fn init_admin_user(pool: &PgPool) -> anyhow::Result<()> {
     .execute(pool)
     .await?;
 
-    tracing::info!("✅ Created admin user: admin@splitbuddy.com / Admin123");
+    tracing::info!("Created admin user: admin@splitbuddy.com (password set from ADMIN_DEFAULT_PASSWORD env)");
     Ok(())
 }
 
@@ -100,6 +139,12 @@ async fn main() -> anyhow::Result<()> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
+
+    // Initialize Prometheus metrics exporter
+    let metrics_handle = metrics_exporter_prometheus::PrometheusBuilder::new()
+        .install_recorder()
+        .expect("Failed to install Prometheus recorder");
+    tracing::info!("📊 Prometheus metrics initialized");
 
     let config = Config::from_env()?;
 
@@ -128,21 +173,92 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Running migrations...");
     sqlx::migrate!("./migrations").run(&pool).await?;
 
-    // Initialize admin user if not exists
-    init_admin_user(&pool).await?;
+    // Initialize admin user if not exists (using password from config)
+    init_admin_user(&pool, &config.admin_default_password).await?;
 
-    let app_state = api::AppState {
-        pool,
-        config: config.clone(),
+    // Initialize application cache
+    let cache = AppCache::new();
+    tracing::info!("Application cache initialized");
+
+    // Initialize WebSocket manager for real-time updates
+    let ws_manager = api::WsManager::new();
+    tracing::info!("WebSocket manager initialized");
+
+    let app_state = api::AppState::new(pool, config.clone(), cache, ws_manager);
+    tracing::info!("HTTP client initialized with {}s timeout", config.http_timeout_seconds);
+
+    // Configure CORS - use specific origins from config instead of Any
+    let cors = {
+        use axum::http::{HeaderName, HeaderValue, Method};
+        use tower_http::cors::AllowOrigin;
+        
+        let origins: Vec<HeaderValue> = config.cors_origins
+            .iter()
+            .filter_map(|origin| origin.parse().ok())
+            .collect();
+        
+        // Common headers that frontend typically needs
+        let allowed_headers = [
+            HeaderName::from_static("content-type"),
+            HeaderName::from_static("authorization"),
+            HeaderName::from_static("accept"),
+            HeaderName::from_static("origin"),
+            HeaderName::from_static("x-requested-with"),
+        ];
+        
+        // Common methods
+        let allowed_methods = [
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+            Method::PATCH,
+            Method::OPTIONS,
+        ];
+        
+        if origins.is_empty() {
+            tracing::warn!("No valid CORS origins configured, allowing all origins (not recommended for production)");
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any)
+        } else {
+            tracing::info!("CORS configured for origins: {:?}", config.cors_origins);
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::list(origins))
+                .allow_methods(allowed_methods)
+                .allow_headers(allowed_headers)
+                .allow_credentials(true)
+        }
     };
-
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
 
     // Create uploads directory if it doesn't exist
     tokio::fs::create_dir_all("uploads/avatars").await.ok();
+
+    // Configure rate limiting with custom key extractor for localhost handling
+    let governor_conf = Arc::new(
+        GovernorConfigBuilder::default()
+            .per_second(config.rate_limit_requests_per_second)
+            .burst_size(config.rate_limit_burst_size)
+            .key_extractor(RealIpKeyExtractor)
+            .finish()
+            .expect("Failed to create rate limiter config"),
+    );
+    let governor_limiter = governor_conf.limiter().clone();
+    
+    // Spawn background task to clean up rate limiter state
+    let governor_limiter_clone = governor_limiter.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            governor_limiter_clone.retain_recent();
+        }
+    });
+
+    tracing::info!("Rate limiting configured: {} req/s, burst size {}", 
+        config.rate_limit_requests_per_second, 
+        config.rate_limit_burst_size
+    );
 
     // Serve static files (frontend) - fallback to index.html for SPA routing
     let static_service = ServeDir::new("static")
@@ -151,7 +267,21 @@ async fn main() -> anyhow::Result<()> {
     // Serve uploaded files
     let uploads_service = ServeDir::new("uploads");
 
+    // Clone app_state for cleanup after shutdown (before moving into router)
+    let shutdown_state = app_state.clone();
+    
+    // Request ID header name
+    let x_request_id = axum::http::HeaderName::from_static("x-request-id");
+    
+    // Metrics endpoint handler
+    let metrics_handle_clone = metrics_handle.clone();
+    let metrics_route = axum::routing::get(move || {
+        let handle = metrics_handle_clone.clone();
+        async move { handle.render() }
+    });
+    
     let app = Router::new()
+        .route("/metrics", metrics_route)
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .nest("/api", api::routes())
         .nest_service("/uploads", uploads_service)
@@ -159,13 +289,59 @@ async fn main() -> anyhow::Result<()> {
         .fallback_service(static_service)
         .layer(axum_mw::from_fn(add_cache_headers))
         .layer(cors)
+        .layer(GovernorLayer { config: governor_conf })
+        .layer(PropagateRequestIdLayer::new(x_request_id.clone()))
+        .layer(SetRequestIdLayer::new(x_request_id, MakeRequestUuid))
         .layer(TraceLayer::new_for_http());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     tracing::info!("🚀 Server starting on http://{}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
+    
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+
+    // Cleanup after shutdown signal received
+    tracing::info!("🛑 Shutting down gracefully...");
+    
+    // Notify WebSocket clients
+    shutdown_state.ws_manager.broadcast_shutdown().await;
+    
+    // Close database connections
+    shutdown_state.pool.close().await;
+    tracing::info!("✅ Database connections closed");
 
     Ok(())
+}
+
+/// Graceful shutdown signal handler
+/// Listens for Ctrl+C (SIGINT) and SIGTERM
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("Failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {
+            tracing::info!("📡 Received Ctrl+C signal");
+        },
+        _ = terminate => {
+            tracing::info!("📡 Received SIGTERM signal");
+        },
+    }
 }

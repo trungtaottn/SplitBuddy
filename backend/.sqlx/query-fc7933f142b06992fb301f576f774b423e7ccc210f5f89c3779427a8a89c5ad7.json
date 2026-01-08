@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT \n                d.id,\n                d.session_id,\n                s.name as session_name,\n                d.debtor_id as counterpart_id,\n                COALESCE(u.full_name, sp_debtor.guest_name, 'Unknown') as \"counterpart_name!\",\n                d.amount,\n                d.status as \"status: DebtStatus\"\n            FROM debts d\n            JOIN sessions s ON d.session_id = s.id\n            JOIN session_participants sp_debtor ON d.debtor_id = sp_debtor.id\n            JOIN session_participants sp_creditor ON d.creditor_id = sp_creditor.id\n            LEFT JOIN users u ON sp_debtor.user_id = u.id\n            WHERE sp_creditor.user_id = $1 AND d.status != 'settled'\n            ORDER BY d.amount DESC\n            ",
+  "query": "\n            SELECT \n                d.id,\n                d.session_id,\n                s.name as session_name,\n                d.debtor_id as counterpart_id,\n                COALESCE(u.full_name, sp_debtor.guest_name, 'Unknown') as \"counterpart_name!\",\n                d.amount,\n                d.status as \"status: DebtStatus\",\n                (sp_debtor.user_id IS NULL) as \"is_guest!\"\n            FROM debts d\n            JOIN sessions s ON d.session_id = s.id\n            JOIN session_participants sp_debtor ON d.debtor_id = sp_debtor.id\n            JOIN session_participants sp_creditor ON d.creditor_id = sp_creditor.id\n            LEFT JOIN users u ON sp_debtor.user_id = u.id\n            WHERE sp_creditor.user_id = $1 AND d.status != 'settled'\n            ORDER BY d.amount DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -48,6 +48,11 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 7,
+        "name": "is_guest!",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -62,8 +67,9 @@
       false,
       null,
       false,
-      false
+      false,
+      null
     ]
   },
-  "hash": "420ed298a2dc0af7b7286ef0fb042bb4101db3dc2bb9b2e1a3a59b24983fb98b"
+  "hash": "fc7933f142b06992fb301f576f774b423e7ccc210f5f89c3779427a8a89c5ad7"
 }

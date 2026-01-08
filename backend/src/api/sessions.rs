@@ -1,6 +1,6 @@
 use axum::{
     extract::{Path, Query, State},
-    routing::{delete, get, post, put},
+    routing::{get, post, put},
     Json, Router,
 };
 use rust_decimal::Decimal;
@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::api::response::{created, ok, ApiResponse};
+use crate::api::ws::WsEvent;
 use crate::api::AppState;
+use crate::cache::CachedSession;
 use crate::domain::session::{ParticipantRole, SessionStatus};
 use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
@@ -65,9 +67,10 @@ pub struct SessionDetailResponse {
     pub session_date: chrono::NaiveDate,
     pub participants: Vec<ParticipantResponse>,
     pub total_amount: Decimal,
+    pub group_id: Option<Uuid>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone, Debug)]
 pub struct ParticipantResponse {
     pub id: Uuid,
     pub user_id: Option<Uuid>,
@@ -251,10 +254,44 @@ async fn get_session(
 ) -> Result<Json<ApiResponse<SessionDetailResponse>>, AppError> {
     let repo = SessionRepository::new(state.pool.clone());
 
+    // Check cache first
+    if let Some(cached) = state.cache.get_session(session_id).await {
+        // Verify user is participant (for security)
+        repo.verify_participant(session_id, auth_user.user_id).await?;
+        
+        return Ok(ok(SessionDetailResponse {
+            id: cached.id,
+            name: cached.name,
+            location: cached.location,
+            status: cached.status,
+            created_by: cached.created_by,
+            created_at: cached.created_at,
+            session_date: cached.session_date,
+            total_amount: cached.total_amount,
+            group_id: cached.group_id,
+            participants: cached.participants,
+        }));
+    }
+
+    // Cache miss - query database
     let session = repo
         .find_by_id_with_details(session_id, auth_user.user_id)
         .await?
         .ok_or(AppError::SessionNotFound { session_id })?;
+
+    // Cache the result
+    state.cache.cache_session(CachedSession {
+        id: session.id,
+        name: session.name.clone(),
+        location: session.location.clone(),
+        status: session.status.clone(),
+        created_by: session.created_by,
+        created_at: session.created_at,
+        session_date: session.session_date,
+        total_amount: session.total_amount,
+        group_id: session.group_id,
+        participants: session.participants.clone(),
+    }).await;
 
     Ok(ok(session))
 }
@@ -271,6 +308,9 @@ async fn delete_session(
 
     // Delete the session
     repo.delete(session_id).await?;
+
+    // Invalidate cache
+    state.cache.invalidate_session(session_id).await;
 
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
@@ -400,6 +440,15 @@ async fn close_session(
     // Update session status to closed
     let session = repo.update_status(session_id, SessionStatus::Closed).await?;
 
+    // Invalidate cache
+    state.cache.invalidate_session(session_id).await;
+
+    // Broadcast WebSocket event
+    state.ws_manager.broadcast_to_session(
+        session_id,
+        WsEvent::SessionStatusChanged { session_id, status: "closed".to_string() }
+    ).await;
+
     Ok(ok(session))
 }
 
@@ -415,6 +464,15 @@ async fn reopen_session(
 
     // Update session status to active
     let session = repo.update_status(session_id, SessionStatus::Active).await?;
+
+    // Invalidate cache
+    state.cache.invalidate_session(session_id).await;
+
+    // Broadcast WebSocket event
+    state.ws_manager.broadcast_to_session(
+        session_id,
+        WsEvent::SessionStatusChanged { session_id, status: "active".to_string() }
+    ).await;
 
     Ok(ok(session))
 }
@@ -530,6 +588,15 @@ async fn create_bill(
         )
         .await?;
 
+    // Invalidate cache (total_amount changed)
+    state.cache.invalidate_session(session_id).await;
+
+    // Broadcast WebSocket event
+    state.ws_manager.broadcast_to_session(
+        session_id,
+        WsEvent::BillUpdated { session_id, bill_id: bill.id }
+    ).await;
+
     Ok(created(bill))
 }
 
@@ -595,6 +662,15 @@ async fn update_bill(
         payload.split_details.as_deref(),
     ).await?;
 
+    // Invalidate cache (bill amounts may have changed)
+    state.cache.invalidate_session(params.id).await;
+
+    // Broadcast WebSocket event
+    state.ws_manager.broadcast_to_session(
+        params.id,
+        WsEvent::BillUpdated { session_id: params.id, bill_id: params.bill_id }
+    ).await;
+
     Ok(ok(updated_bill))
 }
 
@@ -627,6 +703,15 @@ async fn delete_bill(
 
     // Delete bill and recalculate debts
     repo.delete_bill(params.bill_id, params.id).await?;
+
+    // Invalidate cache
+    state.cache.invalidate_session(params.id).await;
+
+    // Broadcast WebSocket event
+    state.ws_manager.broadcast_to_session(
+        params.id,
+        WsEvent::BillUpdated { session_id: params.id, bill_id: params.bill_id }
+    ).await;
 
     Ok(ok(()))
 }

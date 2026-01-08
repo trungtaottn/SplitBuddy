@@ -99,9 +99,8 @@ async fn get_truth_or_dare(
 
     match content {
         Some(c) => Ok(ok(c)),
-        None => Err(AppError::Validation {
-            field: "game_content".to_string(),
-            message: "No game content found".to_string(),
+        None => Err(AppError::GameContentNotFound {
+            game_type: "truth_or_dare".to_string(),
         }),
     }
 }
@@ -158,9 +157,8 @@ async fn get_never_have_i_ever(
 
     match content {
         Some(c) => Ok(ok(c)),
-        None => Err(AppError::Validation {
-            field: "game_content".to_string(),
-            message: "No game content found".to_string(),
+        None => Err(AppError::GameContentNotFound {
+            game_type: "never_have_i_ever".to_string(),
         }),
     }
 }
@@ -217,9 +215,8 @@ async fn get_challenge(
 
     match content {
         Some(c) => Ok(ok(c)),
-        None => Err(AppError::Validation {
-            field: "game_content".to_string(),
-            message: "No game content found".to_string(),
+        None => Err(AppError::GameContentNotFound {
+            game_type: "challenge".to_string(),
         }),
     }
 }

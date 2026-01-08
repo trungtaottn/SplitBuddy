@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use rust_decimal::Decimal;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -55,36 +56,45 @@ impl SessionRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        // Build sessions with enhanced data
-        let mut sessions = Vec::new();
-        for row in rows {
-            let participants = self.get_session_participants_basic(row.id).await?;
-            let (my_debt, my_owed) = self.get_user_debt_in_session(row.id, user_id).await?;
-            let settled_amount = self.get_session_settled_amount(row.id).await?;
+        // Batch load all related data (fix N+1 queries)
+        let session_ids: Vec<Uuid> = rows.iter().map(|r| r.id).collect();
+        let participants_map = self.batch_get_participants(&session_ids).await?;
+        let debts_map = self.batch_get_user_debts(&session_ids, user_id).await?;
+        let settled_map = self.batch_get_settled_amounts(&session_ids).await?;
 
-            sessions.push(SessionResponse {
-                id: row.id,
-                name: row.name,
-                location: row.location,
-                status: match row.status.as_str() {
-                    "active" => SessionStatus::Active,
-                    _ => SessionStatus::Closed,
-                },
-                created_by: row.created_by,
-                created_at: row.created_at,
-                session_date: row.session_date,
-                participant_count: row.participant_count,
-                total_amount: row.total_amount,
-                participants,
-                my_debt,
-                my_owed,
-                settled_amount,
-            });
-        }
+        // Build sessions with pre-loaded data
+        let sessions = rows
+            .into_iter()
+            .map(|row| {
+                let participants = participants_map.get(&row.id).cloned().unwrap_or_default();
+                let (my_debt, my_owed) = debts_map.get(&row.id).copied().unwrap_or((Decimal::ZERO, Decimal::ZERO));
+                let settled_amount = settled_map.get(&row.id).copied().unwrap_or(Decimal::ZERO);
+
+                SessionResponse {
+                    id: row.id,
+                    name: row.name,
+                    location: row.location,
+                    status: match row.status.as_str() {
+                        "active" => SessionStatus::Active,
+                        _ => SessionStatus::Closed,
+                    },
+                    created_by: row.created_by,
+                    created_at: row.created_at,
+                    session_date: row.session_date,
+                    participant_count: row.participant_count,
+                    total_amount: row.total_amount,
+                    participants,
+                    my_debt,
+                    my_owed,
+                    settled_amount,
+                }
+            })
+            .collect();
 
         Ok(sessions)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn find_by_user_paginated(
         &self,
         user_id: Uuid,
@@ -167,37 +177,40 @@ impl SessionRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        // Build sessions with enhanced data
-        let mut sessions = Vec::new();
-        for row in rows {
-            // Get participants basic info (max 5 for display)
-            let participants = self.get_session_participants_basic(row.id).await?;
-            
-            // Get user's debt info in this session
-            let (my_debt, my_owed) = self.get_user_debt_in_session(row.id, user_id).await?;
-            
-            // Get settled amount
-            let settled_amount = self.get_session_settled_amount(row.id).await?;
+        // Batch load all related data (fix N+1 queries)
+        let session_ids: Vec<Uuid> = rows.iter().map(|r| r.id).collect();
+        let participants_map = self.batch_get_participants(&session_ids).await?;
+        let debts_map = self.batch_get_user_debts(&session_ids, user_id).await?;
+        let settled_map = self.batch_get_settled_amounts(&session_ids).await?;
 
-            sessions.push(SessionResponse {
-                id: row.id,
-                name: row.name,
-                location: row.location,
-                status: match row.status.as_str() {
-                    "active" => SessionStatus::Active,
-                    _ => SessionStatus::Closed,
-                },
-                created_by: row.created_by,
-                created_at: row.created_at,
-                session_date: row.session_date,
-                participant_count: row.participant_count,
-                total_amount: row.total_amount,
-                participants,
-                my_debt,
-                my_owed,
-                settled_amount,
-            });
-        }
+        // Build sessions with pre-loaded data
+        let sessions = rows
+            .into_iter()
+            .map(|row| {
+                let participants = participants_map.get(&row.id).cloned().unwrap_or_default();
+                let (my_debt, my_owed) = debts_map.get(&row.id).copied().unwrap_or((Decimal::ZERO, Decimal::ZERO));
+                let settled_amount = settled_map.get(&row.id).copied().unwrap_or(Decimal::ZERO);
+
+                SessionResponse {
+                    id: row.id,
+                    name: row.name,
+                    location: row.location,
+                    status: match row.status.as_str() {
+                        "active" => SessionStatus::Active,
+                        _ => SessionStatus::Closed,
+                    },
+                    created_by: row.created_by,
+                    created_at: row.created_at,
+                    session_date: row.session_date,
+                    participant_count: row.participant_count,
+                    total_amount: row.total_amount,
+                    participants,
+                    my_debt,
+                    my_owed,
+                    settled_amount,
+                }
+            })
+            .collect();
 
         Ok((sessions, total))
     }
@@ -296,6 +309,146 @@ impl SessionRepository {
         Ok(settled)
     }
 
+    /// Batch get participants for multiple sessions (max 5 per session)
+    async fn batch_get_participants(&self, session_ids: &[Uuid]) -> Result<std::collections::HashMap<Uuid, Vec<ParticipantBasicInfo>>, AppError> {
+        use std::collections::HashMap;
+        
+        if session_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        #[derive(sqlx::FromRow)]
+        struct ParticipantRow {
+            session_id: Uuid,
+            id: Uuid,
+            name: String,
+            avatar_url: Option<String>,
+            row_num: i64,
+        }
+
+        let participants: Vec<ParticipantRow> = sqlx::query_as(
+            r#"
+            SELECT session_id, id, name, avatar_url, row_num FROM (
+                SELECT 
+                    sp.session_id,
+                    sp.id,
+                    COALESCE(u.full_name, sp.guest_name, 'Guest') as name,
+                    u.avatar_url,
+                    ROW_NUMBER() OVER (PARTITION BY sp.session_id ORDER BY sp.joined_at) as row_num
+                FROM session_participants sp
+                LEFT JOIN users u ON sp.user_id = u.id
+                WHERE sp.session_id = ANY($1)
+            ) sub
+            WHERE row_num <= 5
+            "#
+        )
+        .bind(session_ids)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut result: HashMap<Uuid, Vec<ParticipantBasicInfo>> = HashMap::new();
+        for p in participants {
+            result.entry(p.session_id).or_default().push(ParticipantBasicInfo {
+                id: p.id,
+                name: p.name,
+                avatar_url: p.avatar_url,
+            });
+        }
+
+        // Ensure all session_ids have an entry (even if empty)
+        for sid in session_ids {
+            result.entry(*sid).or_default();
+        }
+
+        Ok(result)
+    }
+
+    /// Batch get user's debt/owed amounts in multiple sessions
+    async fn batch_get_user_debts(&self, session_ids: &[Uuid], user_id: Uuid) -> Result<std::collections::HashMap<Uuid, (Decimal, Decimal)>, AppError> {
+        use std::collections::HashMap;
+        
+        if session_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        #[derive(sqlx::FromRow)]
+        struct DebtRow {
+            session_id: Uuid,
+            my_debt: Decimal,
+            my_owed: Decimal,
+        }
+
+        let debts: Vec<DebtRow> = sqlx::query_as(
+            r#"
+            SELECT 
+                sp.session_id,
+                COALESCE(SUM(CASE WHEN d.debtor_id = sp.id AND d.status = 'pending' THEN d.amount ELSE 0 END), 0) as my_debt,
+                COALESCE(SUM(CASE WHEN d.creditor_id = sp.id AND d.status = 'pending' THEN d.amount ELSE 0 END), 0) as my_owed
+            FROM session_participants sp
+            LEFT JOIN debts d ON d.session_id = sp.session_id AND (d.debtor_id = sp.id OR d.creditor_id = sp.id)
+            WHERE sp.session_id = ANY($1) AND sp.user_id = $2
+            GROUP BY sp.session_id
+            "#
+        )
+        .bind(session_ids)
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut result: HashMap<Uuid, (Decimal, Decimal)> = HashMap::new();
+        for d in debts {
+            result.insert(d.session_id, (d.my_debt, d.my_owed));
+        }
+
+        // Ensure all session_ids have an entry with zeros
+        for sid in session_ids {
+            result.entry(*sid).or_insert((Decimal::ZERO, Decimal::ZERO));
+        }
+
+        Ok(result)
+    }
+
+    /// Batch get settled amounts for multiple sessions
+    async fn batch_get_settled_amounts(&self, session_ids: &[Uuid]) -> Result<std::collections::HashMap<Uuid, Decimal>, AppError> {
+        use std::collections::HashMap;
+        
+        if session_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        #[derive(sqlx::FromRow)]
+        struct SettledRow {
+            session_id: Uuid,
+            settled: Decimal,
+        }
+
+        let settled: Vec<SettledRow> = sqlx::query_as(
+            r#"
+            SELECT 
+                session_id,
+                COALESCE(SUM(amount), 0) as settled
+            FROM debts 
+            WHERE session_id = ANY($1) AND status = 'settled'
+            GROUP BY session_id
+            "#
+        )
+        .bind(session_ids)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut result: HashMap<Uuid, Decimal> = HashMap::new();
+        for s in settled {
+            result.insert(s.session_id, s.settled);
+        }
+
+        // Ensure all session_ids have an entry with zero
+        for sid in session_ids {
+            result.entry(*sid).or_insert(Decimal::ZERO);
+        }
+
+        Ok(result)
+    }
+
     pub async fn create(
         &self,
         name: &str,
@@ -366,6 +519,7 @@ impl SessionRepository {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_with_participants(
         &self,
         name: &str,
@@ -490,6 +644,7 @@ impl SessionRepository {
             created_at: chrono::DateTime<chrono::Utc>,
             session_date: chrono::NaiveDate,
             total_amount: Decimal,
+            group_id: Option<Uuid>,
         }
 
         let session: Option<SessionDetailRow> = sqlx::query_as(
@@ -502,7 +657,8 @@ impl SessionRepository {
                 s.created_by,
                 s.created_at,
                 s.session_date,
-                COALESCE(SUM(b.amount), 0) as total_amount
+                COALESCE(SUM(b.amount), 0) as total_amount,
+                s.group_id
             FROM sessions s
             LEFT JOIN bills b ON s.id = b.session_id
             WHERE s.id = $1
@@ -549,6 +705,7 @@ impl SessionRepository {
             created_at: session.created_at,
             session_date: session.session_date,
             total_amount: session.total_amount,
+            group_id: session.group_id,
             participants: participants
                 .into_iter()
                 .map(|p| ParticipantResponse {
@@ -811,6 +968,7 @@ impl SessionRepository {
         Ok(bills)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_bill(
         &self,
         session_id: Uuid,
@@ -1028,6 +1186,7 @@ impl SessionRepository {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_bill(
         &self,
         bill_id: Uuid,

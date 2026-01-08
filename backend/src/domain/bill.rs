@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -6,19 +7,14 @@ use uuid::Uuid;
 
 use crate::error::AppError;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, Default)]
 #[sqlx(type_name = "split_strategy", rename_all = "SCREAMING_SNAKE_CASE")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SplitStrategy {
+    #[default]
     Equal,
     Custom,
     Weighted,
-}
-
-impl Default for SplitStrategy {
-    fn default() -> Self {
-        Self::Equal
-    }
 }
 
 impl TryFrom<&str> for SplitStrategy {
