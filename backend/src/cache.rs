@@ -15,6 +15,7 @@ pub struct CachedFeatureFlag {
     pub name: String,
     pub description: Option<String>,
     pub enabled: bool,
+    pub module: Option<String>,
 }
 
 /// Cached session detail data
@@ -89,6 +90,11 @@ impl AppCache {
     /// Invalidate a specific session cache
     pub async fn invalidate_session(&self, session_id: Uuid) {
         self.sessions.invalidate(&session_id).await;
+    }
+
+    /// Check if a feature is enabled (from cache)
+    pub async fn is_feature_enabled(&self, key: &str) -> Option<bool> {
+        self.feature_flags.get(key).await.map(|f| f.enabled)
     }
 }
 

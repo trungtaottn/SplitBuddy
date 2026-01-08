@@ -356,28 +356,6 @@ export default function GamesPage() {
     }
   }
 
-  // #region agent log
-  useEffect(() => {
-    const logData = {
-      location: 'GamesPage.tsx:358',
-      message: 'GamesPage render - checking container structure',
-      data: {
-        windowWidth: typeof window !== 'undefined' ? window.innerWidth : 0,
-        windowHeight: typeof window !== 'undefined' ? window.innerHeight : 0,
-        hypothesisId: 'A'
-      },
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      runId: 'run1'
-    };
-    fetch('http://127.0.0.1:7242/ingest/dcc7d1a6-1b54-4d53-9642-62624ca717d1', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(logData)
-    }).catch(() => {});
-  }, []);
-  // #endregion
-
   return (
     <div className="space-y-6">
       <div className="text-center relative">

@@ -49,6 +49,9 @@ pub enum AppError {
     #[error("Token expired")]
     TokenExpired,
 
+    #[error("Feature disabled: {feature}")]
+    FeatureDisabled { feature: String },
+
     #[error("Internal server error")]
     Internal(#[from] anyhow::Error),
 }
@@ -88,6 +91,7 @@ impl AppError {
             AppError::EmailAlreadyExists { .. } => "E_USER_EMAIL_EXISTS",
             AppError::InvalidToken => "E_AUTH_INVALID_TOKEN",
             AppError::TokenExpired => "E_AUTH_TOKEN_EXPIRED",
+            AppError::FeatureDisabled { .. } => "E_FEATURE_DISABLED",
             AppError::Internal(_) => "E_INTERNAL",
         }
     }
@@ -107,6 +111,7 @@ impl AppError {
             AppError::EmailAlreadyExists { .. } => StatusCode::CONFLICT,
             AppError::InvalidToken => StatusCode::UNAUTHORIZED,
             AppError::TokenExpired => StatusCode::UNAUTHORIZED,
+            AppError::FeatureDisabled { .. } => StatusCode::SERVICE_UNAVAILABLE,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

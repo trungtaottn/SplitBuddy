@@ -211,6 +211,7 @@ async fn get_features(
             name: f.key.clone(),
             description: None,
             enabled: f.enabled,
+            module: None,
         })
         .collect();
     

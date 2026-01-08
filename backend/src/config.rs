@@ -56,13 +56,13 @@ impl Config {
                 }),
             cors_origins,
             rate_limit_requests_per_second: env::var("RATE_LIMIT_RPS")
-                .unwrap_or_else(|_| "10".to_string())
+                .unwrap_or_else(|_| "50".to_string())
                 .parse()
-                .unwrap_or(10),
+                .unwrap_or(50),
             rate_limit_burst_size: env::var("RATE_LIMIT_BURST")
-                .unwrap_or_else(|_| "30".to_string())
+                .unwrap_or_else(|_| "100".to_string())
                 .parse()
-                .unwrap_or(30),
+                .unwrap_or(100),
             // HTTP client settings (for OpenAI, external APIs)
             http_timeout_seconds: env::var("HTTP_TIMEOUT_SECONDS")
                 .unwrap_or_else(|_| "30".to_string())

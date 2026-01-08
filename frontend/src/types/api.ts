@@ -335,6 +335,7 @@ export interface FeatureFlag {
   name: string
   description: string | null
   enabled: boolean
+  module: string | null
   created_at: string
   updated_at: string
 }

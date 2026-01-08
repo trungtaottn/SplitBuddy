@@ -48,6 +48,8 @@ pub fn routes() -> Router<AppState> {
         .route("/users", get(list_users).post(create_user))
         .route("/users/:id/password", put(reset_password))
         .route("/features", get(list_features))
+        .route("/features/toggle-all", put(toggle_all_features))
+        .route("/features/module/:module", put(toggle_module_features))
         .route("/features/:key", put(toggle_feature))
         .route("/music/url", post(add_music_url)) // Must be before /music/:id
         .route("/music/:id", delete(delete_music))
@@ -203,6 +205,7 @@ pub struct FeatureFlag {
     pub name: String,
     pub description: Option<String>,
     pub enabled: bool,
+    pub module: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -220,9 +223,9 @@ async fn list_features(
 
     let features: Vec<FeatureFlag> = sqlx::query_as(
         r#"
-        SELECT id, key, name, description, enabled, created_at, updated_at
+        SELECT id, key, name, description, enabled, module, created_at, updated_at
         FROM feature_flags
-        ORDER BY key ASC
+        ORDER BY module ASC, key ASC
         "#
     )
     .fetch_all(&state.pool)
@@ -244,7 +247,7 @@ async fn toggle_feature(
         UPDATE feature_flags 
         SET enabled = $1, updated_at = NOW()
         WHERE key = $2
-        RETURNING id, key, name, description, enabled, created_at, updated_at
+        RETURNING id, key, name, description, enabled, module, created_at, updated_at
         "#
     )
     .bind(payload.enabled)
@@ -257,6 +260,64 @@ async fn toggle_feature(
     tracing::info!("Feature flag '{}' updated to {}, cache invalidated", key, payload.enabled);
 
     Ok(ok(feature))
+}
+
+#[derive(Serialize)]
+pub struct BulkToggleResponse {
+    pub updated_count: i64,
+    pub module: Option<String>,
+}
+
+/// Toggle all features on/off
+async fn toggle_all_features(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Json(payload): Json<ToggleFeatureRequest>,
+) -> Result<Json<ApiResponse<BulkToggleResponse>>, AppError> {
+    require_admin(&auth_user)?;
+
+    let result = sqlx::query(
+        "UPDATE feature_flags SET enabled = $1, updated_at = NOW()"
+    )
+    .bind(payload.enabled)
+    .execute(&state.pool)
+    .await?;
+
+    // Invalidate all feature caches
+    state.cache.invalidate_feature_flags().await;
+    tracing::info!("All feature flags updated to {}, cache invalidated", payload.enabled);
+
+    Ok(ok(BulkToggleResponse {
+        updated_count: result.rows_affected() as i64,
+        module: None,
+    }))
+}
+
+/// Toggle all features in a specific module
+async fn toggle_module_features(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(module): Path<String>,
+    Json(payload): Json<ToggleFeatureRequest>,
+) -> Result<Json<ApiResponse<BulkToggleResponse>>, AppError> {
+    require_admin(&auth_user)?;
+
+    let result = sqlx::query(
+        "UPDATE feature_flags SET enabled = $1, updated_at = NOW() WHERE module = $2"
+    )
+    .bind(payload.enabled)
+    .bind(&module)
+    .execute(&state.pool)
+    .await?;
+
+    // Invalidate all feature caches
+    state.cache.invalidate_feature_flags().await;
+    tracing::info!("Module '{}' feature flags updated to {}, cache invalidated", module, payload.enabled);
+
+    Ok(ok(BulkToggleResponse {
+        updated_count: result.rows_affected() as i64,
+        module: Some(module),
+    }))
 }
 
 // Music Management

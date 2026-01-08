@@ -12,6 +12,18 @@ use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::repository::group_repo::GroupRepository;
 
+/// Check if a feature is enabled from database
+async fn is_feature_enabled(pool: &sqlx::PgPool, key: &str) -> bool {
+    sqlx::query_scalar::<_, bool>(
+        "SELECT enabled FROM feature_flags WHERE key = $1"
+    )
+    .bind(key)
+    .fetch_optional(pool)
+    .await
+    .unwrap_or(None)
+    .unwrap_or(true) // Default to enabled if not found
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list_groups).post(create_group))
@@ -319,6 +331,13 @@ async fn get_group_debts(
     auth_user: AuthUser,
     Path(group_id): Path<Uuid>,
 ) -> Result<Json<ApiResponse<GroupDebtSummary>>, AppError> {
+    // Check feature flag
+    if !is_feature_enabled(&state.pool, "group_debts").await {
+        return Err(AppError::FeatureDisabled {
+            feature: "group_debts".to_string(),
+        });
+    }
+
     let repo = GroupRepository::new(state.pool.clone());
 
     // Verify user is a member of the group
@@ -347,6 +366,13 @@ async fn get_simplified_debts(
 ) -> Result<Json<ApiResponse<SimplifiedDebtSummary>>, AppError> {
     use rust_decimal::Decimal;
     use std::collections::HashMap;
+
+    // Check feature flag
+    if !is_feature_enabled(&state.pool, "group_debts_simplified").await {
+        return Err(AppError::FeatureDisabled {
+            feature: "group_debts_simplified".to_string(),
+        });
+    }
 
     let repo = GroupRepository::new(state.pool.clone());
 
