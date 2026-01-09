@@ -74,7 +74,35 @@ jemalloc = ["tikv-jemallocator"]
 [dev-dependencies]
 tokio-test = "0.4"
 
+# ============================================
+# Build Profiles - Optimized for Speed
+# ============================================
+
+# Development: Fast compile times
+[profile.dev]
+opt-level = 0
+debug = true
+incremental = true
+# Optimize dependencies even in dev mode (they rarely change)
+[profile.dev.package."*"]
+opt-level = 2
+
+# Release: Balanced between compile time and runtime performance
 [profile.release]
 opt-level = 3
-lto = true
+debug = false
+incremental = false
+# Use thin LTO instead of full LTO (much faster compile, 90% of the benefit)
+lto = "thin"
+# Keep 16 codegen units for faster compile (default was 1)
+codegen-units = 16
+# Strip debug symbols to reduce binary size
+strip = true
+
+# Production: Maximum optimization (use for final deployment)
+[profile.production]
+inherits = "release"
+lto = "fat"
 codegen-units = 1
+panic = "abort"
+

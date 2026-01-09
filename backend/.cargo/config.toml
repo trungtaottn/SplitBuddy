@@ -1,0 +1,47 @@
+# Cargo configuration for faster builds
+# See: https://doc.rust-lang.org/cargo/reference/config.html
+
+[build]
+# Use all available CPU cores for compilation
+jobs = -1
+
+[target.x86_64-unknown-linux-gnu]
+# Use mold linker on Linux (much faster than default)
+# Install: apt install mold
+# linker = "clang"
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[target.x86_64-apple-darwin]
+# Use zld linker on macOS Intel (faster than default)
+# Install: brew install michaeleisel/zld/zld
+# rustflags = ["-C", "link-arg=-fuse-ld=/usr/local/bin/zld"]
+
+[target.aarch64-apple-darwin]
+# macOS Apple Silicon - use lld or default linker
+# The default linker is already quite fast on M1/M2
+
+[env]
+# Enable incremental compilation for dev builds
+CARGO_INCREMENTAL = "1"
+
+[profile.dev]
+# Faster dev builds with reasonable optimization
+opt-level = 0
+debug = true
+incremental = true
+# Split debuginfo for faster linking
+split-debuginfo = "unpacked"
+
+[profile.dev.package."*"]
+# Optimize dependencies even in dev mode
+opt-level = 2
+
+[alias]
+# Quick check without building
+c = "check"
+# Run with release optimizations
+rr = "run --release"
+# Build release
+br = "build --release"
+# Fast test
+t = "test"
