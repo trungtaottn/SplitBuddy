@@ -1,24 +1,4 @@
-# ===== Stage 1: Cargo Chef Planner =====
-FROM rust:1.75-slim as planner
-WORKDIR /app
-RUN cargo install cargo-chef --locked
-COPY backend/ .
-RUN cargo chef prepare --recipe-path recipe.json
-
-# ===== Stage 2: Cargo Chef Cook (Cache Dependencies) =====
-FROM rust:1.75-slim as cacher
-WORKDIR /app
-
-RUN apt-get update && apt-get install -y \
-    pkg-config \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN cargo install cargo-chef --locked
-COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
-
-# ===== Stage 3: Build Frontend =====
+# ===== Stage 1: Build Frontend =====
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 
@@ -30,8 +10,9 @@ RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
-# ===== Stage 4: Build Backend =====
-FROM rust:1.75-slim AS backend-builder
+# ===== Stage 2: Build Backend =====
+# Use nightly Rust because some transitive dependencies require edition2024
+FROM rustlang/rust:nightly-slim AS backend-builder
 WORKDIR /app
 
 ENV SQLX_OFFLINE=true
@@ -39,22 +20,23 @@ ENV SQLX_OFFLINE=true
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
+    curl \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy cached dependencies
-COPY --from=cacher /app/target target
-COPY --from=cacher /usr/local/cargo /usr/local/cargo
+# Enable offline SQLx (uses pre-generated .sqlx metadata)
+ENV SQLX_OFFLINE=true
 
-# Copy source
-COPY backend/.sqlx ./.sqlx
+# Copy backend sources
 COPY backend/Cargo.toml backend/Cargo.lock ./
+COPY backend/.sqlx ./.sqlx
 COPY backend/src ./src
 COPY backend/migrations ./migrations
 
-# Build with cached dependencies
+# Build backend in release mode
 RUN cargo build --release --locked
 
-# ===== Stage 5: Runtime =====
+# ===== Stage 3: Runtime =====
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 

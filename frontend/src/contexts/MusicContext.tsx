@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
 import { isYouTubeUrl, extractYouTubeVideoId, loadYouTubeAPI, YTPlayer, YTPlayerState } from '@/lib/youtube'
+import { api } from '@/lib/axios'
+import type { ApiResponse, PaginationMeta } from '@/types/api'
 
 export interface Track {
   id: string
@@ -50,20 +52,23 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const refreshTracks = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch('/api/admin/music')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.data && Array.isArray(data.data)) {
-          // Mark YouTube tracks
-          const tracksWithType = data.data.map((t: Track) => ({
-            ...t,
-            isYouTube: isYouTubeUrl(t.src)
-          }))
-          setTracks(tracksWithType)
-        }
+      // Response shape giống với AdminPage: ApiResponse<{ data: Track[], pagination: PaginationMeta }>
+      const res = await api.get<ApiResponse<{ data: Track[]; pagination: PaginationMeta }>>('/admin/music')
+      const paginated = res.data.data
+
+      if (paginated && Array.isArray(paginated.data)) {
+        // Đánh dấu track là YouTube hay không
+        const tracksWithType = paginated.data.map((t: Track) => ({
+          ...t,
+          isYouTube: isYouTubeUrl(t.src),
+        }))
+        setTracks(tracksWithType)
+      } else {
+        setTracks([])
       }
     } catch (error) {
       console.warn('Failed to load music tracks:', error)
+      setTracks([])
     } finally {
       setIsLoading(false)
     }

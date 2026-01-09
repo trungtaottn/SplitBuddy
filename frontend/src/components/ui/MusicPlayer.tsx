@@ -87,31 +87,31 @@ export function MusicPlayer() {
       >
         {/* Track Info */}
         <div className="p-4 border-b-2 border-dotted border-border">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             {/* Vintage Vinyl Record - Spinning when playing */}
-            <div className="relative w-16 h-16 flex-shrink-0">
+            <div className="relative w-12 h-12 flex-shrink-0">
               {/* Vinyl Record */}
               <div className={cn(
-                "w-20 h-20 rounded-full border-4 border-border bg-gradient-to-br from-foreground/20 to-foreground/5",
+                "w-14 h-14 rounded-full border-2 border-border bg-gradient-to-br from-foreground/20 to-foreground/5",
                 "relative overflow-hidden shadow-lg",
                 isPlaying && "animate-spin"
               )} style={{ animationDuration: '3s' }}>
                 {/* Record grooves */}
-                <div className="absolute inset-2 rounded-full border-2 border-border/50" />
-                <div className="absolute inset-4 rounded-full border border-border/30" />
-                <div className="absolute inset-6 rounded-full border border-border/20" />
+                <div className="absolute inset-1 rounded-full border border-border/40" />
+                <div className="absolute inset-2 rounded-full border border-border/30" />
+                <div className="absolute inset-3 rounded-full border border-border/20" />
                 
                 {/* Center label */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 border-2 border-primary/50 flex items-center justify-center">
-                    <div className="w-3 h-3 rounded-full bg-primary" />
+                  <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/50 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-primary" />
                   </div>
                 </div>
               </div>
               
               {/* Needle arm (static, doesn't spin) */}
               {isPlaying && (
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-foreground/60 origin-top rotate-12" />
+                <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-foreground/60 origin-top rotate-12" />
               )}
             </div>
             
