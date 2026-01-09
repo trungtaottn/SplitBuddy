@@ -15,6 +15,7 @@ RUN npm run build
 FROM rustlang/rust:nightly-slim AS backend-builder
 WORKDIR /app
 
+# Enable offline SQLx (uses pre-generated .sqlx metadata)
 ENV SQLX_OFFLINE=true
 
 RUN apt-get update && apt-get install -y \
@@ -23,9 +24,6 @@ RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
-
-# Enable offline SQLx (uses pre-generated .sqlx metadata)
-ENV SQLX_OFFLINE=true
 
 # Copy backend sources
 COPY backend/Cargo.toml backend/Cargo.lock ./
@@ -43,6 +41,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
+    curl \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -r -s /bin/false splitbuddy
 

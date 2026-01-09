@@ -127,6 +127,7 @@ jobs:
           tags: splitbuddy:scan
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: false
           
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -164,6 +165,8 @@ jobs:
           tags: registry.heroku.com/${{ secrets.HEROKU_APP_NAME }}/web
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: false
+          sbom: false
           build-args: |
             RUST_BUILD_MODE=release
             
