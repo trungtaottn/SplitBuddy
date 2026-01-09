@@ -1018,23 +1018,25 @@ impl SessionRepository {
         created_by: Uuid,
         payers: &[PayerInput],
         split_details: Option<&[SplitDetailInput]>,
+        category_id: Option<Uuid>,
     ) -> Result<BillResponse, AppError> {
         let mut tx = self.pool.begin().await?;
 
         let bill_id = Uuid::new_v4();
 
-        sqlx::query!(
+        sqlx::query(
             r#"
-            INSERT INTO bills (id, session_id, description, amount, split_strategy, created_by, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            INSERT INTO bills (id, session_id, description, amount, split_strategy, created_by, category_id, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
             "#,
-            bill_id,
-            session_id,
-            description,
-            amount,
-            split_strategy,
-            created_by
         )
+        .bind(bill_id)
+        .bind(session_id)
+        .bind(description)
+        .bind(amount)
+        .bind(split_strategy)
+        .bind(created_by)
+        .bind(category_id)
         .execute(&mut *tx)
         .await?;
 
@@ -1237,6 +1239,8 @@ impl SessionRepository {
         split_strategy: Option<&str>,
         payers: Option<&[PayerInput]>,
         split_details: Option<&[SplitDetailInput]>,
+        category_id: Option<Uuid>,
+        receipt_url: Option<&str>,
     ) -> Result<BillResponse, AppError> {
         let mut tx = self.pool.begin().await?;
 
@@ -1247,14 +1251,18 @@ impl SessionRepository {
             SET 
                 description = COALESCE($1, description),
                 amount = COALESCE($2, amount),
-                split_strategy = COALESCE($3, split_strategy)
-            WHERE id = $4
+                split_strategy = COALESCE($3, split_strategy),
+                category_id = COALESCE($4, category_id),
+                receipt_url = COALESCE($5, receipt_url)
+            WHERE id = $6
             RETURNING id, session_id, description, amount, split_strategy, created_by, created_at
             "#,
         )
         .bind(description)
         .bind(amount)
         .bind(split_strategy)
+        .bind(category_id)
+        .bind(receipt_url)
         .bind(bill_id)
         .fetch_one(&mut *tx)
         .await?;

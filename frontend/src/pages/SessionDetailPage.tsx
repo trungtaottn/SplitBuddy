@@ -12,6 +12,7 @@ import { PageSkeleton } from '@/components/ui/skeleton'
 import { SuccessToast } from '@/components/ui/Celebration'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
+import { showError } from '@/utils/errorHandler'
 import type { SessionDetail, Bill, ApiResponse, CreateBillDto, PayerInput, SplitDetailInput, GroupDetail } from '@/types/api'
 
 type TabType = 'overview' | 'bills' | 'debts'
@@ -58,8 +59,8 @@ export default function SessionDetailPage() {
       setShowBillModal(false)
       setShowBillSuccess(true)
     },
-    onError: () => {
-      toast.error('Có lỗi xảy ra. Vui lòng thử lại.')
+    onError: (error: unknown) => {
+      showError(error, 'Không thể tạo hoá đơn. Vui lòng thử lại.')
     },
   })
 
@@ -99,9 +100,8 @@ export default function SessionDetailPage() {
       setEditingBill(null)
       toast.success('Cập nhật hoá đơn thành công!')
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
+    onError: (error: unknown) => {
+      showError(error, 'Không thể cập nhật hoá đơn. Vui lòng thử lại.')
     },
   })
 
@@ -118,9 +118,8 @@ export default function SessionDetailPage() {
       setDeletingBillId(null)
       toast.success('Đã xóa hoá đơn!')
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
+    onError: (error: unknown) => {
+      showError(error, 'Không thể xóa hoá đơn. Vui lòng thử lại.')
       setDeletingBillId(null)
     },
   })
@@ -156,9 +155,8 @@ export default function SessionDetailPage() {
       setEditingParticipant(null)
       toast.success('Đã cập nhật tên!')
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
+    onError: (error: unknown) => {
+      showError(error, 'Không thể cập nhật hoá đơn. Vui lòng thử lại.')
     },
   })
 
@@ -171,9 +169,8 @@ export default function SessionDetailPage() {
       setDeletingParticipantId(null)
       toast.success('Đã xóa người tham gia!')
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
+    onError: (error: unknown) => {
+      showError(error, 'Không thể xóa người tham gia. Vui lòng thử lại.')
       setDeletingParticipantId(null)
     },
   })
@@ -189,9 +186,8 @@ export default function SessionDetailPage() {
       setNewGuestName('')
       toast.success('Đã thêm người tham gia!')
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
+    onError: (error: unknown) => {
+      showError(error, 'Không thể cập nhật hoá đơn. Vui lòng thử lại.')
     },
   })
 
@@ -206,9 +202,8 @@ export default function SessionDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['debts'] })
       toast.success('Đã đóng session!')
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
+    onError: (error: unknown) => {
+      showError(error, 'Không thể cập nhật hoá đơn. Vui lòng thử lại.')
     },
   })
 
@@ -223,9 +218,8 @@ export default function SessionDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['debts'] })
       toast.success('Đã mở lại session!')
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
+    onError: (error: unknown) => {
+      showError(error, 'Không thể cập nhật hoá đơn. Vui lòng thử lại.')
     },
   })
 
@@ -240,10 +234,8 @@ export default function SessionDetailPage() {
       toast.success('Đã xóa buổi nhậu!')
       navigate('/')
     },
-    onError: (error: any) => {
-      console.error('Delete session error:', error)
-      const message = error?.response?.data?.error?.message || error?.message || 'Có lỗi xảy ra khi xóa session'
-      toast.error(message)
+    onError: (error: unknown) => {
+      showError(error, 'Không thể xóa buổi nhậu. Vui lòng thử lại.')
       setShowDeleteConfirm(false)
     },
   })

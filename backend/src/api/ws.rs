@@ -20,7 +20,7 @@ use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
 use crate::api::AppState;
-use crate::middleware::auth::verify_token;
+use chrono::Utc;
 
 /// WebSocket event types for real-time updates
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -78,8 +78,8 @@ pub enum WsEvent {
 /// Query parameters for WebSocket connection
 #[derive(Debug, Deserialize)]
 pub struct WsQuery {
-    /// JWT token for authentication
-    pub token: String,
+    /// WebSocket ticket (short-lived, single-use) - obtained from /api/auth/ws-ticket
+    pub ticket: String,
 }
 
 /// Connected user info
@@ -187,14 +187,45 @@ async fn ws_handler(
     State(state): State<AppState>,
     Query(query): Query<WsQuery>,
 ) -> impl IntoResponse {
-    // Verify JWT token
-    match verify_token(&state.config, &query.token) {
-        Ok(claims) => ws.on_upgrade(move |socket| handle_socket(socket, state, claims.sub)),
+    // Parse ticket UUID
+    let ticket_id = match Uuid::parse_str(&query.ticket) {
+        Ok(id) => id,
         Err(_) => {
-            // Return error response - WebSocket upgrade will fail
+            return ws.on_upgrade(|mut socket| async move {
+                let error = WsEvent::Error {
+                    message: "Invalid ticket format".to_string(),
+                };
+                let msg = serde_json::to_string(&error).unwrap_or_default();
+                let _ = socket.send(Message::Text(msg)).await;
+                let _ = socket.close().await;
+            });
+        }
+    };
+
+    // Consume ticket from cache (single-use, removes it after validation)
+    match state.cache.consume_ws_ticket(ticket_id).await {
+        Some(ticket) => {
+            // Check if ticket is still valid (not expired)
+            if ticket.expires_at < Utc::now() {
+                return ws.on_upgrade(|mut socket| async move {
+                    let error = WsEvent::Error {
+                        message: "Ticket expired".to_string(),
+                    };
+                    let msg = serde_json::to_string(&error).unwrap_or_default();
+                    let _ = socket.send(Message::Text(msg)).await;
+                    let _ = socket.close().await;
+                });
+            }
+
+            // Ticket is valid - upgrade connection
+            let user_id = ticket.user_id;
+            ws.on_upgrade(move |socket| handle_socket(socket, state, user_id))
+        }
+        None => {
+            // Ticket not found or already used
             ws.on_upgrade(|mut socket| async move {
                 let error = WsEvent::Error {
-                    message: "Invalid or expired token".to_string(),
+                    message: "Invalid or already used ticket".to_string(),
                 };
                 let msg = serde_json::to_string(&error).unwrap_or_default();
                 let _ = socket.send(Message::Text(msg)).await;

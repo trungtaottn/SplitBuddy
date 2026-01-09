@@ -6,6 +6,7 @@ use axum::{
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use validator::Validate;
 
 use crate::api::response::{created, ok, ApiResponse};
 use crate::api::ws::WsEvent;
@@ -83,19 +84,31 @@ pub struct ParticipantResponse {
     pub joined_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct CreateSessionRequest {
+    #[validate(length(
+        min = 1,
+        max = 200,
+        message = "Session name must be between 1 and 200 characters"
+    ))]
     pub name: String,
+    #[validate(length(max = 500, message = "Location must be less than 500 characters"))]
     pub location: Option<String>,
     pub session_date: Option<chrono::NaiveDate>,
     pub group_id: Option<Uuid>,
     pub participant_ids: Option<Vec<Uuid>>,
+    #[validate(length(max = 10, message = "Maximum 10 guest names allowed"))]
     pub guest_names: Option<Vec<String>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct AddParticipantRequest {
     pub user_id: Option<Uuid>,
+    #[validate(length(
+        min = 1,
+        max = 100,
+        message = "Guest name must be between 1 and 100 characters"
+    ))]
     pub guest_name: Option<String>,
 }
 
@@ -141,15 +154,22 @@ pub struct BillParticipantInfo {
     pub amount_owed: Decimal,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub struct CreateBillRequest {
+    #[validate(length(
+        min = 1,
+        max = 500,
+        message = "Description must be between 1 and 500 characters"
+    ))]
     pub description: String,
     #[serde(with = "rust_decimal::serde::str")]
     pub total_amount: Decimal,
+    #[validate(length(min = 1, message = "At least one payer is required"))]
     pub payers: Vec<PayerInput>,
     #[serde(default = "default_split_strategy")]
     pub split_strategy: String,
     pub split_details: Option<Vec<SplitDetailInput>>,
+    pub category_id: Option<Uuid>,
 }
 
 fn default_split_strategy() -> String {
@@ -163,7 +183,7 @@ pub struct SplitDetailInput {
     pub amount: Decimal,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct PayerInput {
     pub participant_id: Uuid,
     #[serde(with = "rust_decimal::serde::str")]
@@ -239,12 +259,33 @@ async fn create_session(
     auth_user: AuthUser,
     Json(payload): Json<CreateSessionRequest>,
 ) -> Result<(axum::http::StatusCode, Json<ApiResponse<SessionResponse>>), AppError> {
+    // Validate input
+    payload.validate().map_err(|e| AppError::Validation {
+        field: "request".to_string(),
+        message: format!("Validation failed: {}", e),
+    })?;
+
+    // Sanitize name and location (remove HTML tags, limit length)
+    let name = payload.name.trim().to_string();
+    if name.is_empty() || name.len() > 200 {
+        return Err(AppError::Validation {
+            field: "name".to_string(),
+            message: "Session name must be between 1 and 200 characters".to_string(),
+        });
+    }
+
+    let location = payload
+        .location
+        .as_ref()
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty());
+
     let repo = SessionRepository::new(state.pool.clone());
 
     let session = repo
         .create_with_participants(
-            &payload.name,
-            payload.location.as_deref(),
+            &name,
+            location.as_deref(),
             payload.session_date,
             auth_user.user_id,
             payload.group_id,
@@ -582,6 +623,21 @@ async fn create_bill(
     Path(session_id): Path<Uuid>,
     Json(payload): Json<CreateBillRequest>,
 ) -> Result<(axum::http::StatusCode, Json<ApiResponse<BillResponse>>), AppError> {
+    // Validate input
+    payload.validate().map_err(|e| AppError::Validation {
+        field: "request".to_string(),
+        message: format!("Validation failed: {}", e),
+    })?;
+
+    // Sanitize description
+    let description = payload.description.trim().to_string();
+    if description.is_empty() || description.len() > 500 {
+        return Err(AppError::Validation {
+            field: "description".to_string(),
+            message: "Description must be between 1 and 500 characters".to_string(),
+        });
+    }
+
     let repo = SessionRepository::new(state.pool.clone());
 
     repo.verify_participant(session_id, auth_user.user_id)
@@ -614,12 +670,13 @@ async fn create_bill(
     let bill = repo
         .create_bill(
             session_id,
-            &payload.description,
+            &description,
             payload.total_amount,
             &payload.split_strategy,
             auth_user.user_id,
             &payload.payers,
             payload.split_details.as_deref(),
+            payload.category_id,
         )
         .await?;
 
@@ -649,6 +706,8 @@ pub struct UpdateBillRequest {
     pub split_strategy: Option<String>,
     pub payers: Option<Vec<PayerInput>>,
     pub split_details: Option<Vec<SplitDetailInput>>,
+    pub category_id: Option<Uuid>,
+    pub receipt_url: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -704,6 +763,8 @@ async fn update_bill(
             payload.split_strategy.as_deref(),
             payload.payers.as_deref(),
             payload.split_details.as_deref(),
+            payload.category_id,
+            payload.receipt_url.as_deref(),
         )
         .await?;
 

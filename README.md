@@ -2,7 +2,7 @@
 
 > Chia tiền nhậu dễ dàng, vui vẻ, không còn tranh cãi! 🍺
 
-[![CI](https://github.com/trungtaottn/SplitBuddy/workflows/CI/badge.svg)](https://github.com/trungtaottn/SplitBuddy/actions)
+[![CI/CD](https://github.com/trungtaottn/SplitBuddy/workflows/CI/CD/badge.svg)](https://github.com/trungtaottn/SplitBuddy/actions)
 [![Deploy](https://img.shields.io/badge/deploy-Heroku-purple)](https://splitbuddy-c4cac22ac498.herokuapp.com)
 [![Frontend](https://img.shields.io/badge/frontend-React%2018-blue)](./frontend)
 [![Backend](https://img.shields.io/badge/backend-Rust%20Axum-orange)](./backend)
@@ -18,28 +18,30 @@
 - **Theo dõi nợ** - Ai nợ ai, bao nhiêu, trạng thái thanh toán
 - **Cấn trừ nợ tự động** - Smart netting giảm số giao dịch cần thiết
 - **Nhóm bạn nhậu** - Quản lý nhóm bạn thường xuyên đi nhậu
-- **Mini Games** - Truth or Dare, Never Have I Ever, Challenges, Spin Wheel
+- **Mini Games** - Truth or Dare, Never Have I Ever, Challenges, Spin Wheel, Kings Cup
+- **Music Player** - Phát nhạc trong khi nhậu với playlist từ YouTube
 - **Avatar & Achievements** - Gamification với XP, levels, badges
 - **Wrapped Stats** - Thống kê hoạt động theo năm
+- **AI Chat** - Chat với AI để được tư vấn
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
 | **Frontend** | React 18, TypeScript, Vite, TailwindCSS, shadcn/ui, TanStack Query |
-| **Backend** | Rust 1.75+, Axum 0.7, SQLx |
+| **Backend** | Rust (Nightly), Axum 0.7, SQLx |
 | **Database** | PostgreSQL 16 |
 | **Auth** | JWT + Argon2 |
 | **AI** | Google Gemini API |
 | **Deploy** | Heroku (Docker) |
-| **CI/CD** | GitHub Actions |
+| **CI/CD** | GitHub Actions (optimized with path filtering & caching) |
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js 18+
-- Rust 1.75+
+- Node.js 20+
+- Rust (stable for development, nightly for Docker build)
 - Docker & Docker Compose
 - PostgreSQL (hoặc dùng Docker)
 
@@ -50,14 +52,21 @@ git clone https://github.com/trungtaottn/SplitBuddy.git
 cd SplitBuddy
 ```
 
-### 2. Setup Database
+### 2. Setup Git Hooks (Quan trọng!)
+
+```bash
+# Cài đặt git hooks để auto-format code trước khi commit
+make setup
+```
+
+### 3. Setup Database
 
 ```bash
 # Start PostgreSQL với Docker
 docker-compose up -d
 ```
 
-### 3. Setup Backend
+### 4. Setup Backend
 
 ```bash
 cd backend
@@ -76,7 +85,7 @@ cargo run
 
 Backend sẽ chạy tại `http://localhost:8080`
 
-### 4. Setup Frontend
+### 5. Setup Frontend
 
 ```bash
 cd frontend
@@ -88,10 +97,26 @@ npm run dev
 
 Frontend sẽ chạy tại `http://localhost:5173`
 
-### 5. Truy cập
+### 6. Truy cập
 
 - **Frontend:** http://localhost:5173
 - **Backend API:** http://localhost:8080/api
+- **Health Check:** http://localhost:8080/api/health
+
+## Makefile Commands
+
+```bash
+make setup          # Cài đặt git hooks
+make install        # Cài đặt dependencies
+make format         # Format tất cả code (Rust + TypeScript)
+make check          # Check tất cả giống CI (lint, build, test)
+make check-backend  # Check backend only
+make check-frontend # Check frontend only
+make dev-backend    # Chạy backend dev server
+make dev-frontend   # Chạy frontend dev server
+make docker-build   # Build Docker image
+make clean          # Dọn dẹp build artifacts
+```
 
 ## Project Structure
 
@@ -110,21 +135,28 @@ SplitBuddy/
 │   ├── src/
 │   │   ├── components/     # UI components (shadcn/ui customized)
 │   │   ├── pages/          # Page components
-│   │   ├── contexts/       # React contexts (Auth)
+│   │   ├── contexts/       # React contexts (Auth, Theme, Music, Mood)
+│   │   ├── hooks/          # Custom hooks
 │   │   ├── types/          # TypeScript types
-│   │   └── lib/            # Utilities (axios, cn)
+│   │   └── lib/            # Utilities (axios, queryClient)
 │   └── public/
 │
 ├── docs/                   # Documentation
+│   ├── DEPLOYMENT.md       # Deployment guide
+│   ├── SETUP.md            # Setup guide
 │   ├── PROJECT_GUIDELINES.md
-│   ├── Architecture Plan.md
 │   └── ...
 │
-├── .github/workflows/      # GitHub Actions CI
-│   └── ci.yml
+├── .github/workflows/      # GitHub Actions CI/CD
+│   └── ci.yml              # Optimized CI/CD pipeline
 │
+├── .githooks/              # Git hooks
+│   ├── pre-commit          # Auto-format code before commit
+│   └── setup.sh            # Setup script
+│
+├── Dockerfile              # Multi-stage Docker build (5 stages)
 ├── docker-compose.yml      # Local development (PostgreSQL)
-├── Dockerfile              # Backend container
+├── Makefile                # Development commands
 └── heroku.yml              # Heroku deployment config
 ```
 
@@ -134,6 +166,9 @@ SplitBuddy/
 |----------|-------------|
 | [Backend README](./backend/README.md) | Backend API documentation, endpoints, setup |
 | [Frontend README](./frontend/README.md) | Frontend documentation, components, routes |
+| [Contributing](./CONTRIBUTING.md) | How to contribute to this project |
+| [Deployment](./docs/DEPLOYMENT.md) | Deployment & CI/CD guide |
+| [Setup](./docs/SETUP.md) | Detailed setup guide |
 | [Project Guidelines](./docs/PROJECT_GUIDELINES.md) | Coding conventions & standards |
 | [Architecture](./docs/Architecture%20Plan.md) | System architecture overview |
 
@@ -143,15 +178,22 @@ SplitBuddy/
 
 ```
 main          # Production - auto deploy to Heroku
+  └── revert  # Last known good state (auto-synced)
   └── dev     # Development - CI checks, PR target
        └── feature/xxx  # Feature branches
 ```
+
+**Branches:**
+- `main` - Production code, auto-deploy khi merge
+- `revert` - Giữ last known good state, tự động sync với main khi deploy thành công
+- `dev` - Development branch, tạo PR từ đây vào main
 
 **Quy tắc:**
 - KHÔNG merge trực tiếp dev → main bằng `git merge`
 - Luôn tạo **Pull Request** từ dev → main
 - Đợi CI pass trước khi merge
 - Heroku auto-deploy từ main
+- Nếu deploy fail, dùng `revert` branch để rollback
 
 ### Commit Convention
 
@@ -165,17 +207,35 @@ type(scope): message
 #   docs(readme): update API endpoints
 ```
 
-### CI Pipeline
+### CI/CD Pipeline
 
 GitHub Actions tự động chạy khi push:
 
-**Backend:**
-- `cargo build --release` (với SQLX_OFFLINE=true)
-- `cargo test --release`
+**Path-based job execution:**
+- `test-backend` - Chỉ chạy khi thay đổi `backend/**`
+- `test-frontend` - Chỉ chạy khi thay đổi `frontend/**`
+- `deploy` - Chỉ chạy trên `main` branch
 
-**Frontend:**
-- `npm ci`
-- `npm run build`
+**Features:**
+- ✅ Auto-cancel in-progress runs on new commits
+- ✅ Intelligent caching (Rust dependencies, npm)
+- ✅ Path filtering (skip irrelevant jobs)
+- ✅ Security scanning with Trivy
+- ✅ Auto-sync `revert` branch
+- ✅ Health check verification after deploy
+
+### Git Hooks
+
+Pre-commit hook tự động:
+- Format Rust code (`cargo fmt`)
+- Fix ESLint issues (`eslint --fix`)
+- Check clippy warnings
+- Verify build
+
+```bash
+# Setup (chỉ cần chạy 1 lần)
+make setup
+```
 
 ### SQLx Offline Mode
 
@@ -213,9 +273,20 @@ VITE_API_URL=http://localhost:8080  # Optional, defaults to /api
 ### Heroku (Production)
 
 1. Push to `main` branch
-2. Heroku auto-builds Docker image
-3. Runs migrations on release
-4. Deploys new version
+2. CI runs tests (path-filtered)
+3. Docker image built with 5-stage build
+4. Image pushed to Heroku Container Registry
+5. Health check verification
+6. `revert` branch synced
+
+### Rollback
+
+```bash
+# Nếu cần rollback về version trước
+git checkout main
+git reset --hard origin/revert
+git push origin main --force
+```
 
 ### Manual Deploy (Emergency)
 
@@ -228,6 +299,9 @@ heroku container:release web -a splitbuddy
 ## Testing
 
 ```bash
+# Check tất cả (giống CI)
+make check
+
 # Backend tests
 cd backend && cargo test
 
@@ -235,16 +309,19 @@ cd backend && cargo test
 cd frontend && npm run type-check
 
 # Frontend lint
-cd frontend && npm run lint
+cd frontend && npm run lint:fix
 ```
 
 ## Contributing
 
 1. Fork repo
-2. Tạo branch từ `dev`: `git checkout -b feature/your-feature`
-3. Commit changes với conventional commits
-4. Push và tạo PR về `dev`
-5. Đợi review và CI pass
+2. Clone và `make setup` để cài git hooks
+3. Tạo branch từ `dev`: `git checkout -b feature/your-feature`
+4. Commit changes (auto-formatted bởi pre-commit hook)
+5. Push và tạo PR về `dev`
+6. Đợi review và CI pass
+
+Xem [CONTRIBUTING.md](./CONTRIBUTING.md) để biết thêm chi tiết.
 
 ## License
 
@@ -253,3 +330,5 @@ MIT License - Xem [LICENSE](./LICENSE) để biết thêm chi tiết.
 ---
 
 Made with 🍺 and code by the SplitBuddy team
+
+**Last Updated:** January 2026

@@ -33,6 +33,15 @@ pub struct CachedSession {
     pub participants: Vec<ParticipantResponse>,
 }
 
+/// WebSocket ticket data
+#[derive(Clone, Debug)]
+pub struct WsTicket {
+    pub user_id: Uuid,
+    #[allow(dead_code)]
+    pub role: String,
+    pub expires_at: chrono::DateTime<chrono::Utc>,
+}
+
 /// Application cache manager using moka
 #[derive(Clone)]
 pub struct AppCache {
@@ -42,6 +51,8 @@ pub struct AppCache {
     pub all_features: Cache<String, Vec<CachedFeatureFlag>>,
     /// Cache for session details - key is session UUID
     pub sessions: Cache<Uuid, CachedSession>,
+    /// Cache for WebSocket tickets - key is ticket UUID (short-lived, single-use)
+    pub ws_tickets: Cache<Uuid, WsTicket>,
 }
 
 impl AppCache {
@@ -61,6 +72,11 @@ impl AppCache {
             sessions: Cache::builder()
                 .time_to_live(Duration::from_secs(300))
                 .max_capacity(500)
+                .build(),
+            // WebSocket tickets - 30 second TTL, max 1000 entries (single-use, auto-deleted after use)
+            ws_tickets: Cache::builder()
+                .time_to_live(Duration::from_secs(30))
+                .max_capacity(1000)
                 .build(),
         }
     }
@@ -90,6 +106,16 @@ impl AppCache {
     /// Invalidate a specific session cache
     pub async fn invalidate_session(&self, session_id: Uuid) {
         self.sessions.invalidate(&session_id).await;
+    }
+
+    /// Store a WebSocket ticket (single-use, short-lived)
+    pub async fn store_ws_ticket(&self, ticket_id: Uuid, ticket: WsTicket) {
+        self.ws_tickets.insert(ticket_id, ticket).await;
+    }
+
+    /// Get and consume a WebSocket ticket (removes it after use)
+    pub async fn consume_ws_ticket(&self, ticket_id: Uuid) -> Option<WsTicket> {
+        self.ws_tickets.remove(&ticket_id).await
     }
 }
 

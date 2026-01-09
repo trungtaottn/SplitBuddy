@@ -14,7 +14,9 @@ use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
 
 pub fn routes() -> Router<AppState> {
-    Router::new().route("/avatar", post(upload_avatar))
+    Router::new()
+        .route("/avatar", post(upload_avatar))
+        .route("/receipt", post(upload_receipt))
 }
 
 #[derive(Serialize)]
@@ -102,6 +104,67 @@ async fn upload_avatar(
 
             // Return URL (relative to static file serving)
             let url = format!("/uploads/avatars/{}", filename);
+
+            return Ok(ok(UploadResponse { url }));
+        }
+    }
+
+    Err(AppError::Validation {
+        field: "file".to_string(),
+        message: "No file provided".to_string(),
+    })
+}
+
+async fn upload_receipt(
+    State(_state): State<AppState>,
+    auth_user: AuthUser,
+    mut multipart: Multipart,
+) -> Result<Json<ApiResponse<UploadResponse>>, AppError> {
+    // Create uploads directory if it doesn't exist
+    let upload_dir = Path::new("uploads/receipts");
+    fs::create_dir_all(upload_dir).await.map_err(|e| {
+        AppError::Internal(anyhow::anyhow!("Failed to create upload directory: {}", e))
+    })?;
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to read multipart field: {}", e)))?
+    {
+        let name = field.name().unwrap_or("").to_string();
+
+        if name == "file" || name == "receipt" {
+            // Read file data first
+            let data = field.bytes().await.map_err(|e| {
+                AppError::Internal(anyhow::anyhow!("Failed to read file data: {}", e))
+            })?;
+
+            // Limit file size (10MB for receipts - may be larger than avatars)
+            if data.len() > 10 * 1024 * 1024 {
+                return Err(AppError::Validation {
+                    field: "file".to_string(),
+                    message: "File size must be less than 10MB".to_string(),
+                });
+            }
+
+            // Validate file content by checking magic bytes
+            let ext = validate_image_magic_bytes(&data).ok_or_else(|| AppError::Validation {
+                field: "file".to_string(),
+                message: "Invalid image file. Only JPEG, PNG, GIF, and WebP are supported."
+                    .to_string(),
+            })?;
+
+            // Generate unique filename
+            let filename = format!("{}_{}.{}", auth_user.user_id, Uuid::new_v4(), ext);
+            let filepath = upload_dir.join(&filename);
+
+            // Save file
+            fs::write(&filepath, &data)
+                .await
+                .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to save file: {}", e)))?;
+
+            // Return URL (relative to static file serving)
+            let url = format!("/uploads/receipts/{}", filename);
 
             return Ok(ok(UploadResponse { url }));
         }

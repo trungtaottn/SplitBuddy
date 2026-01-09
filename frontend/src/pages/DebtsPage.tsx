@@ -12,6 +12,7 @@ import {
 import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
+import { showError } from '@/utils/errorHandler'
 import { cn } from '@/lib/utils'
 import { DebtCardSkeleton, StatsSkeleton } from '@/components/ui/skeleton'
 import { staggerContainer, staggerItem } from '@/components/PageTransition'
@@ -271,9 +272,8 @@ export default function DebtsPage() {
       queryClient.invalidateQueries({ queryKey: ['debts'] })
       toast.success('Đã tất toán nợ từ khách!')
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
+    onError: (error: unknown) => {
+      showError(error, 'Không thể tất toán nợ. Vui lòng thử lại.')
     },
   })
 

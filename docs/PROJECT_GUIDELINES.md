@@ -1194,17 +1194,142 @@ Một task được coi là **hoàn thành (Done)** khi đáp ứng **TẤT CẢ
 
 ---
 
-## 📚 References
+## 5. CI/CD & Automation
 
-- [Architecture Design](./idea.md) - Tech stack và database schema
-- [Product Roadmap](./US-Task.md) - User stories và roadmap
-- [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
-- [Conventional Commits](https://www.conventionalcommits.org/)
-- [REST API Design Best Practices](https://restfulapi.net/)
+### 5.1 GitHub Actions Pipeline
+
+Dự án sử dụng GitHub Actions với các optimizations:
+
+**Path-based filtering:**
+```yaml
+# Chỉ chạy backend tests khi backend thay đổi
+test-backend:
+  if: needs.changes.outputs.backend == 'true'
+```
+
+**Caching:**
+- Rust dependencies: `Swatinem/rust-cache@v2`
+- Node modules: `actions/setup-node@v4` với cache
+- Docker layers: GitHub Actions cache
+
+**Jobs:**
+| Job | Trigger | Description |
+|-----|---------|-------------|
+| `changes` | Always | Detect changed paths |
+| `test-backend` | `backend/**` | Fmt, clippy, build, test |
+| `test-frontend` | `frontend/**` | Type-check, build |
+| `deploy` | `main` only | Docker build, Heroku push |
+| `security-scan` | `main` | Trivy vulnerability scan |
+| `sync-revert-*` | After deploy | Sync revert branch |
+
+### 5.2 Git Hooks
+
+Dự án sử dụng custom git hooks để enforce code quality:
+
+**Pre-commit hook (`.githooks/pre-commit`):**
+
+```bash
+# Backend changes → tự động format và check
+if [ backend changed ]; then
+  cargo fmt
+  cargo clippy --release -- -D warnings
+  cargo build --release
+fi
+
+# Frontend changes → tự động fix và check
+if [ frontend changed ]; then
+  npm run lint:fix
+  npm run type-check
+  npm run build
+fi
+```
+
+**Setup:**
+```bash
+make setup
+# hoặc
+git config core.hooksPath .githooks
+```
+
+### 5.3 Makefile Commands
+
+```bash
+make setup          # Cài đặt git hooks
+make format         # Format tất cả code
+make check          # Check tất cả giống CI
+make check-backend  # Check backend only
+make check-frontend # Check frontend only
+```
+
+### 5.4 Branch Protection Rules
+
+Khuyến nghị cấu hình trên GitHub:
+
+**`main` branch:**
+- ✅ Require pull request before merging
+- ✅ Require status checks (test-backend, test-frontend)
+- ✅ Require branches to be up to date
+- ❌ Allow force pushes (cho revert workflow)
+
+**`dev` branch:**
+- ✅ Require pull request before merging
+- ✅ Require status checks
 
 ---
 
-**Last Updated:** 2024-01-15  
-**Version:** 1.0.0  
+## 6. Tooling & ESLint Configuration
+
+### 6.1 ESLint v9 (Flat Config)
+
+Frontend sử dụng ESLint v9 với flat config:
+
+```javascript
+// frontend/eslint.config.js
+export default tseslint.config(
+  { ignores: ['dist', 'dev-dist', 'node_modules'] },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      'react-hooks/exhaustive-deps': 'warn',
+      'no-case-declarations': 'warn',
+    },
+  },
+)
+```
+
+**Commands:**
+```bash
+npm run lint       # Check only
+npm run lint:fix   # Auto-fix
+```
+
+### 6.2 Rust Tooling
+
+```bash
+cargo fmt          # Format code
+cargo clippy       # Lint
+cargo test         # Run tests
+cargo sqlx prepare # Update SQLx cache
+```
+
+---
+
+## 📚 References
+
+- [Architecture Design](./Architecture%20Plan.md) - Tech stack và database schema
+- [Setup Guide](./SETUP.md) - Development environment setup
+- [Deployment Guide](./DEPLOYMENT.md) - CI/CD và deployment
+- [Contributing Guide](../CONTRIBUTING.md) - Contribution workflow
+- [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
+- [Conventional Commits](https://www.conventionalcommits.org/)
+- [REST API Design Best Practices](https://restfulapi.net/)
+- [ESLint v9 Migration](https://eslint.org/docs/latest/use/configure/migration-guide)
+
+---
+
+**Last Updated:** January 2026  
+**Version:** 2.0.0  
 **Maintained by:** Technical Owner Team
 

@@ -40,6 +40,7 @@ export interface User {
 export interface AuthResponse {
   user: User
   access_token: string
+  refresh_token: string
 }
 
 export type SessionStatus = 'active' | 'closed'
@@ -99,8 +100,17 @@ export interface Bill {
   split_strategy: string
   created_by: string
   created_at: string
+  category_id?: string | null
   payers: BillPayerInfo[]
   participants: BillParticipantInfo[]
+}
+
+export interface ExpenseCategory {
+  id: string
+  name: string
+  icon: string | null
+  color: string | null
+  is_system: boolean
 }
 
 export interface BillPayerInfo {
@@ -162,6 +172,7 @@ export interface CreateBillDto {
   payers: PayerInput[]
   split_strategy?: string
   split_details?: SplitDetailInput[]
+  category_id?: string | null
 }
 
 // Group types

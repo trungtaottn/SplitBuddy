@@ -2,15 +2,29 @@
 
 Hướng dẫn deploy SplitBuddy lên production.
 
+**Last Updated:** January 2026
+
 ## Architecture Overview
 
 ```
                     ┌─────────────────┐
-                    │     Heroku      │
-                    │   (Container)   │
+                    │  GitHub Actions │
+                    │    (CI/CD)      │
                     └────────┬────────┘
                              │
         ┌────────────────────┼────────────────────┐
+        │ Build & Test       │ Deploy             │
+        ▼                    ▼                    ▼
+┌───────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│   Test Jobs   │  │  Docker Build   │  │   Heroku        │
+│ (path-based)  │  │  (5 stages)     │  │  Container      │
+└───────────────┘  └─────────────────┘  └─────────────────┘
+        │                    │                    │
+        │              Push to Registry          │
+        │                    ▼                    │
+        │          ┌─────────────────┐           │
+        │          │   Health Check  │◄──────────┤
+        │          └─────────────────┘           │
         │                    │                    │
         ▼                    ▼                    ▼
 ┌───────────────┐  ┌─────────────────┐  ┌─────────────────┐
@@ -19,25 +33,101 @@ Hướng dẫn deploy SplitBuddy lên production.
 └───────────────┘  └─────────────────┘  └─────────────────┘
 ```
 
+## CI/CD Pipeline
+
+### GitHub Actions Workflow
+
+File: `.github/workflows/ci.yml`
+
+#### Jobs
+
+| Job | Trigger | Description |
+|-----|---------|-------------|
+| `changes` | Always | Detect changed paths for conditional execution |
+| `test-backend` | `backend/**` changed | Lint, build, test Rust code |
+| `test-frontend` | `frontend/**` changed | Type check, build React app |
+| `deploy` | `main` branch only | Build Docker image, push to Heroku |
+| `security-scan` | `main` branch | Trivy vulnerability scan (non-blocking) |
+| `sync-revert-success` | Deploy success | Sync `revert` branch to current `main` |
+| `sync-revert-failure` | Deploy failure | Keep `revert` at previous commit |
+
+#### Key Features
+
+```yaml
+# Path filtering - chỉ chạy jobs khi cần
+test-backend:
+  if: needs.changes.outputs.backend == 'true'
+
+# Concurrency - cancel runs cũ khi có push mới
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Caching - tăng tốc builds
+- uses: Swatinem/rust-cache@v2
+- uses: actions/setup-node@v4
+  with:
+    cache: 'npm'
+```
+
+### Docker Build (5 Stages)
+
+```dockerfile
+# Stage 1: Frontend Builder
+FROM node:20-alpine AS frontend-builder
+# npm ci, npm run build
+
+# Stage 2: Cargo Chef Planner
+FROM rustlang/rust:nightly-slim AS planner
+# cargo chef prepare
+
+# Stage 3: Cargo Chef Cook (Cache Dependencies)
+FROM rustlang/rust:nightly-slim AS cacher
+# cargo chef cook --release
+
+# Stage 4: Backend Builder
+FROM rustlang/rust:nightly-slim AS backend-builder
+# cargo build --release
+
+# Stage 5: Runtime (Minimal)
+FROM debian:bookworm-slim AS runtime
+# Only binary + frontend static files
+```
+
+**Lợi ích:**
+- ✅ Frontend và Backend build song song
+- ✅ Rust dependencies được cache (chỉ rebuild khi Cargo.lock thay đổi)
+- ✅ Runtime image nhỏ gọn (~100MB)
+
 ## Heroku Deployment
 
 ### Prerequisites
 
 - Heroku account
 - Heroku CLI installed
-- Git repository connected
+- GitHub repository connected
 
 ### Environment Variables
 
-Set these in Heroku Dashboard → Settings → Config Vars:
+Set trong Heroku Dashboard → Settings → Config Vars:
 
-```
-DATABASE_URL          # Auto-set by Heroku Postgres addon
-JWT_SECRET            # Strong random string
-RUST_LOG              # info (production) or debug
-HOST                  # 0.0.0.0
-PORT                  # Auto-set by Heroku
-```
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | Auto-set by Heroku Postgres addon |
+| `JWT_SECRET` | Strong random string |
+| `RUST_LOG` | `info` (production) |
+| `HOST` | `0.0.0.0` |
+| `PORT` | Auto-set by Heroku |
+| `GEMINI_API_KEY` | (Optional) Google Gemini API key |
+
+### GitHub Secrets
+
+Set trong GitHub → Settings → Secrets → Actions:
+
+| Secret | Description |
+|--------|-------------|
+| `HEROKU_API_KEY` | Heroku API key (từ Account Settings) |
+| `HEROKU_APP_NAME` | Tên Heroku app |
 
 ### Deployment Flow
 
@@ -48,44 +138,73 @@ dev branch
     ▼
 main branch
     │
-    │ (auto-deploy)
+    │ (GitHub Actions CI/CD)
     ▼
-Heroku Production
+┌─────────────────────────────────────────────┐
+│ 1. Detect changes (path filtering)          │
+│ 2. Run test-backend (if backend changed)    │
+│ 3. Run test-frontend (if frontend changed)  │
+│ 4. Build Docker image (5-stage)             │
+│ 5. Push to Heroku Container Registry        │
+│ 6. Release (heroku container:release)       │
+│ 7. Health check verification                │
+│ 8. Sync revert branch                       │
+└─────────────────────────────────────────────┘
+    │
+    ▼
+Heroku Production (https://your-app.herokuapp.com)
 ```
 
-### CI/CD Pipeline
+### Health Check Endpoint
 
-The project uses GitHub Actions for CI:
+```bash
+# Backend health endpoint
+GET /api/health
 
-```yaml
-# .github/workflows/ci.yml
-on:
-  push:
-    branches: [dev, main]
-  pull_request:
-    branches: [dev, main]
-
-jobs:
-  frontend:
-    - npm install
-    - npm run build
-    
-  backend:
-    - cargo check
-    - cargo test
+# Response (200 OK)
+{
+  "status": "ok",
+  "version": "1.0.0",
+  "timestamp": "2026-01-09T10:00:00Z"
+}
 ```
 
-### Manual Deployment
+CI/CD sẽ verify deployment bằng cách gọi endpoint này sau khi release.
+
+## Revert Branch Strategy
+
+### Automatic Sync
+
+```
+Deploy thành công → revert = main (current commit)
+Deploy thất bại  → revert = main~1 (previous commit)
+```
+
+### Manual Rollback
+
+```bash
+# Xem commit trên revert branch
+git log origin/revert -1
+
+# Rollback main về revert
+git checkout main
+git reset --hard origin/revert
+git push origin main --force
+```
+
+## Manual Deployment
+
+### Emergency Deploy
 
 ```bash
 # Login to Heroku
 heroku login
 
-# Add Heroku remote (if not already)
-heroku git:remote -a splitbuddy
+# Push Docker image
+heroku container:push web -a YOUR_APP_NAME
 
-# Deploy
-git push heroku main
+# Release
+heroku container:release web -a YOUR_APP_NAME
 ```
 
 ### Deploy from dev branch
@@ -95,19 +214,19 @@ git push heroku main
 git push heroku dev:main
 ```
 
-## Docker Deployment
+## Docker Deployment (Self-hosted)
 
 ### Build Image
 
 ```bash
-# Build backend
-docker build -t splitbuddy-backend .
+# Build
+docker build -t splitbuddy:latest .
 
 # Run locally
-docker run -p 3000:3000 \
+docker run -p 8080:8080 \
   -e DATABASE_URL=postgres://... \
   -e JWT_SECRET=... \
-  splitbuddy-backend
+  splitbuddy:latest
 ```
 
 ### Docker Compose (Production)
@@ -134,8 +253,8 @@ heroku addons:create heroku-postgresql:mini
 # Check database info
 heroku pg:info
 
-# Run migrations
-heroku run "cd backend && sqlx migrate run"
+# Run migrations (sau khi app deploy)
+# Migrations tự động chạy khi app start
 ```
 
 ### Backup & Restore
@@ -151,16 +270,6 @@ heroku pg:backups:download
 heroku pg:backups:restore
 ```
 
-### Database Migrations
-
-```bash
-# Run migrations on Heroku
-heroku run bash
-cd backend
-sqlx migrate run
-exit
-```
-
 ## Monitoring
 
 ### Logs
@@ -171,6 +280,9 @@ heroku logs --tail
 
 # Filter by dyno
 heroku logs --tail --dyno web
+
+# View recent errors
+heroku logs --tail | grep -i error
 ```
 
 ### Metrics
@@ -182,11 +294,11 @@ heroku logs --tail --dyno web
 ### Health Check
 
 ```bash
-# Backend health
-curl https://splitbuddy.herokuapp.com/health
+# Check app health
+curl https://your-app.herokuapp.com/api/health
 
 # Expected response
-{"status": "healthy"}
+{"status": "ok", "version": "1.0.0", ...}
 ```
 
 ## Troubleshooting
@@ -198,66 +310,64 @@ curl https://splitbuddy.herokuapp.com/health
 heroku logs --tail -n 200
 
 # Common causes:
-# - Missing env vars
+# - Missing env vars (DATABASE_URL, JWT_SECRET)
 # - Database connection failed
-# - Port binding issue
+# - Port binding issue (phải dùng $PORT từ env)
 ```
 
-### Database connection errors
+### Docker build fails
 
 ```bash
-# Verify DATABASE_URL
-heroku config:get DATABASE_URL
+# Build locally để test
+docker build -t splitbuddy-test .
 
-# Check Postgres status
-heroku pg:info
+# Check specific stage
+docker build --target backend-builder -t splitbuddy-backend .
 
-# Restart database
-heroku pg:restart
+# Common issues:
+# - Cargo.lock v4 cần Rust nightly
+# - Missing .sqlx folder
+# - Build tools missing (curl, build-essential)
 ```
 
-### Slow performance
-
-- Check dyno metrics
-- Review database queries (N+1 problem)
-- Consider upgrading dyno type
-- Enable caching
-
-### Out of memory
+### CI/CD fails
 
 ```bash
-# Check memory usage
-heroku logs --tail | grep Memory
+# Check GitHub Actions logs
+gh run list
+gh run view <run-id>
 
-# Solutions:
-# - Optimize code
-# - Upgrade dyno
-# - Add swap
+# Re-run failed job
+gh run rerun <run-id>
+
+# Check path filter
+# Đảm bảo dorny/paths-filter có permissions: pull-requests: read
 ```
 
-## Rollback
+### Deploy not updating
 
 ```bash
-# List releases
+# Kiểm tra Heroku releases
 heroku releases
 
-# Rollback to previous
-heroku rollback
+# Force release
+heroku container:release web -a YOUR_APP_NAME
 
-# Rollback to specific version
-heroku rollback v42
+# Restart dynos
+heroku restart
 ```
 
 ## Security Checklist
 
-- [ ] JWT_SECRET is strong and unique
-- [ ] DATABASE_URL uses SSL
-- [ ] CORS configured correctly
-- [ ] Rate limiting enabled
-- [ ] Input validation on all endpoints
-- [ ] SQL injection prevention (SQLx parameterized queries)
-- [ ] XSS prevention (React handles this)
-- [ ] HTTPS enforced
+- [x] JWT_SECRET is strong and unique
+- [x] DATABASE_URL uses SSL
+- [x] CORS configured correctly
+- [x] Rate limiting enabled (Heroku built-in)
+- [x] Input validation on all endpoints
+- [x] SQL injection prevention (SQLx parameterized queries)
+- [x] XSS prevention (React handles this)
+- [x] HTTPS enforced (Heroku auto-redirect)
+- [x] Security scanning with Trivy (non-blocking)
 
 ## Cost Optimization
 
@@ -274,7 +384,7 @@ heroku rollback v42
 - Use Eco dynos for low traffic
 - Scale down during off-peak
 - Optimize database queries
-- Use connection pooling
+- Use Docker layer caching
 
 ## Scaling
 
@@ -297,8 +407,9 @@ heroku ps:type web=standard-1x
 ### Regular Tasks
 
 - [ ] Weekly: Review error logs
+- [ ] Weekly: Check GitHub Actions runs
 - [ ] Monthly: Database maintenance
-- [ ] Monthly: Security updates
+- [ ] Monthly: Security updates (cargo update, npm update)
 - [ ] Quarterly: Performance review
 
 ### Database Maintenance
@@ -309,4 +420,19 @@ heroku pg:vacuum
 
 # Analyze tables
 heroku pg:diagnose
+```
+
+### Dependency Updates
+
+```bash
+# Backend
+cd backend
+cargo update
+cargo sqlx prepare
+git add Cargo.lock .sqlx/
+
+# Frontend
+cd frontend
+npm update
+git add package-lock.json
 ```

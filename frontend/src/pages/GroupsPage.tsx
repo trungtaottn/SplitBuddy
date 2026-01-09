@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, Plus, UserPlus, Trash2, BarChart3, Beer } from 'lucide-react'
 import { toast } from '@/components/ui/toaster'
+import { showError } from '@/utils/errorHandler'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { Celebration } from '@/components/ui/Celebration'
@@ -79,9 +80,8 @@ export default function GroupsPage() {
       setMemberEmail('')
       toast.success('Thêm thành viên thành công!')
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
+    onError: (error: unknown) => {
+      showError(error, 'Không thể thêm thành viên. Vui lòng thử lại.')
     },
   })
 
@@ -93,9 +93,8 @@ export default function GroupsPage() {
       queryClient.invalidateQueries({ queryKey: ['groups', selectedGroupId] })
       toast.success('Đã xoá thành viên')
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
+    onError: (error: unknown) => {
+      showError(error, 'Không thể thêm thành viên. Vui lòng thử lại.')
     },
   })
 

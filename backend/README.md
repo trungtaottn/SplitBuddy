@@ -2,6 +2,8 @@
 
 Backend API cho ứng dụng chia tiền nhậu SplitBuddy, được xây dựng với **Rust** và **Axum**.
 
+**Last Updated:** January 2026
+
 ## Tech Stack
 
 - **Framework:** Axum 0.7
@@ -10,10 +12,12 @@ Backend API cho ứng dụng chia tiền nhậu SplitBuddy, được xây dựng
 - **Authentication:** JWT + Argon2
 - **Decimal Handling:** rust_decimal (tránh floating point errors)
 - **AI Integration:** Google Gemini API
+- **Documentation:** utoipa + Swagger UI
 
 ## Prerequisites
 
-- Rust 1.75+ (cài đặt qua [rustup](https://rustup.rs/))
+- Rust stable (cho development)
+- Rust nightly (cho Docker build - do một số dependencies yêu cầu)
 - Docker & Docker Compose (cho PostgreSQL)
 - SQLx CLI: `cargo install sqlx-cli --no-default-features --features postgres`
 
@@ -51,20 +55,16 @@ Server sẽ chạy tại `http://localhost:8080`
 
 ## Development
 
-### Chạy với hot reload (sử dụng cargo-watch)
+### Makefile Commands (Khuyến khích)
 
 ```bash
-cargo install cargo-watch
-cargo watch -x run
+# Từ thư mục root
+make check-backend   # Check format, clippy, build, test
+make format-backend  # Format code
+make dev-backend     # Chạy dev server
 ```
 
-### Chạy tests
-
-```bash
-cargo test
-```
-
-### Linting & Formatting
+### Manual Commands
 
 ```bash
 # Format code
@@ -72,6 +72,19 @@ cargo fmt
 
 # Run clippy (linter)
 cargo clippy -- -D warnings
+
+# Run tests
+cargo test
+
+# Build release
+cargo build --release
+```
+
+### Chạy với hot reload
+
+```bash
+cargo install cargo-watch
+cargo watch -x run
 ```
 
 ### SQLx Offline Mode
@@ -92,6 +105,11 @@ SQLX_OFFLINE=true cargo test --release
 **Lưu ý:** Mỗi khi thêm/sửa SQL query mới, cần chạy `cargo sqlx prepare` và commit thư mục `.sqlx/`.
 
 ## API Endpoints
+
+### Health Check
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Health check (used by CI/CD) |
 
 ### Authentication
 | Method | Endpoint | Description |
@@ -186,15 +204,25 @@ SQLX_OFFLINE=true cargo test --release
 | GET | `/api/wrapped/me` | Wrapped stats của tôi |
 | GET | `/api/wrapped/generate` | Generate wrapped mới |
 
+### Notifications
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/notifications` | Danh sách notifications |
+| PUT | `/api/notifications/:id/read` | Đánh dấu đã đọc |
+| PUT | `/api/notifications/read-all` | Đánh dấu tất cả đã đọc |
+
 ### Uploads
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/uploads/avatar` | Upload avatar |
+| POST | `/api/uploads/music` | Upload music track |
 
 ### Admin
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/admin/stats` | Thống kê hệ thống |
+| GET | `/api/admin/feature-flags` | Danh sách feature flags |
+| PUT | `/api/admin/feature-flags/:key` | Cập nhật feature flag |
 
 ## Project Structure
 
@@ -203,6 +231,9 @@ src/
 ├── main.rs              # Entry point, server setup
 ├── config.rs            # Environment configuration
 ├── error.rs             # AppError enum & error handling
+├── cache.rs             # In-memory caching
+├── audit.rs             # Audit logging
+├── openapi.rs           # Swagger/OpenAPI documentation
 ├── api/                 # HTTP handlers (Route definitions)
 │   ├── mod.rs           # Router aggregation
 │   ├── auth.rs          # Login, Register
@@ -215,7 +246,10 @@ src/
 │   ├── ai.rs            # Gemini AI integration
 │   ├── wrapped.rs       # Yearly wrapped stats
 │   ├── uploads.rs       # File uploads
+│   ├── notifications.rs # User notifications
 │   ├── admin.rs         # Admin endpoints
+│   ├── health.rs        # Health check endpoint
+│   ├── ws.rs            # WebSocket handler
 │   └── response.rs      # Response types & helpers
 ├── domain/              # Business logic & domain models
 │   ├── user.rs          # User model
@@ -229,8 +263,11 @@ src/
 │   ├── session_repo.rs  # Session, Bill, Participant queries
 │   ├── debt_repo.rs     # Debt queries
 │   └── game_repo.rs     # Game history & custom questions
-└── middleware/
-    └── auth.rs          # JWT verification middleware
+├── middleware/
+│   └── auth.rs          # JWT verification middleware
+└── utils/
+    ├── mod.rs           # Utility exports
+    └── password.rs      # Password hashing
 ```
 
 ## Database Schema
@@ -251,6 +288,10 @@ Các bảng chính:
 - `user_personas` - Avatar & XP
 - `achievements` - Danh sách thành tựu
 - `user_achievements` - Thành tựu đã mở khoá
+- `music_tracks` - Nhạc nền
+- `feature_flags` - Feature toggles
+- `notifications` - Thông báo user
+- `audit_logs` - Audit trail
 
 ## Environment Variables
 
@@ -294,6 +335,29 @@ Tất cả API trả về format chuẩn:
 - Sử dụng `rust_decimal` cho tất cả tính toán tiền
 - API trả về dạng string để tránh floating point errors
 - Frontend parse với `parseFloat()` hoặc tương đương
+
+## Docker Build
+
+Backend được build trong Docker sử dụng Rust nightly (do một số dependencies yêu cầu `edition2024`):
+
+```dockerfile
+FROM rustlang/rust:nightly-slim AS backend-builder
+# ...
+RUN cargo build --release --locked
+```
+
+## Testing
+
+```bash
+# Run all tests
+cargo test
+
+# Run with logs
+RUST_LOG=debug cargo test -- --nocapture
+
+# Run specific test
+cargo test test_name
+```
 
 ## License
 
