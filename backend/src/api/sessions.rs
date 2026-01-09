@@ -21,7 +21,10 @@ pub fn routes() -> Router<AppState> {
         .route("/", get(list_sessions).post(create_session))
         .route("/:id", get(get_session).delete(delete_session))
         .route("/:id/participants", post(add_participant))
-        .route("/:id/participants/:pid", put(update_participant).delete(delete_participant))
+        .route(
+            "/:id/participants/:pid",
+            put(update_participant).delete(delete_participant),
+        )
         .route("/:id/close", post(close_session))
         .route("/:id/reopen", post(reopen_session))
         .route("/:id/bills", get(list_bills).post(create_bill))
@@ -44,8 +47,8 @@ pub struct SessionResponse {
     pub total_amount: Decimal,
     // Enhanced fields for better UX
     pub participants: Vec<ParticipantBasicInfo>,
-    pub my_debt: Decimal,      // How much current user owes in this session
-    pub my_owed: Decimal,      // How much current user is owed in this session
+    pub my_debt: Decimal,        // How much current user owes in this session
+    pub my_owed: Decimal,        // How much current user is owed in this session
     pub settled_amount: Decimal, // Total amount already settled
 }
 
@@ -179,8 +182,12 @@ pub struct SessionQuery {
     pub limit: i64,
 }
 
-fn default_page() -> i64 { 1 }
-fn default_limit() -> i64 { 10 }
+fn default_page() -> i64 {
+    1
+}
+fn default_limit() -> i64 {
+    10
+}
 
 #[derive(Serialize)]
 pub struct PaginatedResponse<T> {
@@ -202,15 +209,17 @@ async fn list_sessions(
     Query(query): Query<SessionQuery>,
 ) -> Result<Json<PaginatedResponse<Vec<SessionResponse>>>, AppError> {
     let repo = SessionRepository::new(state.pool.clone());
-    let (sessions, total) = repo.find_by_user_paginated(
-        auth_user.user_id,
-        query.search.as_deref(),
-        query.status.as_deref(),
-        query.from,
-        query.to,
-        query.page,
-        query.limit,
-    ).await?;
+    let (sessions, total) = repo
+        .find_by_user_paginated(
+            auth_user.user_id,
+            query.search.as_deref(),
+            query.status.as_deref(),
+            query.from,
+            query.to,
+            query.page,
+            query.limit,
+        )
+        .await?;
 
     let total_pages = (total as f64 / query.limit as f64).ceil() as i64;
 
@@ -257,8 +266,9 @@ async fn get_session(
     // Check cache first
     if let Some(cached) = state.cache.get_session(session_id).await {
         // Verify user is participant (for security)
-        repo.verify_participant(session_id, auth_user.user_id).await?;
-        
+        repo.verify_participant(session_id, auth_user.user_id)
+            .await?;
+
         return Ok(ok(SessionDetailResponse {
             id: cached.id,
             name: cached.name,
@@ -280,18 +290,21 @@ async fn get_session(
         .ok_or(AppError::SessionNotFound { session_id })?;
 
     // Cache the result
-    state.cache.cache_session(CachedSession {
-        id: session.id,
-        name: session.name.clone(),
-        location: session.location.clone(),
-        status: session.status.clone(),
-        created_by: session.created_by,
-        created_at: session.created_at,
-        session_date: session.session_date,
-        total_amount: session.total_amount,
-        group_id: session.group_id,
-        participants: session.participants.clone(),
-    }).await;
+    state
+        .cache
+        .cache_session(CachedSession {
+            id: session.id,
+            name: session.name.clone(),
+            location: session.location.clone(),
+            status: session.status,
+            created_by: session.created_by,
+            created_at: session.created_at,
+            session_date: session.session_date,
+            total_amount: session.total_amount,
+            group_id: session.group_id,
+            participants: session.participants.clone(),
+        })
+        .await;
 
     Ok(ok(session))
 }
@@ -320,7 +333,13 @@ async fn add_participant(
     auth_user: AuthUser,
     Path(session_id): Path<Uuid>,
     Json(payload): Json<AddParticipantRequest>,
-) -> Result<(axum::http::StatusCode, Json<ApiResponse<ParticipantResponse>>), AppError> {
+) -> Result<
+    (
+        axum::http::StatusCode,
+        Json<ApiResponse<ParticipantResponse>>,
+    ),
+    AppError,
+> {
     let repo = SessionRepository::new(state.pool.clone());
 
     repo.verify_owner(session_id, auth_user.user_id).await?;
@@ -387,7 +406,7 @@ async fn delete_participant(
             UNION
             SELECT 1 FROM bill_splits WHERE participant_id = $1
         )
-        "#
+        "#,
     )
     .bind(params.pid)
     .fetch_one(&state.pool)
@@ -408,7 +427,7 @@ async fn delete_participant(
             JOIN sessions s ON sp.session_id = s.id
             WHERE sp.id = $1 AND sp.user_id = s.created_by
         )
-        "#
+        "#,
     )
     .bind(params.pid)
     .fetch_one(&state.pool)
@@ -438,16 +457,24 @@ async fn close_session(
     repo.verify_owner(session_id, auth_user.user_id).await?;
 
     // Update session status to closed
-    let session = repo.update_status(session_id, SessionStatus::Closed).await?;
+    let session = repo
+        .update_status(session_id, SessionStatus::Closed)
+        .await?;
 
     // Invalidate cache
     state.cache.invalidate_session(session_id).await;
 
     // Broadcast WebSocket event
-    state.ws_manager.broadcast_to_session(
-        session_id,
-        WsEvent::SessionStatusChanged { session_id, status: "closed".to_string() }
-    ).await;
+    state
+        .ws_manager
+        .broadcast_to_session(
+            session_id,
+            WsEvent::SessionStatusChanged {
+                session_id,
+                status: "closed".to_string(),
+            },
+        )
+        .await;
 
     Ok(ok(session))
 }
@@ -463,16 +490,24 @@ async fn reopen_session(
     repo.verify_owner(session_id, auth_user.user_id).await?;
 
     // Update session status to active
-    let session = repo.update_status(session_id, SessionStatus::Active).await?;
+    let session = repo
+        .update_status(session_id, SessionStatus::Active)
+        .await?;
 
     // Invalidate cache
     state.cache.invalidate_session(session_id).await;
 
     // Broadcast WebSocket event
-    state.ws_manager.broadcast_to_session(
-        session_id,
-        WsEvent::SessionStatusChanged { session_id, status: "active".to_string() }
-    ).await;
+    state
+        .ws_manager
+        .broadcast_to_session(
+            session_id,
+            WsEvent::SessionStatusChanged {
+                session_id,
+                status: "active".to_string(),
+            },
+        )
+        .await;
 
     Ok(ok(session))
 }
@@ -502,7 +537,7 @@ async fn list_bills(
             JOIN session_participants sp ON bp.participant_id = sp.id
             LEFT JOIN users u ON sp.user_id = u.id
             WHERE bp.bill_id = $1
-            "#
+            "#,
         )
         .bind(bill.id)
         .fetch_all(&state.pool)
@@ -519,7 +554,7 @@ async fn list_bills(
             JOIN session_participants sp ON bs.participant_id = sp.id
             LEFT JOIN users u ON sp.user_id = u.id
             WHERE bs.bill_id = $1
-            "#
+            "#,
         )
         .bind(bill.id)
         .fetch_all(&state.pool)
@@ -592,10 +627,16 @@ async fn create_bill(
     state.cache.invalidate_session(session_id).await;
 
     // Broadcast WebSocket event
-    state.ws_manager.broadcast_to_session(
-        session_id,
-        WsEvent::BillUpdated { session_id, bill_id: bill.id }
-    ).await;
+    state
+        .ws_manager
+        .broadcast_to_session(
+            session_id,
+            WsEvent::BillUpdated {
+                session_id,
+                bill_id: bill.id,
+            },
+        )
+        .await;
 
     Ok(created(bill))
 }
@@ -625,18 +666,20 @@ async fn update_bill(
     let repo = SessionRepository::new(state.pool.clone());
 
     // Verify user is participant
-    repo.verify_participant(params.id, auth_user.user_id).await?;
+    repo.verify_participant(params.id, auth_user.user_id)
+        .await?;
 
     // Check if bill exists and user is the creator
-    let bill_creator: Option<(Uuid,)> = sqlx::query_as(
-        "SELECT created_by FROM bills WHERE id = $1 AND session_id = $2"
-    )
-    .bind(params.bill_id)
-    .bind(params.id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let bill_creator: Option<(Uuid,)> =
+        sqlx::query_as("SELECT created_by FROM bills WHERE id = $1 AND session_id = $2")
+            .bind(params.bill_id)
+            .bind(params.id)
+            .fetch_optional(&state.pool)
+            .await?;
 
-    let (creator_id,) = bill_creator.ok_or(AppError::BillNotFound { bill_id: params.bill_id })?;
+    let (creator_id,) = bill_creator.ok_or(AppError::BillNotFound {
+        bill_id: params.bill_id,
+    })?;
 
     if creator_id != auth_user.user_id {
         return Err(AppError::Forbidden {
@@ -652,24 +695,32 @@ async fn update_bill(
     }
 
     // Update bill using repository method
-    let updated_bill = repo.update_bill(
-        params.bill_id,
-        params.id,
-        payload.description.as_deref(),
-        payload.total_amount,
-        payload.split_strategy.as_deref(),
-        payload.payers.as_deref(),
-        payload.split_details.as_deref(),
-    ).await?;
+    let updated_bill = repo
+        .update_bill(
+            params.bill_id,
+            params.id,
+            payload.description.as_deref(),
+            payload.total_amount,
+            payload.split_strategy.as_deref(),
+            payload.payers.as_deref(),
+            payload.split_details.as_deref(),
+        )
+        .await?;
 
     // Invalidate cache (bill amounts may have changed)
     state.cache.invalidate_session(params.id).await;
 
     // Broadcast WebSocket event
-    state.ws_manager.broadcast_to_session(
-        params.id,
-        WsEvent::BillUpdated { session_id: params.id, bill_id: params.bill_id }
-    ).await;
+    state
+        .ws_manager
+        .broadcast_to_session(
+            params.id,
+            WsEvent::BillUpdated {
+                session_id: params.id,
+                bill_id: params.bill_id,
+            },
+        )
+        .await;
 
     Ok(ok(updated_bill))
 }
@@ -682,18 +733,20 @@ async fn delete_bill(
     let repo = SessionRepository::new(state.pool.clone());
 
     // Verify user is participant
-    repo.verify_participant(params.id, auth_user.user_id).await?;
+    repo.verify_participant(params.id, auth_user.user_id)
+        .await?;
 
     // Check if bill exists and user is the creator
-    let bill_creator: Option<(Uuid,)> = sqlx::query_as(
-        "SELECT created_by FROM bills WHERE id = $1 AND session_id = $2"
-    )
-    .bind(params.bill_id)
-    .bind(params.id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let bill_creator: Option<(Uuid,)> =
+        sqlx::query_as("SELECT created_by FROM bills WHERE id = $1 AND session_id = $2")
+            .bind(params.bill_id)
+            .bind(params.id)
+            .fetch_optional(&state.pool)
+            .await?;
 
-    let (creator_id,) = bill_creator.ok_or(AppError::BillNotFound { bill_id: params.bill_id })?;
+    let (creator_id,) = bill_creator.ok_or(AppError::BillNotFound {
+        bill_id: params.bill_id,
+    })?;
 
     if creator_id != auth_user.user_id {
         return Err(AppError::Forbidden {
@@ -708,10 +761,16 @@ async fn delete_bill(
     state.cache.invalidate_session(params.id).await;
 
     // Broadcast WebSocket event
-    state.ws_manager.broadcast_to_session(
-        params.id,
-        WsEvent::BillUpdated { session_id: params.id, bill_id: params.bill_id }
-    ).await;
+    state
+        .ws_manager
+        .broadcast_to_session(
+            params.id,
+            WsEvent::BillUpdated {
+                session_id: params.id,
+                bill_id: params.bill_id,
+            },
+        )
+        .await;
 
     Ok(ok(()))
 }
@@ -724,10 +783,13 @@ async fn export_session(
     let repo = SessionRepository::new(state.pool.clone());
 
     // Verify user is participant
-    repo.verify_participant(session_id, auth_user.user_id).await?;
+    repo.verify_participant(session_id, auth_user.user_id)
+        .await?;
 
     // Get session details
-    let session = repo.find_by_id_with_details(session_id, auth_user.user_id).await?
+    let session = repo
+        .find_by_id_with_details(session_id, auth_user.user_id)
+        .await?
         .ok_or(AppError::SessionNotFound { session_id })?;
 
     // Get bills with details
@@ -754,7 +816,7 @@ async fn export_session(
         LEFT JOIN users du ON dsp.user_id = du.id
         WHERE d.session_id = $1
         ORDER BY d.amount DESC
-        "#
+        "#,
     )
     .bind(session_id)
     .fetch_all(&state.pool)
@@ -762,10 +824,10 @@ async fn export_session(
 
     // Generate CSV content
     let mut csv = String::new();
-    
+
     // Add BOM for UTF-8 Excel compatibility
     csv.push('\u{FEFF}');
-    
+
     // Session info
     csv.push_str(&format!("Cuộc nhậu: {}\n", session.name));
     csv.push_str(&format!("Ngày: {}\n", session.session_date));
@@ -779,7 +841,15 @@ async fn export_session(
     csv.push_str("NGƯỜI THAM GIA\n");
     csv.push_str("Tên,Vai trò\n");
     for p in &session.participants {
-        csv.push_str(&format!("{},{}\n", p.display_name, if p.role == crate::domain::session::ParticipantRole::Owner { "Chủ xị" } else { "Thành viên" }));
+        csv.push_str(&format!(
+            "{},{}\n",
+            p.display_name,
+            if p.role == crate::domain::session::ParticipantRole::Owner {
+                "Chủ xị"
+            } else {
+                "Thành viên"
+            }
+        ));
     }
     csv.push('\n');
 
@@ -787,8 +857,9 @@ async fn export_session(
     csv.push_str("HÓA ĐƠN\n");
     csv.push_str("Mô tả,Số tiền,Ngày tạo\n");
     for bill in &bills {
-        csv.push_str(&format!("{},{},{}\n", 
-            bill.description, 
+        csv.push_str(&format!(
+            "{},{},{}\n",
+            bill.description,
             bill.amount,
             bill.created_at.format("%d/%m/%Y %H:%M")
         ));
@@ -799,7 +870,10 @@ async fn export_session(
     csv.push_str("CÔNG NỢ\n");
     csv.push_str("Người nợ,Nợ,Số tiền\n");
     for debt in &debts {
-        csv.push_str(&format!("{},{},{}\n", debt.debtor_name, debt.creditor_name, debt.amount));
+        csv.push_str(&format!(
+            "{},{},{}\n",
+            debt.debtor_name, debt.creditor_name, debt.amount
+        ));
     }
 
     // Create filename
@@ -814,8 +888,12 @@ async fn export_session(
     Ok((
         [
             (axum::http::header::CONTENT_TYPE, "text/csv; charset=utf-8"),
-            (axum::http::header::CONTENT_DISPOSITION, &format!("attachment; filename=\"{}\"", filename)),
+            (
+                axum::http::header::CONTENT_DISPOSITION,
+                &format!("attachment; filename=\"{}\"", filename),
+            ),
         ],
         csv,
-    ).into_response())
+    )
+        .into_response())
 }
