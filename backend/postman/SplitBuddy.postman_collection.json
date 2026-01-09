@@ -1,0 +1,937 @@
+{
+	"info": {
+		"_postman_id": "splitbuddy-api-collection",
+		"name": "SplitBuddy API",
+		"description": "API Collection for SplitBuddy - Bill Splitting Application\n\nEnvironments:\n- Development: http://localhost:8080\n- Production: https://ttn.social",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{access_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "{{base_url}}"
+		}
+	],
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set('access_token', jsonData.data.access_token);",
+									"    pm.environment.set('user_id', jsonData.data.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\",\n    \"full_name\": \"Test User\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set('access_token', jsonData.data.access_token);",
+									"    pm.environment.set('user_id', jsonData.data.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Get Features",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/auth/features",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "features"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get My Profile",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/users/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users", "me"]
+						}
+					}
+				},
+				{
+					"name": "Update My Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"full_name\": \"Updated Name\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users", "me"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Sessions",
+			"item": [
+				{
+					"name": "List Sessions",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/sessions?page=1&limit=20",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions"],
+							"query": [
+								{"key": "page", "value": "1"},
+								{"key": "limit", "value": "20"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Session",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set('session_id', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Friday Night Drinks\",\n    \"location\": \"Beer Garden\",\n    \"session_date\": \"2024-01-05\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/sessions",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions"]
+						}
+					}
+				},
+				{
+					"name": "Get Session Detail",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/sessions/{{session_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions", "{{session_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Session",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "{{base_url}}/api/sessions/{{session_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions", "{{session_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Add Participant",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"guest_name\": \"Guest User\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/sessions/{{session_id}}/participants",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions", "{{session_id}}", "participants"]
+						}
+					}
+				},
+				{
+					"name": "Close Session",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/api/sessions/{{session_id}}/close",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions", "{{session_id}}", "close"]
+						}
+					}
+				},
+				{
+					"name": "Reopen Session",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/api/sessions/{{session_id}}/reopen",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions", "{{session_id}}", "reopen"]
+						}
+					}
+				},
+				{
+					"name": "List Bills",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/sessions/{{session_id}}/bills",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions", "{{session_id}}", "bills"]
+						}
+					}
+				},
+				{
+					"name": "Create Bill",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set('bill_id', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"description\": \"Pizza and Drinks\",\n    \"amount\": \"250000\",\n    \"split_type\": \"equal\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/sessions/{{session_id}}/bills",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions", "{{session_id}}", "bills"]
+						}
+					}
+				},
+				{
+					"name": "Update Bill",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"description\": \"Pizza, Drinks and Snacks\",\n    \"amount\": \"300000\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/sessions/{{session_id}}/bills/{{bill_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions", "{{session_id}}", "bills", "{{bill_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Bill",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "{{base_url}}/api/sessions/{{session_id}}/bills/{{bill_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions", "{{session_id}}", "bills", "{{bill_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Export Session",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/sessions/{{session_id}}/export",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions", "{{session_id}}", "export"]
+						}
+					}
+				},
+				{
+					"name": "Spin Wheel",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/api/sessions/{{session_id}}/spin",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions", "{{session_id}}", "spin"]
+						}
+					}
+				},
+				{
+					"name": "Spin History",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/sessions/{{session_id}}/spin-history",
+							"host": ["{{base_url}}"],
+							"path": ["api", "sessions", "{{session_id}}", "spin-history"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Debts",
+			"item": [
+				{
+					"name": "My Debt Dashboard",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/debts/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "debts", "me"]
+						}
+					}
+				},
+				{
+					"name": "Debts by Session",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/debts/sessions",
+							"host": ["{{base_url}}"],
+							"path": ["api", "debts", "sessions"]
+						}
+					}
+				},
+				{
+					"name": "Request Settlement",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/api/debts/{{debt_id}}/request-settle",
+							"host": ["{{base_url}}"],
+							"path": ["api", "debts", "{{debt_id}}", "request-settle"]
+						}
+					}
+				},
+				{
+					"name": "Confirm Settlement",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/api/debts/{{debt_id}}/confirm-settle",
+							"host": ["{{base_url}}"],
+							"path": ["api", "debts", "{{debt_id}}", "confirm-settle"]
+						}
+					}
+				},
+				{
+					"name": "Settle Guest Debt",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/api/debts/{{debt_id}}/settle-guest",
+							"host": ["{{base_url}}"],
+							"path": ["api", "debts", "{{debt_id}}", "settle-guest"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Groups",
+			"item": [
+				{
+					"name": "List Groups",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/groups",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups"]
+						}
+					}
+				},
+				{
+					"name": "Create Group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set('group_id', jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Friday Night Crew\",\n    \"description\": \"Weekly drinking buddies\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/groups",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups"]
+						}
+					}
+				},
+				{
+					"name": "Get Group Detail",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Group Members",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/members",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}", "members"]
+						}
+					}
+				},
+				{
+					"name": "Get Group Debts",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/debts",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}", "debts"]
+						}
+					}
+				},
+				{
+					"name": "Get Group Debts (Simplified)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/debts/simplified",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}", "debts", "simplified"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Games",
+			"item": [
+				{
+					"name": "Truth or Dare",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/games/truth-or-dare",
+							"host": ["{{base_url}}"],
+							"path": ["api", "games", "truth-or-dare"]
+						}
+					}
+				},
+				{
+					"name": "Never Have I Ever",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/games/never-have-i-ever",
+							"host": ["{{base_url}}"],
+							"path": ["api", "games", "never-have-i-ever"]
+						}
+					}
+				},
+				{
+					"name": "Challenges",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/games/challenges",
+							"host": ["{{base_url}}"],
+							"path": ["api", "games", "challenges"]
+						}
+					}
+				},
+				{
+					"name": "Roll Dice",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/games/dice",
+							"host": ["{{base_url}}"],
+							"path": ["api", "games", "dice"]
+						}
+					}
+				},
+				{
+					"name": "Game History",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/games/history/{{session_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "games", "history", "{{session_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Game Stats",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/games/stats/{{session_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "games", "stats", "{{session_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Leaderboard",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/games/leaderboard",
+							"host": ["{{base_url}}"],
+							"path": ["api", "games", "leaderboard"]
+						}
+					}
+				},
+				{
+					"name": "My Custom Questions",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/games/custom",
+							"host": ["{{base_url}}"],
+							"path": ["api", "games", "custom"]
+						}
+					}
+				},
+				{
+					"name": "Create Custom Question",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"game_type\": \"truth_or_dare\",\n    \"content\": \"Custom question here\",\n    \"category\": \"truth\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/games/custom",
+							"host": ["{{base_url}}"],
+							"path": ["api", "games", "custom"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Notifications",
+			"item": [
+				{
+					"name": "List Notifications",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/notifications?page=1&limit=20",
+							"host": ["{{base_url}}"],
+							"path": ["api", "notifications"],
+							"query": [
+								{"key": "page", "value": "1"},
+								{"key": "limit", "value": "20"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Unread Count",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/notifications/unread-count",
+							"host": ["{{base_url}}"],
+							"path": ["api", "notifications", "unread-count"]
+						}
+					}
+				},
+				{
+					"name": "Mark as Read",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "{{base_url}}/api/notifications/{{notification_id}}/read",
+							"host": ["{{base_url}}"],
+							"path": ["api", "notifications", "{{notification_id}}", "read"]
+						}
+					}
+				},
+				{
+					"name": "Mark All as Read",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/api/notifications/mark-all-read",
+							"host": ["{{base_url}}"],
+							"path": ["api", "notifications", "mark-all-read"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Personas",
+			"item": [
+				{
+					"name": "My Persona",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/personas/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "personas", "me"]
+						}
+					}
+				},
+				{
+					"name": "Update Persona",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"nickname\": \"Party King\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/personas/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "personas", "me"]
+						}
+					}
+				},
+				{
+					"name": "All Achievements",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/personas/achievements",
+							"host": ["{{base_url}}"],
+							"path": ["api", "personas", "achievements"]
+						}
+					}
+				},
+				{
+					"name": "My Achievements",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/personas/achievements/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "personas", "achievements", "me"]
+						}
+					}
+				},
+				{
+					"name": "Check Achievements",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "{{base_url}}/api/personas/achievements/check",
+							"host": ["{{base_url}}"],
+							"path": ["api", "personas", "achievements", "check"]
+						}
+					}
+				},
+				{
+					"name": "Persona Leaderboard",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/personas/leaderboard",
+							"host": ["{{base_url}}"],
+							"path": ["api", "personas", "leaderboard"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "AI",
+			"item": [
+				{
+					"name": "AI Greeting",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"context\": \"evening_party\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/ai/greeting",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ai", "greeting"]
+						}
+					}
+				},
+				{
+					"name": "AI Chat",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"message\": \"Tell me a drinking toast\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/ai/chat",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ai", "chat"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Wrapped",
+			"item": [
+				{
+					"name": "My Wrapped",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/wrapped/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "wrapped", "me"]
+						}
+					}
+				},
+				{
+					"name": "Generate Wrapped",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/wrapped/generate",
+							"host": ["{{base_url}}"],
+							"path": ["api", "wrapped", "generate"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Uploads",
+			"item": [
+				{
+					"name": "Upload Avatar",
+					"request": {
+						"method": "POST",
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "avatar",
+									"type": "file",
+									"src": ""
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/uploads/avatar",
+							"host": ["{{base_url}}"],
+							"path": ["api", "uploads", "avatar"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin",
+			"item": [
+				{
+					"name": "System Stats",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/admin/stats",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "stats"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/health",
+							"host": ["{{base_url}}"],
+							"path": ["api", "health"]
+						}
+					}
+				},
+				{
+					"name": "Metrics",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/metrics",
+							"host": ["{{base_url}}"],
+							"path": ["metrics"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

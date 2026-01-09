@@ -1,4 +1,8 @@
-use axum::{extract::State, routing::{get, post}, Json, Router};
+use axum::{
+    extract::State,
+    routing::{get, post},
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -11,7 +15,7 @@ use crate::domain::user::User;
 use crate::error::AppError;
 use crate::middleware::auth::create_token;
 use crate::repository::user_repo::UserRepository;
-use crate::utils::password::{hash_password, verify_password};
+use crate::utils::password::{hash_password_async, verify_password_async};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -95,7 +99,7 @@ pub async fn register(
         });
     }
 
-    let password_hash = hash_password(&payload.password)?;
+    let password_hash = hash_password_async(payload.password.clone()).await?;
 
     let user = repo
         .create(&payload.email, &password_hash, &payload.full_name)
@@ -138,7 +142,7 @@ pub async fn login(
         .await?
         .ok_or(AppError::InvalidCredentials)?;
 
-    if !verify_password(&payload.password, &user.password_hash)? {
+    if !verify_password_async(payload.password.clone(), user.password_hash.clone()).await? {
         return Err(AppError::InvalidCredentials);
     }
 
@@ -168,12 +172,12 @@ async fn get_features(
     State(state): State<AppState>,
 ) -> Result<Json<ApiResponse<Vec<FeatureFlagPublic>>>, AppError> {
     use crate::cache::CachedFeatureFlag;
-    
+
     tracing::info!("get_features handler called");
-    
+
     // Try to get from cache first
     const CACHE_KEY: &str = "all_public_features";
-    
+
     if let Some(cached) = state.cache.all_features.get(CACHE_KEY).await {
         tracing::info!("Cache hit for features");
         // Convert cached features to public format
@@ -186,20 +190,19 @@ async fn get_features(
             .collect();
         return Ok(ok(features));
     }
-    
+
     tracing::info!("Cache miss, fetching from database");
-    
+
     // Cache miss - fetch from database
-    let features: Vec<FeatureFlagPublic> = sqlx::query_as(
-        r#"SELECT key, enabled FROM feature_flags ORDER BY key ASC"#
-    )
-    .fetch_all(&state.pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Database error fetching features: {:?}", e);
-        AppError::Database(e)
-    })?;
-    
+    let features: Vec<FeatureFlagPublic> =
+        sqlx::query_as(r#"SELECT key, enabled FROM feature_flags ORDER BY key ASC"#)
+            .fetch_all(&state.pool)
+            .await
+            .map_err(|e| {
+                tracing::error!("Database error fetching features: {:?}", e);
+                AppError::Database(e)
+            })?;
+
     tracing::info!("Fetched {} features from database", features.len());
 
     // Store in cache for future requests
@@ -214,8 +217,12 @@ async fn get_features(
             module: None,
         })
         .collect();
-    
-    state.cache.all_features.insert(CACHE_KEY.to_string(), cached_features).await;
+
+    state
+        .cache
+        .all_features
+        .insert(CACHE_KEY.to_string(), cached_features)
+        .await;
 
     Ok(ok(features))
 }

@@ -5,7 +5,6 @@ pub struct Config {
     pub database_url: String,
     pub jwt_secret: String,
     pub jwt_expiration_hours: i64,
-    pub host: String,
     pub port: u16,
     // Security settings
     pub admin_default_password: String,
@@ -28,41 +27,37 @@ impl Config {
             .collect();
 
         Ok(Self {
-            database_url: env::var("DATABASE_URL")
-                .expect("DATABASE_URL must be set"),
-            jwt_secret: env::var("JWT_SECRET")
-                .expect("JWT_SECRET must be set"),
+            database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
+            jwt_secret: env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
             jwt_expiration_hours: env::var("JWT_EXPIRATION_HOURS")
                 .unwrap_or_else(|_| "24".to_string())
                 .parse()
                 .expect("JWT_EXPIRATION_HOURS must be a number"),
-            host: env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
             port: env::var("PORT")
                 .unwrap_or_else(|_| "8080".to_string())
                 .parse()
                 .expect("PORT must be a number"),
             // Security settings
-            admin_default_password: env::var("ADMIN_DEFAULT_PASSWORD")
-                .unwrap_or_else(|_| {
-                    // Enforce password in production
-                    if env::var("RUST_ENV").unwrap_or_default() == "production"
-                        || env::var("HEROKU").is_ok()
-                        || env::var("RAILWAY_ENVIRONMENT").is_ok()
-                    {
-                        panic!("ADMIN_DEFAULT_PASSWORD must be set in production!");
-                    }
-                    tracing::warn!("⚠️  Using development default password - CHANGE IN PRODUCTION!");
-                    "DevAdmin123!".to_string()
-                }),
+            admin_default_password: env::var("ADMIN_DEFAULT_PASSWORD").unwrap_or_else(|_| {
+                // Enforce password in production
+                if env::var("RUST_ENV").unwrap_or_default() == "production"
+                    || env::var("HEROKU").is_ok()
+                    || env::var("RAILWAY_ENVIRONMENT").is_ok()
+                {
+                    panic!("ADMIN_DEFAULT_PASSWORD must be set in production!");
+                }
+                tracing::warn!("⚠️  Using development default password - CHANGE IN PRODUCTION!");
+                "DevAdmin123!".to_string()
+            }),
             cors_origins,
             rate_limit_requests_per_second: env::var("RATE_LIMIT_RPS")
-                .unwrap_or_else(|_| "50".to_string())
+                .unwrap_or_else(|_| "200".to_string())
                 .parse()
-                .unwrap_or(50),
+                .unwrap_or(200),
             rate_limit_burst_size: env::var("RATE_LIMIT_BURST")
-                .unwrap_or_else(|_| "100".to_string())
+                .unwrap_or_else(|_| "500".to_string())
                 .parse()
-                .unwrap_or(100),
+                .unwrap_or(500),
             // HTTP client settings (for OpenAI, external APIs)
             http_timeout_seconds: env::var("HTTP_TIMEOUT_SECONDS")
                 .unwrap_or_else(|_| "30".to_string())

@@ -9,7 +9,7 @@ description = "Backend API for SplitBuddy - Bill splitting application"
 # Web Framework
 axum = { version = "0.7", features = ["macros", "multipart", "ws"] }
 tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "trace", "fs", "request-id", "util"] }
+tower-http = { version = "0.5", features = ["cors", "trace", "fs", "request-id", "util", "compression-gzip"] }
 tower_governor = "0.4"
 
 # WebSocket
@@ -63,6 +63,13 @@ metrics-exporter-prometheus = "0.13"
 # OpenAPI / Swagger
 utoipa = { version = "4", features = ["axum_extras", "uuid", "chrono"] }
 utoipa-swagger-ui = { version = "7", features = ["axum"] }
+
+# Memory Allocator (optional, recommended for production)
+tikv-jemallocator = { version = "0.5", optional = true }
+
+[features]
+default = ["jemalloc"]
+jemalloc = ["tikv-jemallocator"]
 
 [dev-dependencies]
 tokio-test = "0.4"
