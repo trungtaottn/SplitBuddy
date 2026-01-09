@@ -4,7 +4,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::api::sessions::{
-    BillResponse, ParticipantBasicInfo, ParticipantResponse, PayerInput, SessionDetailResponse, 
+    BillResponse, ParticipantBasicInfo, ParticipantResponse, PayerInput, SessionDetailResponse,
     SessionResponse, SplitDetailInput,
 };
 use crate::domain::session::{ParticipantRole, SessionStatus};
@@ -67,7 +67,10 @@ impl SessionRepository {
             .into_iter()
             .map(|row| {
                 let participants = participants_map.get(&row.id).cloned().unwrap_or_default();
-                let (my_debt, my_owed) = debts_map.get(&row.id).copied().unwrap_or((Decimal::ZERO, Decimal::ZERO));
+                let (my_debt, my_owed) = debts_map
+                    .get(&row.id)
+                    .copied()
+                    .unwrap_or((Decimal::ZERO, Decimal::ZERO));
                 let settled_amount = settled_map.get(&row.id).copied().unwrap_or(Decimal::ZERO);
 
                 SessionResponse {
@@ -167,7 +170,7 @@ impl SessionRepository {
             AND ($3::text IS NULL OR s.status::text = $3)
             AND ($4::date IS NULL OR s.session_date >= $4)
             AND ($5::date IS NULL OR s.session_date <= $5)
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(search)
@@ -188,7 +191,10 @@ impl SessionRepository {
             .into_iter()
             .map(|row| {
                 let participants = participants_map.get(&row.id).cloned().unwrap_or_default();
-                let (my_debt, my_owed) = debts_map.get(&row.id).copied().unwrap_or((Decimal::ZERO, Decimal::ZERO));
+                let (my_debt, my_owed) = debts_map
+                    .get(&row.id)
+                    .copied()
+                    .unwrap_or((Decimal::ZERO, Decimal::ZERO));
                 let settled_amount = settled_map.get(&row.id).copied().unwrap_or(Decimal::ZERO);
 
                 SessionResponse {
@@ -216,7 +222,10 @@ impl SessionRepository {
     }
 
     /// Get basic participant info for session cards (max 5)
-    async fn get_session_participants_basic(&self, session_id: Uuid) -> Result<Vec<ParticipantBasicInfo>, AppError> {
+    async fn get_session_participants_basic(
+        &self,
+        session_id: Uuid,
+    ) -> Result<Vec<ParticipantBasicInfo>, AppError> {
         #[derive(sqlx::FromRow)]
         struct ParticipantRow {
             id: Uuid,
@@ -235,24 +244,31 @@ impl SessionRepository {
             WHERE sp.session_id = $1
             ORDER BY sp.joined_at
             LIMIT 5
-            "#
+            "#,
         )
         .bind(session_id)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(participants.into_iter().map(|p| ParticipantBasicInfo {
-            id: p.id,
-            name: p.name,
-            avatar_url: p.avatar_url,
-        }).collect())
+        Ok(participants
+            .into_iter()
+            .map(|p| ParticipantBasicInfo {
+                id: p.id,
+                name: p.name,
+                avatar_url: p.avatar_url,
+            })
+            .collect())
     }
 
     /// Get user's debt/owed amounts in a session
-    async fn get_user_debt_in_session(&self, session_id: Uuid, user_id: Uuid) -> Result<(Decimal, Decimal), AppError> {
+    async fn get_user_debt_in_session(
+        &self,
+        session_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(Decimal, Decimal), AppError> {
         // First get user's participant_id in this session
         let participant_id: Option<Uuid> = sqlx::query_scalar(
-            r#"SELECT id FROM session_participants WHERE session_id = $1 AND user_id = $2"#
+            r#"SELECT id FROM session_participants WHERE session_id = $1 AND user_id = $2"#,
         )
         .bind(session_id)
         .bind(user_id)
@@ -270,7 +286,7 @@ impl SessionRepository {
             SELECT COALESCE(SUM(amount), 0)
             FROM debts 
             WHERE session_id = $1 AND debtor_id = $2 AND status = 'pending'
-            "#
+            "#,
         )
         .bind(session_id)
         .bind(participant_id)
@@ -283,7 +299,7 @@ impl SessionRepository {
             SELECT COALESCE(SUM(amount), 0)
             FROM debts 
             WHERE session_id = $1 AND creditor_id = $2 AND status = 'pending'
-            "#
+            "#,
         )
         .bind(session_id)
         .bind(participant_id)
@@ -300,7 +316,7 @@ impl SessionRepository {
             SELECT COALESCE(SUM(amount), 0)
             FROM debts 
             WHERE session_id = $1 AND status = 'settled'
-            "#
+            "#,
         )
         .bind(session_id)
         .fetch_one(&self.pool)
@@ -310,9 +326,12 @@ impl SessionRepository {
     }
 
     /// Batch get participants for multiple sessions (max 5 per session)
-    async fn batch_get_participants(&self, session_ids: &[Uuid]) -> Result<std::collections::HashMap<Uuid, Vec<ParticipantBasicInfo>>, AppError> {
+    async fn batch_get_participants(
+        &self,
+        session_ids: &[Uuid],
+    ) -> Result<std::collections::HashMap<Uuid, Vec<ParticipantBasicInfo>>, AppError> {
         use std::collections::HashMap;
-        
+
         if session_ids.is_empty() {
             return Ok(HashMap::new());
         }
@@ -340,7 +359,7 @@ impl SessionRepository {
                 WHERE sp.session_id = ANY($1)
             ) sub
             WHERE row_num <= 5
-            "#
+            "#,
         )
         .bind(session_ids)
         .fetch_all(&self.pool)
@@ -348,11 +367,14 @@ impl SessionRepository {
 
         let mut result: HashMap<Uuid, Vec<ParticipantBasicInfo>> = HashMap::new();
         for p in participants {
-            result.entry(p.session_id).or_default().push(ParticipantBasicInfo {
-                id: p.id,
-                name: p.name,
-                avatar_url: p.avatar_url,
-            });
+            result
+                .entry(p.session_id)
+                .or_default()
+                .push(ParticipantBasicInfo {
+                    id: p.id,
+                    name: p.name,
+                    avatar_url: p.avatar_url,
+                });
         }
 
         // Ensure all session_ids have an entry (even if empty)
@@ -364,9 +386,13 @@ impl SessionRepository {
     }
 
     /// Batch get user's debt/owed amounts in multiple sessions
-    async fn batch_get_user_debts(&self, session_ids: &[Uuid], user_id: Uuid) -> Result<std::collections::HashMap<Uuid, (Decimal, Decimal)>, AppError> {
+    async fn batch_get_user_debts(
+        &self,
+        session_ids: &[Uuid],
+        user_id: Uuid,
+    ) -> Result<std::collections::HashMap<Uuid, (Decimal, Decimal)>, AppError> {
         use std::collections::HashMap;
-        
+
         if session_ids.is_empty() {
             return Ok(HashMap::new());
         }
@@ -409,9 +435,12 @@ impl SessionRepository {
     }
 
     /// Batch get settled amounts for multiple sessions
-    async fn batch_get_settled_amounts(&self, session_ids: &[Uuid]) -> Result<std::collections::HashMap<Uuid, Decimal>, AppError> {
+    async fn batch_get_settled_amounts(
+        &self,
+        session_ids: &[Uuid],
+    ) -> Result<std::collections::HashMap<Uuid, Decimal>, AppError> {
         use std::collections::HashMap;
-        
+
         if session_ids.is_empty() {
             return Ok(HashMap::new());
         }
@@ -430,7 +459,7 @@ impl SessionRepository {
             FROM debts 
             WHERE session_id = ANY($1) AND status = 'settled'
             GROUP BY session_id
-            "#
+            "#,
         )
         .bind(session_ids)
         .fetch_all(&self.pool)
@@ -489,16 +518,18 @@ impl SessionRepository {
         tx.commit().await?;
 
         // Get owner info for participants list
-        let owner_info: Option<(String, Option<String>)> = sqlx::query_as(
-            "SELECT full_name, avatar_url FROM users WHERE id = $1"
-        )
-        .bind(created_by)
-        .fetch_optional(&self.pool)
-        .await?;
+        let owner_info: Option<(String, Option<String>)> =
+            sqlx::query_as("SELECT full_name, avatar_url FROM users WHERE id = $1")
+                .bind(created_by)
+                .fetch_optional(&self.pool)
+                .await?;
 
         let participants = vec![ParticipantBasicInfo {
             id: Uuid::nil(), // Will be actual ID but we don't have it easily here
-            name: owner_info.clone().map(|(n, _)| n).unwrap_or_else(|| "Unknown".to_string()),
+            name: owner_info
+                .clone()
+                .map(|(n, _)| n)
+                .unwrap_or_else(|| "Unknown".to_string()),
             avatar_url: owner_info.and_then(|(_, a)| a),
         }];
 
@@ -663,7 +694,7 @@ impl SessionRepository {
             LEFT JOIN bills b ON s.id = b.session_id
             WHERE s.id = $1
             GROUP BY s.id
-            "#
+            "#,
         )
         .bind(session_id)
         .fetch_optional(&self.pool)
@@ -743,7 +774,11 @@ impl SessionRepository {
         Ok(())
     }
 
-    pub async fn verify_participant(&self, session_id: Uuid, user_id: Uuid) -> Result<(), AppError> {
+    pub async fn verify_participant(
+        &self,
+        session_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), AppError> {
         let is_participant = sqlx::query_scalar!(
             r#"
             SELECT EXISTS(
@@ -823,7 +858,11 @@ impl SessionRepository {
             id: session.id,
             name: session.name,
             location: session.location,
-            status: if session.status == "closed" { SessionStatus::Closed } else { SessionStatus::Active },
+            status: if session.status == "closed" {
+                SessionStatus::Closed
+            } else {
+                SessionStatus::Active
+            },
             created_by: session.created_by,
             created_at: session.created_at,
             session_date: session.session_date,
@@ -844,13 +883,10 @@ impl SessionRepository {
     ) -> Result<ParticipantResponse, AppError> {
         let participant_id = Uuid::new_v4();
         let display_name = if let Some(uid) = user_id {
-            let user = sqlx::query_scalar!(
-                r#"SELECT full_name FROM users WHERE id = $1"#,
-                uid
-            )
-            .fetch_optional(&self.pool)
-            .await?
-            .ok_or(AppError::UserNotFound { user_id: uid })?;
+            let user = sqlx::query_scalar!(r#"SELECT full_name FROM users WHERE id = $1"#, uid)
+                .fetch_optional(&self.pool)
+                .await?
+                .ok_or(AppError::UserNotFound { user_id: uid })?;
             user
         } else {
             guest_name.clone().unwrap_or_else(|| "Guest".to_string())
@@ -902,15 +938,15 @@ impl SessionRepository {
         })?;
 
         let display_name = if let Some(uid) = participant.user_id {
-            sqlx::query_scalar!(
-                r#"SELECT full_name FROM users WHERE id = $1"#,
-                uid
-            )
-            .fetch_optional(&self.pool)
-            .await?
-            .unwrap_or_else(|| "Unknown".to_string())
+            sqlx::query_scalar!(r#"SELECT full_name FROM users WHERE id = $1"#, uid)
+                .fetch_optional(&self.pool)
+                .await?
+                .unwrap_or_else(|| "Unknown".to_string())
         } else {
-            participant.guest_name.clone().unwrap_or_else(|| "Guest".to_string())
+            participant
+                .guest_name
+                .clone()
+                .unwrap_or_else(|| "Guest".to_string())
         };
 
         Ok(ParticipantResponse {
@@ -918,18 +954,22 @@ impl SessionRepository {
             user_id: participant.user_id,
             guest_name: participant.guest_name,
             display_name,
-            role: if participant.role == "owner" { ParticipantRole::Owner } else { ParticipantRole::Member },
+            role: if participant.role == "owner" {
+                ParticipantRole::Owner
+            } else {
+                ParticipantRole::Member
+            },
             joined_at: participant.joined_at,
         })
     }
 
-    pub async fn delete_participant(
-        &self,
-        participant_id: Uuid,
-    ) -> Result<(), AppError> {
-        sqlx::query!("DELETE FROM session_participants WHERE id = $1", participant_id)
-            .execute(&self.pool)
-            .await?;
+    pub async fn delete_participant(&self, participant_id: Uuid) -> Result<(), AppError> {
+        sqlx::query!(
+            "DELETE FROM session_participants WHERE id = $1",
+            participant_id
+        )
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
 
@@ -1051,7 +1091,8 @@ impl SessionRepository {
                     }
                 } else {
                     // Empty split_details, split among all participants
-                    Self::split_among_all_participants(&mut tx, bill_id, session_id, amount).await?;
+                    Self::split_among_all_participants(&mut tx, bill_id, session_id, amount)
+                        .await?;
                 }
             } else {
                 // No split_details provided, split among all participants
@@ -1209,7 +1250,7 @@ impl SessionRepository {
                 split_strategy = COALESCE($3, split_strategy)
             WHERE id = $4
             RETURNING id, session_id, description, amount, split_strategy, created_by, created_at
-            "#
+            "#,
         )
         .bind(description)
         .bind(amount)
@@ -1274,11 +1315,7 @@ impl SessionRepository {
         Ok(updated_bill)
     }
 
-    pub async fn delete_bill(
-        &self,
-        bill_id: Uuid,
-        session_id: Uuid,
-    ) -> Result<(), AppError> {
+    pub async fn delete_bill(&self, bill_id: Uuid, session_id: Uuid) -> Result<(), AppError> {
         let mut tx = self.pool.begin().await?;
 
         // Delete bill payers

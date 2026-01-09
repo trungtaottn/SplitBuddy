@@ -110,10 +110,16 @@ async fn request_settle(
     let debt = repo.request_settlement(debt_id, auth_user.user_id).await?;
 
     // Broadcast WebSocket event
-    state.ws_manager.broadcast_to_session(
-        debt.session_id,
-        WsEvent::DebtUpdated { session_id: debt.session_id, debt_id: debt.id }
-    ).await;
+    state
+        .ws_manager
+        .broadcast_to_session(
+            debt.session_id,
+            WsEvent::DebtUpdated {
+                session_id: debt.session_id,
+                debt_id: debt.id,
+            },
+        )
+        .await;
 
     Ok(ok(SettleResponse {
         debt_id: debt.id,
@@ -132,10 +138,16 @@ async fn confirm_settle(
     let debt = repo.confirm_settlement(debt_id, auth_user.user_id).await?;
 
     // Broadcast WebSocket event
-    state.ws_manager.broadcast_to_session(
-        debt.session_id,
-        WsEvent::DebtUpdated { session_id: debt.session_id, debt_id: debt.id }
-    ).await;
+    state
+        .ws_manager
+        .broadcast_to_session(
+            debt.session_id,
+            WsEvent::DebtUpdated {
+                session_id: debt.session_id,
+                debt_id: debt.id,
+            },
+        )
+        .await;
 
     Ok(ok(SettleResponse {
         debt_id: debt.id,
@@ -156,10 +168,16 @@ async fn settle_guest_debt(
     let debt = repo.settle_guest_debt(debt_id, auth_user.user_id).await?;
 
     // Broadcast WebSocket event
-    state.ws_manager.broadcast_to_session(
-        debt.session_id,
-        WsEvent::DebtUpdated { session_id: debt.session_id, debt_id: debt.id }
-    ).await;
+    state
+        .ws_manager
+        .broadcast_to_session(
+            debt.session_id,
+            WsEvent::DebtUpdated {
+                session_id: debt.session_id,
+                debt_id: debt.id,
+            },
+        )
+        .await;
 
     Ok(ok(SettleResponse {
         debt_id: debt.id,

@@ -124,13 +124,12 @@ async fn get_my_persona(
     .await
     .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let achievements_count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM user_achievements WHERE user_id = $1",
-    )
-    .bind(auth_user.user_id)
-    .fetch_one(&state.pool)
-    .await
-    .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let achievements_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM user_achievements WHERE user_id = $1")
+            .bind(auth_user.user_id)
+            .fetch_one(&state.pool)
+            .await
+            .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(ApiResponse::new(PersonaWithUser {
         user_id: auth_user.user_id,
@@ -239,13 +238,12 @@ async fn check_achievements(
     let mut newly_unlocked: Vec<String> = Vec::new();
 
     // Get user stats
-    let sessions_created: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM sessions WHERE created_by = $1",
-    )
-    .bind(auth_user.user_id)
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or((0,));
+    let sessions_created: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM sessions WHERE created_by = $1")
+            .bind(auth_user.user_id)
+            .fetch_one(&state.pool)
+            .await
+            .unwrap_or((0,));
 
     let sessions_attended: (i64,) = sqlx::query_as(
         "SELECT COUNT(DISTINCT s.id) FROM sessions s 
@@ -272,13 +270,12 @@ async fn check_achievements(
     }
 
     // Check founding_member
-    let user_created: Option<(chrono::DateTime<chrono::Utc>,)> = sqlx::query_as(
-        "SELECT created_at FROM users WHERE id = $1",
-    )
-    .bind(auth_user.user_id)
-    .fetch_optional(&state.pool)
-    .await
-    .unwrap_or(None);
+    let user_created: Option<(chrono::DateTime<chrono::Utc>,)> =
+        sqlx::query_as("SELECT created_at FROM users WHERE id = $1")
+            .bind(auth_user.user_id)
+            .fetch_optional(&state.pool)
+            .await
+            .unwrap_or(None);
 
     if let Some((created_at,)) = user_created {
         // Static date string - use expect() since this is a compile-time constant
@@ -294,13 +291,12 @@ async fn check_achievements(
 
     // Add XP for newly unlocked achievements
     for code in &newly_unlocked {
-        let xp: Option<(i32,)> = sqlx::query_as(
-            "SELECT xp_reward FROM achievements WHERE code = $1",
-        )
-        .bind(code)
-        .fetch_optional(&state.pool)
-        .await
-        .unwrap_or(None);
+        let xp: Option<(i32,)> =
+            sqlx::query_as("SELECT xp_reward FROM achievements WHERE code = $1")
+                .bind(code)
+                .fetch_optional(&state.pool)
+                .await
+                .unwrap_or(None);
 
         if let Some((xp_reward,)) = xp {
             add_xp(&state.pool, auth_user.user_id, xp_reward).await;
@@ -374,13 +370,12 @@ async fn get_user_persona(
     .await
     .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let achievements_count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM user_achievements WHERE user_id = $1",
-    )
-    .bind(user_id)
-    .fetch_one(&state.pool)
-    .await
-    .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let achievements_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM user_achievements WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_one(&state.pool)
+            .await
+            .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(ApiResponse::new(PersonaWithUser {
         user_id,

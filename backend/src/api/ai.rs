@@ -1,10 +1,6 @@
-use axum::{
-    extract::State,
-    routing::post,
-    Json, Router,
-};
-use serde::{Deserialize, Serialize};
 use anyhow::anyhow;
+use axum::{extract::State, routing::post, Json, Router};
+use serde::{Deserialize, Serialize};
 
 use crate::api::response::{ok, ApiResponse};
 use crate::api::AppState;
@@ -91,10 +87,17 @@ async fn get_greeting(
     Json(payload): Json<GreetingRequest>,
 ) -> Result<Json<ApiResponse<GreetingResponse>>, AppError> {
     let openai_key = std::env::var("OPENAI_API_KEY").ok();
-    
+
     let (message, suggestion, action) = if let Some(api_key) = openai_key {
         // Use OpenAI for personalized greeting
-        match generate_ai_greeting(&state.http_client, &api_key, &payload.user_name, payload.mood.as_deref()).await {
+        match generate_ai_greeting(
+            &state.http_client,
+            &api_key,
+            &payload.user_name,
+            payload.mood.as_deref(),
+        )
+        .await
+        {
             Ok(result) => result,
             Err(_) => generate_fallback_greeting(&payload.user_name, payload.mood.as_deref()),
         }
@@ -111,17 +114,26 @@ async fn get_greeting(
     }))
 }
 
-fn generate_fallback_greeting(name: &str, mood: Option<&str>) -> (String, Option<String>, Option<String>) {
+fn generate_fallback_greeting(
+    name: &str,
+    mood: Option<&str>,
+) -> (String, Option<String>, Option<String>) {
     let first_name = name.split_whitespace().last().unwrap_or(name);
-    
+
     match mood {
         Some("happy") | Some("vui") => (
-            format!("Chào {}! Vui quá ta! Vui thì phải đi ăn mừng thôi!", first_name),
+            format!(
+                "Chào {}! Vui quá ta! Vui thì phải đi ăn mừng thôi!",
+                first_name
+            ),
             Some("Tạo cuộc nhậu ăn mừng ngay nào! 🍻".to_string()),
             Some("create_session".to_string()),
         ),
         Some("sad") | Some("buồn") => (
-            format!("Ôi {}! Buồn gì vậy? Buồn thì đi nhậu cho quên sầu thôi!", first_name),
+            format!(
+                "Ôi {}! Buồn gì vậy? Buồn thì đi nhậu cho quên sầu thôi!",
+                first_name
+            ),
             Some("Nhậu đi cho khuây khỏa nè! Tạo cuộc nhậu ngay! 🍺".to_string()),
             Some("create_session".to_string()),
         ),
@@ -131,7 +143,10 @@ fn generate_fallback_greeting(name: &str, mood: Option<&str>) -> (String, Option
             Some("create_session".to_string()),
         ),
         Some("stressed") | Some("căng thẳng") => (
-            format!("Ê {}! Căng thẳng quá hả? Xả stress đi nhậu thôi!", first_name),
+            format!(
+                "Ê {}! Căng thẳng quá hả? Xả stress đi nhậu thôi!",
+                first_name
+            ),
             Some("Gọi hội đi nhậu xả stress ngay! 🎉".to_string()),
             Some("create_session".to_string()),
         ),
@@ -154,23 +169,25 @@ async fn generate_ai_greeting(
     name: &str,
     mood: Option<&str>,
 ) -> Result<(String, Option<String>, Option<String>), AppError> {
-    
     let first_name = name.split_whitespace().last().unwrap_or(name);
-    let mood_context = mood.map(|m| format!("Người dùng đang cảm thấy: {}", m)).unwrap_or_default();
-    
-    let system_prompt = format!(r#"Bạn là trợ lý vui vẻ của app chia tiền nhậu SplitBuddy. 
+    let mood_context = mood
+        .map(|m| format!("Người dùng đang cảm thấy: {}", m))
+        .unwrap_or_default();
+
+    let system_prompt = format!(
+        r#"Bạn là trợ lý vui vẻ của app chia tiền nhậu SplitBuddy. 
 Phong cách: Thân thiện, hài hước, dùng tiếng Việt tự nhiên có emoji.
 Mục tiêu: Khuyến khích người dùng tạo cuộc nhậu với bạn bè.
 Trả lời ngắn gọn, tối đa 2 câu.
 QUAN TRỌNG: Luôn gọi người dùng bằng tên "{}" - KHÔNG ĐƯỢC dùng từ "bạn".
 Nếu người dùng buồn/mệt/stress -> gợi ý đi nhậu để xả stress.
-Nếu người dùng vui -> gợi ý tạo cuộc nhậu ăn mừng."#, first_name);
+Nếu người dùng vui -> gợi ý tạo cuộc nhậu ăn mừng."#,
+        first_name
+    );
 
     let user_prompt = format!(
         "Chào hỏi {} một cách vui vẻ, gọi tên {} trực tiếp. {}",
-        first_name,
-        first_name,
-        mood_context
+        first_name, first_name, mood_context
     );
 
     let request_body = serde_json::json!({
@@ -220,9 +237,16 @@ async fn chat(
     Json(payload): Json<ChatRequest>,
 ) -> Result<Json<ApiResponse<ChatResponse>>, AppError> {
     let openai_key = std::env::var("OPENAI_API_KEY").ok();
-    
+
     let (reply, action) = if let Some(api_key) = openai_key {
-        match generate_ai_chat(&state.http_client, &api_key, &payload.message, payload.context.as_deref()).await {
+        match generate_ai_chat(
+            &state.http_client,
+            &api_key,
+            &payload.message,
+            payload.context.as_deref(),
+        )
+        .await
+        {
             Ok(result) => result,
             Err(_) => (
                 "Xin lỗi, tôi đang bận nhậu, thử lại sau nhé!".to_string(),
@@ -238,7 +262,7 @@ async fn chat(
 
 fn generate_fallback_chat(message: &str) -> (String, Option<String>) {
     let msg_lower = message.to_lowercase();
-    
+
     if msg_lower.contains("nhậu") || msg_lower.contains("bia") || msg_lower.contains("uống") {
         (
             "Nhậu thôi! Tạo cuộc nhậu ngay đi!".to_string(),
@@ -255,10 +279,7 @@ fn generate_fallback_chat(message: &str) -> (String, Option<String>) {
             Some("view_debts".to_string()),
         )
     } else {
-        (
-            "Hôm nay nhậu không?".to_string(),
-            None,
-        )
+        ("Hôm nay nhậu không?".to_string(), None)
     }
 }
 
@@ -268,7 +289,6 @@ async fn generate_ai_chat(
     message: &str,
     context: Option<&str>,
 ) -> Result<(String, Option<String>), AppError> {
-
     let system_prompt = r#"Bạn là trợ lý vui vẻ của app chia tiền nhậu SplitBuddy.
 Phong cách: Thân thiện, hài hước, tự nhiên, dùng emoji.
 Trả lời ngắn gọn (1-2 câu).
@@ -276,7 +296,9 @@ Nếu người dùng muốn nhậu/tạo cuộc -> khuyến khích và gợi ý 
 Nếu người dùng hỏi về công nợ -> gợi ý xem công nợ nhóm.
 Luôn tích cực và vui vẻ!"#;
 
-    let context_info = context.map(|c| format!("\nContext: {}", c)).unwrap_or_default();
+    let context_info = context
+        .map(|c| format!("\nContext: {}", c))
+        .unwrap_or_default();
 
     let request_body = serde_json::json!({
         "model": "gpt-3.5-turbo",
@@ -308,7 +330,9 @@ Luôn tích cực và vui vẻ!"#;
         .to_string();
 
     // Detect action from reply content
-    let action = if reply.to_lowercase().contains("tạo cuộc") || reply.to_lowercase().contains("nhậu") {
+    let action = if reply.to_lowercase().contains("tạo cuộc")
+        || reply.to_lowercase().contains("nhậu")
+    {
         Some("create_session".to_string())
     } else if reply.to_lowercase().contains("công nợ") {
         Some("view_debts".to_string())

@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::api::debts::{DebtItemResponse, SessionDebtResponse, ParticipantDebtResponse};
+use crate::api::debts::{DebtItemResponse, ParticipantDebtResponse, SessionDebtResponse};
 use crate::domain::debt::{Debt, DebtStatus};
 use crate::error::AppError;
 
@@ -71,11 +71,7 @@ impl DebtRepository {
         Ok((i_owe, owed_to_me))
     }
 
-    pub async fn request_settlement(
-        &self,
-        debt_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<Debt, AppError> {
+    pub async fn request_settlement(&self, debt_id: Uuid, user_id: Uuid) -> Result<Debt, AppError> {
         let debt = sqlx::query_as!(
             Debt,
             r#"
@@ -132,11 +128,7 @@ impl DebtRepository {
         Ok(updated)
     }
 
-    pub async fn confirm_settlement(
-        &self,
-        debt_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<Debt, AppError> {
+    pub async fn confirm_settlement(&self, debt_id: Uuid, user_id: Uuid) -> Result<Debt, AppError> {
         let debt = sqlx::query_as!(
             Debt,
             r#"
@@ -194,11 +186,7 @@ impl DebtRepository {
     }
 
     /// Settle a debt from a guest directly (creditor can mark as settled without request)
-    pub async fn settle_guest_debt(
-        &self,
-        debt_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<Debt, AppError> {
+    pub async fn settle_guest_debt(&self, debt_id: Uuid, user_id: Uuid) -> Result<Debt, AppError> {
         // Check if the user is the creditor and the debtor is a guest
         let debt = sqlx::query_as!(
             Debt,
@@ -325,7 +313,7 @@ impl DebtRepository {
 
         for row in rows {
             let balance = row.total_paid - row.total_owed;
-            
+
             let participant = ParticipantDebtResponse {
                 participant_id: row.participant_id,
                 name: row.participant_name,

@@ -1,4 +1,8 @@
-use axum::{extract::State, routing::{get, post}, Json, Router};
+use axum::{
+    extract::State,
+    routing::{get, post},
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -107,9 +111,9 @@ async fn change_password(
 
     // Validate new password
     if payload.new_password.len() < 6 {
-        return Err(AppError::Validation { 
-            field: "new_password".to_string(), 
-            message: "Mật khẩu mới phải có ít nhất 6 ký tự".to_string() 
+        return Err(AppError::Validation {
+            field: "new_password".to_string(),
+            message: "Mật khẩu mới phải có ít nhất 6 ký tự".to_string(),
         });
     }
 

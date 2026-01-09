@@ -1,7 +1,7 @@
+use crate::error::AppError;
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
-use serde::{Deserialize, Serialize};
-use crate::error::AppError;
 
 pub struct GameRepository {
     pool: PgPool,
@@ -103,7 +103,10 @@ impl GameRepository {
     }
 
     // Game History
-    pub async fn add_history(&self, entry: CreateGameHistory) -> Result<GameHistoryEntry, AppError> {
+    pub async fn add_history(
+        &self,
+        entry: CreateGameHistory,
+    ) -> Result<GameHistoryEntry, AppError> {
         let result = sqlx::query_as!(
             GameHistoryEntry,
             r#"
@@ -126,7 +129,11 @@ impl GameRepository {
         Ok(result)
     }
 
-    pub async fn get_session_history(&self, session_id: Uuid, limit: i64) -> Result<Vec<GameHistoryWithPlayer>, AppError> {
+    pub async fn get_session_history(
+        &self,
+        session_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<GameHistoryWithPlayer>, AppError> {
         let history = sqlx::query_as!(
             GameHistoryWithPlayer,
             r#"
@@ -156,7 +163,11 @@ impl GameRepository {
     }
 
     // Custom Questions
-    pub async fn create_custom_question(&self, user_id: Uuid, data: CreateCustomQuestion) -> Result<CustomQuestion, AppError> {
+    pub async fn create_custom_question(
+        &self,
+        user_id: Uuid,
+        data: CreateCustomQuestion,
+    ) -> Result<CustomQuestion, AppError> {
         let result = sqlx::query_as!(
             CustomQuestion,
             r#"
@@ -177,7 +188,11 @@ impl GameRepository {
         Ok(result)
     }
 
-    pub async fn get_user_custom_questions(&self, user_id: Uuid, game_type: Option<String>) -> Result<Vec<CustomQuestion>, AppError> {
+    pub async fn get_user_custom_questions(
+        &self,
+        user_id: Uuid,
+        game_type: Option<String>,
+    ) -> Result<Vec<CustomQuestion>, AppError> {
         let questions = if let Some(gt) = game_type {
             sqlx::query_as!(
                 CustomQuestion,
@@ -210,7 +225,11 @@ impl GameRepository {
         Ok(questions)
     }
 
-    pub async fn get_random_custom_question(&self, user_id: Uuid, game_type: &str) -> Result<Option<CustomQuestion>, AppError> {
+    pub async fn get_random_custom_question(
+        &self,
+        user_id: Uuid,
+        game_type: &str,
+    ) -> Result<Option<CustomQuestion>, AppError> {
         let question = sqlx::query_as!(
             CustomQuestion,
             r#"
@@ -239,7 +258,11 @@ impl GameRepository {
         Ok(question)
     }
 
-    pub async fn delete_custom_question(&self, user_id: Uuid, question_id: Uuid) -> Result<(), AppError> {
+    pub async fn delete_custom_question(
+        &self,
+        user_id: Uuid,
+        question_id: Uuid,
+    ) -> Result<(), AppError> {
         sqlx::query!(
             "DELETE FROM custom_questions WHERE id = $1 AND user_id = $2",
             question_id,
@@ -252,7 +275,13 @@ impl GameRepository {
     }
 
     // Drinking Stats
-    pub async fn record_drink(&self, session_id: Uuid, participant_id: Uuid, drinks: i32, lost: bool) -> Result<DrinkingStats, AppError> {
+    pub async fn record_drink(
+        &self,
+        session_id: Uuid,
+        participant_id: Uuid,
+        drinks: i32,
+        lost: bool,
+    ) -> Result<DrinkingStats, AppError> {
         let result = sqlx::query_as!(
             DrinkingStats,
             r#"
@@ -278,7 +307,10 @@ impl GameRepository {
         Ok(result)
     }
 
-    pub async fn get_session_stats(&self, session_id: Uuid) -> Result<Vec<DrinkingStatsWithName>, AppError> {
+    pub async fn get_session_stats(
+        &self,
+        session_id: Uuid,
+    ) -> Result<Vec<DrinkingStatsWithName>, AppError> {
         let stats = sqlx::query_as!(
             DrinkingStatsWithName,
             r#"

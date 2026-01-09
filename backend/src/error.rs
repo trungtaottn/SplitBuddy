@@ -131,7 +131,7 @@ impl IntoResponse for AppError {
                 tracing::warn!("Application error: {}", self);
             }
         }
-        
+
         let status = self.status_code();
         let error_response = ErrorResponse {
             error: ErrorDetail {

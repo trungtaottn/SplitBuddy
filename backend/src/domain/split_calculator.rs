@@ -19,10 +19,7 @@ pub struct DebtEntry {
 pub struct SplitCalculator;
 
 impl SplitCalculator {
-    pub fn calculate_equal_split(
-        total_amount: Decimal,
-        participant_count: usize,
-    ) -> Vec<Decimal> {
+    pub fn calculate_equal_split(total_amount: Decimal, participant_count: usize) -> Vec<Decimal> {
         if participant_count == 0 {
             return vec![];
         }
@@ -161,9 +158,18 @@ mod tests {
 
         let balances = SplitCalculator::calculate_net_balances(&payers, &splits);
 
-        let a_balance = balances.iter().find(|b| b.participant_id == user_a).unwrap();
-        let b_balance = balances.iter().find(|b| b.participant_id == user_b).unwrap();
-        let c_balance = balances.iter().find(|b| b.participant_id == user_c).unwrap();
+        let a_balance = balances
+            .iter()
+            .find(|b| b.participant_id == user_a)
+            .unwrap();
+        let b_balance = balances
+            .iter()
+            .find(|b| b.participant_id == user_b)
+            .unwrap();
+        let c_balance = balances
+            .iter()
+            .find(|b| b.participant_id == user_c)
+            .unwrap();
 
         assert_eq!(a_balance.balance, Decimal::new(200000, 0));
         assert_eq!(b_balance.balance, Decimal::new(-100000, 0));

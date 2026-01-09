@@ -14,14 +14,12 @@ use crate::repository::group_repo::GroupRepository;
 
 /// Check if a feature is enabled from database
 async fn is_feature_enabled(pool: &sqlx::PgPool, key: &str) -> bool {
-    sqlx::query_scalar::<_, bool>(
-        "SELECT enabled FROM feature_flags WHERE key = $1"
-    )
-    .bind(key)
-    .fetch_optional(pool)
-    .await
-    .unwrap_or(None)
-    .unwrap_or(true) // Default to enabled if not found
+    sqlx::query_scalar::<_, bool>("SELECT enabled FROM feature_flags WHERE key = $1")
+        .bind(key)
+        .fetch_optional(pool)
+        .await
+        .unwrap_or(None)
+        .unwrap_or(true) // Default to enabled if not found
 }
 
 pub fn routes() -> Router<AppState> {
@@ -29,7 +27,10 @@ pub fn routes() -> Router<AppState> {
         .route("/", get(list_groups).post(create_group))
         .route("/:id", get(get_group))
         .route("/:id/members", get(get_members).post(add_member))
-        .route("/:id/members/:user_id", axum::routing::delete(remove_member))
+        .route(
+            "/:id/members/:user_id",
+            axum::routing::delete(remove_member),
+        )
         .route("/:id/debts", get(get_group_debts))
         .route("/:id/debts/simplified", get(get_simplified_debts))
 }
@@ -110,7 +111,11 @@ async fn create_group(
     let repo = GroupRepository::new(state.pool.clone());
 
     let group = repo
-        .create(&payload.name, payload.description.as_deref(), auth_user.user_id)
+        .create(
+            &payload.name,
+            payload.description.as_deref(),
+            auth_user.user_id,
+        )
         .await?;
 
     Ok(created(GroupResponse {
@@ -137,10 +142,13 @@ async fn get_group(
         });
     }
 
-    let group = repo.find_by_id(group_id).await?.ok_or(AppError::Validation {
-        field: "group_id".to_string(),
-        message: "Group not found".to_string(),
-    })?;
+    let group = repo
+        .find_by_id(group_id)
+        .await?
+        .ok_or(AppError::Validation {
+            field: "group_id".to_string(),
+            message: "Group not found".to_string(),
+        })?;
 
     let members = repo.get_members(group_id).await?;
 
@@ -209,10 +217,13 @@ async fn add_member(
     }
 
     // Find user by email - user must exist (created by admin)
-    let user = repo.find_user_by_email(&payload.email).await?
+    let user = repo
+        .find_user_by_email(&payload.email)
+        .await?
         .ok_or_else(|| AppError::Validation {
             field: "email".to_string(),
-            message: "Người dùng không tồn tại. Vui lòng liên hệ Admin để tạo tài khoản.".to_string(),
+            message: "Người dùng không tồn tại. Vui lòng liên hệ Admin để tạo tài khoản."
+                .to_string(),
         })?;
 
     // Check if already member
@@ -250,10 +261,13 @@ async fn remove_member(
     }
 
     // Prevent removing self if admin
-    let group = repo.find_by_id(group_id).await?.ok_or(AppError::Validation {
-        field: "group_id".to_string(),
-        message: "Group not found".to_string(),
-    })?;
+    let group = repo
+        .find_by_id(group_id)
+        .await?
+        .ok_or(AppError::Validation {
+            field: "group_id".to_string(),
+            message: "Group not found".to_string(),
+        })?;
 
     if user_id == group.created_by {
         return Err(AppError::Validation {
@@ -347,10 +361,13 @@ async fn get_group_debts(
         });
     }
 
-    let group = repo.find_by_id(group_id).await?.ok_or_else(|| AppError::Validation {
-        field: "group_id".to_string(),
-        message: "Group not found".to_string(),
-    })?;
+    let group = repo
+        .find_by_id(group_id)
+        .await?
+        .ok_or_else(|| AppError::Validation {
+            field: "group_id".to_string(),
+            message: "Group not found".to_string(),
+        })?;
 
     let summary = repo.get_group_debt_summary(group_id, &group.name).await?;
 
@@ -383,10 +400,13 @@ async fn get_simplified_debts(
         });
     }
 
-    let group = repo.find_by_id(group_id).await?.ok_or_else(|| AppError::Validation {
-        field: "group_id".to_string(),
-        message: "Group not found".to_string(),
-    })?;
+    let group = repo
+        .find_by_id(group_id)
+        .await?
+        .ok_or_else(|| AppError::Validation {
+            field: "group_id".to_string(),
+            message: "Group not found".to_string(),
+        })?;
 
     // Get full debt summary to calculate balances
     let summary = repo.get_group_debt_summary(group_id, &group.name).await?;

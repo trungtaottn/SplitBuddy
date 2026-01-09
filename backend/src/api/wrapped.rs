@@ -30,32 +30,32 @@ pub struct WrappedStats {
     pub total_spent: f64,
     pub total_received: f64,
     pub avg_per_session: f64,
-    
+
     // Time patterns
     pub favorite_day: Option<String>,
     pub favorite_month: Option<String>,
     pub late_night_sessions: i64,
-    
+
     // Social stats
     pub unique_partners: i64,
     pub top_partner: Option<PartnerStat>,
     pub top_3_partners: Vec<PartnerStat>,
     pub groups_count: i64,
     pub favorite_group: Option<GroupStat>,
-    
+
     // Location stats
     pub unique_locations: i64,
     pub favorite_location: Option<String>,
-    
+
     // Achievements
     pub achievements_earned: i64,
     pub top_achievement: Option<String>,
-    
+
     // Fun facts
     pub biggest_session: Option<SessionStat>,
     pub longest_streak_weeks: i64,
     pub generous_score: f64, // % times you paid more than your share
-    
+
     // Titles earned this period
     pub titles: Vec<String>,
 }

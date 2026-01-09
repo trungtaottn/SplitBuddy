@@ -198,12 +198,16 @@ impl GroupRepository {
         Ok(user)
     }
 
-    pub async fn update_user_password(&self, user_id: Uuid, password: &str) -> Result<(), AppError> {
+    pub async fn update_user_password(
+        &self,
+        user_id: Uuid,
+        password: &str,
+    ) -> Result<(), AppError> {
         use argon2::{
             password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
             Argon2,
         };
-        
+
         let salt = SaltString::generate(&mut OsRng);
         let password_hash = Argon2::default()
             .hash_password(password.as_bytes(), &salt)
@@ -221,9 +225,14 @@ impl GroupRepository {
         Ok(())
     }
 
-    pub async fn create_user(&self, email: &str, full_name: &str, password: Option<&str>) -> Result<UserBasic, AppError> {
+    pub async fn create_user(
+        &self,
+        email: &str,
+        full_name: &str,
+        password: Option<&str>,
+    ) -> Result<UserBasic, AppError> {
         let id = Uuid::new_v4();
-        
+
         // Hash password if provided, otherwise empty string (can't login)
         let password_hash = match password {
             Some(pwd) if !pwd.is_empty() => {
@@ -231,16 +240,18 @@ impl GroupRepository {
                     password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
                     Argon2,
                 };
-                
+
                 let salt = SaltString::generate(&mut OsRng);
                 Argon2::default()
                     .hash_password(pwd.as_bytes(), &salt)
-                    .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to hash password: {}", e)))?
+                    .map_err(|e| {
+                        AppError::Internal(anyhow::anyhow!("Failed to hash password: {}", e))
+                    })?
                     .to_string()
             }
             _ => String::new(),
         };
-        
+
         let user = sqlx::query_as!(
             UserBasic,
             r#"
@@ -279,7 +290,9 @@ pub struct UserBasic {
     pub avatar_url: Option<String>,
 }
 
-use crate::api::groups::{GroupDebtSummary, GroupMemberDebt, GroupSessionDebt, MemberSessionAmount, SessionPayer};
+use crate::api::groups::{
+    GroupDebtSummary, GroupMemberDebt, GroupSessionDebt, MemberSessionAmount, SessionPayer,
+};
 
 impl GroupRepository {
     pub async fn get_group_debt_summary(
@@ -314,7 +327,7 @@ impl GroupRepository {
             WHERE s.group_id = $1
             GROUP BY s.id
             ORDER BY s.session_date DESC
-            "#
+            "#,
         )
         .bind(group_id)
         .fetch_all(&self.pool)
@@ -359,7 +372,7 @@ impl GroupRepository {
                 COALESCE(s.total_owed, 0) as total_owed
             FROM payments p
             FULL OUTER JOIN splits s ON p.user_id = s.user_id
-            "#
+            "#,
         )
         .bind(group_id)
         .fetch_all(&self.pool)
@@ -419,7 +432,7 @@ impl GroupRepository {
                 WHERE sp.session_id = $1 AND sp.user_id IS NOT NULL
                 GROUP BY sp.user_id, u.full_name
                 HAVING SUM(bp.amount_paid) > 0
-                "#
+                "#,
             )
             .bind(session.id)
             .fetch_all(&self.pool)
@@ -434,7 +447,7 @@ impl GroupRepository {
                 LEFT JOIN bill_splits bs ON bs.participant_id = sp.id
                 WHERE sp.session_id = $1 AND sp.user_id IS NOT NULL
                 GROUP BY sp.user_id
-                "#
+                "#,
             )
             .bind(session.id)
             .fetch_all(&self.pool)

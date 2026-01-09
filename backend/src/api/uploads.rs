@@ -28,27 +28,27 @@ fn validate_image_magic_bytes(data: &[u8]) -> Option<&'static str> {
     if data.len() < 8 {
         return None;
     }
-    
+
     // JPEG: FF D8 FF
     if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
         return Some("jpg");
     }
-    
+
     // PNG: 89 50 4E 47 0D 0A 1A 0A
     if data.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
         return Some("png");
     }
-    
+
     // GIF: 47 49 46 38 (GIF87a or GIF89a)
     if data.starts_with(&[0x47, 0x49, 0x46, 0x38]) {
         return Some("gif");
     }
-    
+
     // WebP: 52 49 46 46 ... 57 45 42 50 (RIFF....WEBP)
     if data.len() >= 12 && data.starts_with(&[0x52, 0x49, 0x46, 0x46]) && &data[8..12] == b"WEBP" {
         return Some("webp");
     }
-    
+
     None
 }
 
@@ -63,11 +63,13 @@ async fn upload_avatar(
         AppError::Internal(anyhow::anyhow!("Failed to create upload directory: {}", e))
     })?;
 
-    while let Some(field) = multipart.next_field().await.map_err(|e| {
-        AppError::Internal(anyhow::anyhow!("Failed to read multipart field: {}", e))
-    })? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to read multipart field: {}", e)))?
+    {
         let name = field.name().unwrap_or("").to_string();
-        
+
         if name == "file" || name == "avatar" {
             // Read file data first
             let data = field.bytes().await.map_err(|e| {
@@ -83,11 +85,10 @@ async fn upload_avatar(
             }
 
             // Validate file content by checking magic bytes (more secure than content-type header)
-            let ext = validate_image_magic_bytes(&data).ok_or_else(|| {
-                AppError::Validation {
-                    field: "file".to_string(),
-                    message: "Invalid image file. Only JPEG, PNG, GIF, and WebP are supported.".to_string(),
-                }
+            let ext = validate_image_magic_bytes(&data).ok_or_else(|| AppError::Validation {
+                field: "file".to_string(),
+                message: "Invalid image file. Only JPEG, PNG, GIF, and WebP are supported."
+                    .to_string(),
             })?;
 
             // Generate unique filename
@@ -95,13 +96,13 @@ async fn upload_avatar(
             let filepath = upload_dir.join(&filename);
 
             // Save file
-            fs::write(&filepath, &data).await.map_err(|e| {
-                AppError::Internal(anyhow::anyhow!("Failed to save file: {}", e))
-            })?;
+            fs::write(&filepath, &data)
+                .await
+                .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to save file: {}", e)))?;
 
             // Return URL (relative to static file serving)
             let url = format!("/uploads/avatars/{}", filename);
-            
+
             return Ok(ok(UploadResponse { url }));
         }
     }

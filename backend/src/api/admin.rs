@@ -10,9 +10,9 @@ use uuid::Uuid;
 
 use crate::api::response::{ok, ApiResponse};
 use crate::api::AppState;
+use crate::audit::{fetch_audit_logs, AuditLogEntry, AuditLogQuery};
 use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
-use crate::audit::{fetch_audit_logs, AuditLogQuery, AuditLogEntry};
 use crate::utils::password::hash_password;
 
 /// Pagination query parameters
@@ -24,8 +24,12 @@ pub struct PaginationQuery {
     pub limit: i64,
 }
 
-fn default_page() -> i64 { 1 }
-fn default_limit() -> i64 { 20 }
+fn default_page() -> i64 {
+    1
+}
+fn default_limit() -> i64 {
+    20
+}
 
 /// Pagination metadata
 #[derive(Debug, Serialize)]
@@ -53,7 +57,12 @@ pub fn routes() -> Router<AppState> {
         .route("/features/:key", put(toggle_feature))
         .route("/music/url", post(add_music_url)) // Must be before /music/:id
         .route("/music/:id", delete(delete_music))
-        .route("/music", get(list_music).post(upload_music).layer(DefaultBodyLimit::max(50 * 1024 * 1024))) // 50MB limit
+        .route(
+            "/music",
+            get(list_music)
+                .post(upload_music)
+                .layer(DefaultBodyLimit::max(50 * 1024 * 1024)),
+        ) // 50MB limit
         .route("/audit-logs", get(get_audit_logs))
 }
 
@@ -106,18 +115,17 @@ async fn list_users(
         WHERE role != 'admin'
         ORDER BY created_at DESC
         LIMIT $1 OFFSET $2
-        "#
+        "#,
     )
     .bind(limit)
     .bind(offset)
     .fetch_all(&state.pool)
     .await?;
 
-    let total: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*)::bigint FROM users WHERE role != 'admin'"#
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let total: i64 =
+        sqlx::query_scalar(r#"SELECT COUNT(*)::bigint FROM users WHERE role != 'admin'"#)
+            .fetch_one(&state.pool)
+            .await?;
 
     let total_pages = (total + limit - 1) / limit;
 
@@ -140,12 +148,10 @@ async fn create_user(
     require_admin(&auth_user)?;
 
     // Check if email exists
-    let exists: Option<(Uuid,)> = sqlx::query_as(
-        "SELECT id FROM users WHERE email = $1"
-    )
-    .bind(&payload.email)
-    .fetch_optional(&state.pool)
-    .await?;
+    let exists: Option<(Uuid,)> = sqlx::query_as("SELECT id FROM users WHERE email = $1")
+        .bind(&payload.email)
+        .fetch_optional(&state.pool)
+        .await?;
 
     if exists.is_some() {
         return Err(AppError::EmailAlreadyExists {
@@ -162,7 +168,7 @@ async fn create_user(
         INSERT INTO users (id, email, full_name, password_hash, role, created_at, updated_at)
         VALUES ($1, $2, $3, $4, 'user', NOW(), NOW())
         RETURNING id, email, full_name, role, avatar_url, created_at
-        "#
+        "#,
     )
     .bind(id)
     .bind(&payload.email)
@@ -226,7 +232,7 @@ async fn list_features(
         SELECT id, key, name, description, enabled, module, created_at, updated_at
         FROM feature_flags
         ORDER BY module ASC, key ASC
-        "#
+        "#,
     )
     .fetch_all(&state.pool)
     .await?;
@@ -248,7 +254,7 @@ async fn toggle_feature(
         SET enabled = $1, updated_at = NOW()
         WHERE key = $2
         RETURNING id, key, name, description, enabled, module, created_at, updated_at
-        "#
+        "#,
     )
     .bind(payload.enabled)
     .bind(&key)
@@ -257,7 +263,11 @@ async fn toggle_feature(
 
     // Invalidate cache when feature flag is updated
     state.cache.invalidate_feature_flag(&key).await;
-    tracing::info!("Feature flag '{}' updated to {}, cache invalidated", key, payload.enabled);
+    tracing::info!(
+        "Feature flag '{}' updated to {}, cache invalidated",
+        key,
+        payload.enabled
+    );
 
     Ok(ok(feature))
 }
@@ -276,16 +286,17 @@ async fn toggle_all_features(
 ) -> Result<Json<ApiResponse<BulkToggleResponse>>, AppError> {
     require_admin(&auth_user)?;
 
-    let result = sqlx::query(
-        "UPDATE feature_flags SET enabled = $1, updated_at = NOW()"
-    )
-    .bind(payload.enabled)
-    .execute(&state.pool)
-    .await?;
+    let result = sqlx::query("UPDATE feature_flags SET enabled = $1, updated_at = NOW()")
+        .bind(payload.enabled)
+        .execute(&state.pool)
+        .await?;
 
     // Invalidate all feature caches
     state.cache.invalidate_feature_flags().await;
-    tracing::info!("All feature flags updated to {}, cache invalidated", payload.enabled);
+    tracing::info!(
+        "All feature flags updated to {}, cache invalidated",
+        payload.enabled
+    );
 
     Ok(ok(BulkToggleResponse {
         updated_count: result.rows_affected() as i64,
@@ -302,17 +313,20 @@ async fn toggle_module_features(
 ) -> Result<Json<ApiResponse<BulkToggleResponse>>, AppError> {
     require_admin(&auth_user)?;
 
-    let result = sqlx::query(
-        "UPDATE feature_flags SET enabled = $1, updated_at = NOW() WHERE module = $2"
-    )
-    .bind(payload.enabled)
-    .bind(&module)
-    .execute(&state.pool)
-    .await?;
+    let result =
+        sqlx::query("UPDATE feature_flags SET enabled = $1, updated_at = NOW() WHERE module = $2")
+            .bind(payload.enabled)
+            .bind(&module)
+            .execute(&state.pool)
+            .await?;
 
     // Invalidate all feature caches
     state.cache.invalidate_feature_flags().await;
-    tracing::info!("Module '{}' feature flags updated to {}, cache invalidated", module, payload.enabled);
+    tracing::info!(
+        "Module '{}' feature flags updated to {}, cache invalidated",
+        module,
+        payload.enabled
+    );
 
     Ok(ok(BulkToggleResponse {
         updated_count: result.rows_affected() as i64,
@@ -355,18 +369,16 @@ async fn list_music(
         FROM music_tracks
         ORDER BY created_at ASC
         LIMIT $1 OFFSET $2
-        "#
+        "#,
     )
     .bind(limit)
     .bind(offset)
     .fetch_all(&state.pool)
     .await?;
 
-    let total: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*)::bigint FROM music_tracks"#
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let total: i64 = sqlx::query_scalar(r#"SELECT COUNT(*)::bigint FROM music_tracks"#)
+        .fetch_one(&state.pool)
+        .await?;
 
     let total_pages = (total + limit - 1) / limit;
 
@@ -412,9 +424,11 @@ async fn upload_music(
     let mut saved_filename = String::new();
     let mut file_size: i64 = 0;
 
-    while let Some(field) = multipart.next_field().await.map_err(|e| {
-        AppError::Internal(anyhow::anyhow!("Failed to read multipart field: {}", e))
-    })? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to read multipart field: {}", e)))?
+    {
         let field_name = field.name().unwrap_or("").to_string();
 
         if field_name == "name" {
@@ -422,8 +436,12 @@ async fn upload_music(
         } else if field_name == "file" {
             let original_filename = field.file_name().unwrap_or("track.mp3").to_string();
             let content_type = field.content_type().unwrap_or("").to_string();
-            
-            tracing::debug!("Uploading file: {} with content-type: {}", original_filename, content_type);
+
+            tracing::debug!(
+                "Uploading file: {} with content-type: {}",
+                original_filename,
+                content_type
+            );
 
             // Get file extension
             let ext = original_filename
@@ -437,12 +455,20 @@ async fn upload_music(
             if !valid_extensions.contains(&ext.as_str()) && !content_type.starts_with("audio/") {
                 return Err(AppError::Validation {
                     field: "file".to_string(),
-                    message: format!("File must be an audio file. Got: {} ({})", ext, content_type),
+                    message: format!(
+                        "File must be an audio file. Got: {} ({})",
+                        ext, content_type
+                    ),
                 });
             }
 
             // Generate unique filename
-            let filename = format!("{}_{}.{}", Uuid::new_v4(), sanitize_filename(&original_filename), ext);
+            let filename = format!(
+                "{}_{}.{}",
+                Uuid::new_v4(),
+                sanitize_filename(&original_filename),
+                ext
+            );
             let filepath = upload_dir.join(&filename);
             tracing::debug!("Will save to: {:?}", filepath);
 
@@ -501,8 +527,13 @@ async fn upload_music(
 
     // Save to database
     let file_path = format!("uploads/music/{}", saved_filename);
-    tracing::debug!("Saving track to DB: name={}, filename={}, size={}", track_name, saved_filename, file_size);
-    
+    tracing::debug!(
+        "Saving track to DB: name={}, filename={}, size={}",
+        track_name,
+        saved_filename,
+        file_size
+    );
+
     let track: MusicTrack = sqlx::query_as(
         r#"
         INSERT INTO music_tracks (name, filename, file_path, file_size, uploaded_by)
