@@ -82,6 +82,20 @@ if [ -n "$FRONTEND_CHANGED" ]; then
         echo -e "${YELLOW}⚠️ TypeScript has type errors (non-blocking)${NC}"
     }
     
+    # Update version.json before build (only if on dev branch)
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+    if [ "$CURRENT_BRANCH" = "dev" ]; then
+        echo -e "${YELLOW}📝 Updating version.json for dev branch...${NC}"
+        node scripts/update-version.js 2>/dev/null || true
+        # Stage version.json if it was updated
+        if [ -f "public/version.json" ]; then
+            cd ..
+            git add frontend/public/version.json 2>/dev/null || true
+            cd frontend
+            echo -e "${GREEN}✅ Version updated and staged${NC}"
+        fi
+    fi
+    
     # Check build (important)
     echo -e "${YELLOW}🔨 Checking frontend build...${NC}"
     npm run build 2>&1 | tail -10 || {

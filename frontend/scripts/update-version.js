@@ -111,12 +111,36 @@ function generateVersion() {
     }
   }
   
-  // Dev branch or local builds: use timestamp
+  // Dev branch: use commit hash as version (only update when commit changes)
+  if (branch === 'dev') {
+    // Check if version.json exists and commit matches
+    try {
+      const existing = JSON.parse(fs.readFileSync(versionFilePath, 'utf-8'))
+      // If commit hash matches, don't update version
+      if (existing.commit === commitHash && commitHash) {
+        console.log(`✅ Keeping existing version: ${existing.version} (commit: ${commitHash})`)
+        return existing
+      }
+    } catch (error) {
+      // File doesn't exist, continue to create new version
+    }
+    
+    // Commit changed or new file, create version based on commit hash
+    if (commitHash) {
+      return {
+        version: `dev.${commitHash}`,
+        buildTime: now.toISOString(),
+        commit: commitHash,
+        branch: 'dev'
+      }
+    }
+  }
+  
+  // Local builds: use timestamp
   const timestamp = `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()}.${now.getHours()}${now.getMinutes()}`
-  const prefix = branch === 'dev' ? 'dev' : 'local'
   
   return {
-    version: `${prefix}.${timestamp}${commitHash ? `.${commitHash}` : ''}`,
+    version: `local.${timestamp}${commitHash ? `.${commitHash}` : ''}`,
     buildTime: now.toISOString(),
     commit: commitHash || 'unknown',
     branch: branch || 'unknown'
