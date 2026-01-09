@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
@@ -7,10 +7,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Trophy, Calendar, Beer, Banknote, Crown, Skull, ArrowRight, Zap, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
 import type { GroupDebtSummary, SimplifiedDebtSummary, ApiResponse } from '@/types/api'
+import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
 
 export default function GroupDebtsPage() {
   const { groupId } = useParams<{ groupId: string }>()
   const navigate = useNavigate()
+  const { isEnabled, isLoading: featuresLoading } = useFeatureFlags()
+  
+  // Check if feature is enabled
+  const isGroupDebtsEnabled = isEnabled('group_debts')
+  const isSimplifiedDebtsEnabled = isEnabled('group_debts_simplified')
+  
+  // Redirect if feature is disabled
+  useEffect(() => {
+    if (!featuresLoading && !isGroupDebtsEnabled) {
+      navigate('/groups', { replace: true })
+    }
+  }, [featuresLoading, isGroupDebtsEnabled, navigate])
+  
   const [filterType, setFilterType] = useState<'month' | 'range'>('month')
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
@@ -27,24 +41,39 @@ export default function GroupDebtsPage() {
   })
   const [isSettlementExpanded, setIsSettlementExpanded] = useState(false)
 
+  // Only fetch if feature is enabled
   const { data: summary, isLoading, error } = useQuery({
     queryKey: ['groups', groupId, 'debts'],
     queryFn: async () => {
       const res = await api.get<ApiResponse<GroupDebtSummary>>(`/groups/${groupId}/debts`)
       return res.data.data
     },
-    enabled: !!groupId,
+    enabled: !!groupId && isGroupDebtsEnabled && !featuresLoading,
   })
 
-  // Query for simplified/netted debts
+  // Query for simplified/netted debts - only if feature is enabled
   const { data: simplifiedDebts } = useQuery({
     queryKey: ['groups', groupId, 'debts', 'simplified'],
     queryFn: async () => {
       const res = await api.get<ApiResponse<SimplifiedDebtSummary>>(`/groups/${groupId}/debts/simplified`)
       return res.data.data
     },
-    enabled: !!groupId,
+    enabled: !!groupId && isSimplifiedDebtsEnabled && !featuresLoading,
   })
+
+  // Show loading while checking features
+  if (featuresLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    )
+  }
+
+  // Redirect handled by useEffect, but also prevent render
+  if (!isGroupDebtsEnabled) {
+    return null
+  }
 
   if (isLoading) {
     return (

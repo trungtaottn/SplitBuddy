@@ -15,9 +15,11 @@ import { Celebration } from '@/components/ui/Celebration'
 import { staggerContainer, staggerItem } from '@/components/PageTransition'
 import type { Group, GroupDetail, ApiResponse, CreateGroupDto, AddMemberDto, GroupMember } from '@/types/api'
 import { useAuth } from '@/contexts/AuthContext'
+import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
 
 export default function GroupsPage() {
   const { user } = useAuth()
+  const { isEnabled } = useFeatureFlags()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -278,17 +280,19 @@ export default function GroupsPage() {
                       <Beer className="h-4 w-4" />
                       Nhậu ngay!
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        navigate(`/groups/${group.id}/debts`)
-                      }}
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                    </Button>
+                    {isEnabled('group_debts') && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/groups/${group.id}/debts`)
+                        }}
+                      >
+                        <BarChart3 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
