@@ -183,7 +183,9 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "splitbuddy=debug,tower_http=debug".into()),
+                // Production default: info level, reduces noise
+                // For debugging, set RUST_LOG=splitbuddy=debug,tower_http=debug
+                .unwrap_or_else(|_| "splitbuddy=info,tower_http=info".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -339,22 +341,26 @@ async fn main() -> anyhow::Result<()> {
         async move { handle.render() }
     });
 
+    // Build API routes with rate limiting
+    let api_routes = Router::new()
+        .nest("/api", api::routes())
+        .with_state(app_state.clone())
+        .layer(GovernorLayer {
+            config: governor_conf,
+        });
+
+    // Build the main app - rate limiting only applies to /api routes
     let app = Router::new()
         .route("/metrics", metrics_route)
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        .nest("/api", api::routes())
+        .merge(api_routes) // API routes with rate limiting
         .nest_service("/uploads", uploads_service)
-        .with_state(app_state)
-        .fallback_service(static_service)
+        .fallback_service(static_service) // Static files - no rate limit
         .layer(axum_mw::from_fn(add_cache_headers))
-        .layer(CompressionLayer::new()) // Gzip compression for API responses
+        .layer(CompressionLayer::new())
         .layer(cors)
-        .layer(GovernorLayer {
-            config: governor_conf,
-        })
         .layer(PropagateRequestIdLayer::new(x_request_id.clone()))
-        .layer(SetRequestIdLayer::new(x_request_id, MakeRequestUuid))
-        .layer(TraceLayer::new_for_http());
+        .layer(SetRequestIdLayer::new(x_request_id, MakeRequestUuid));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     tracing::info!("🚀 Server starting on http://{}", addr);
