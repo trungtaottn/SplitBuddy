@@ -11,10 +11,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Required permissions for pushing to revert branch
+# Required permissions for pushing to revert branch and reading PR files
 permissions:
   contents: write
   actions: read
+  pull-requests: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -36,9 +37,12 @@ jobs:
       docker: ${{ steps.filter.outputs.docker }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for PR comparison
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          base: ${{ github.event.pull_request.base.sha || github.event.before }}
           filters: |
             backend:
               - 'backend/**'
