@@ -6,16 +6,61 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-progress runs when new commits are pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Required permissions for pushing to revert branch and reading PR files
+permissions:
+  contents: write
+  actions: read
+  pull-requests: read
+
 env:
   CARGO_TERM_COLOR: always
   SQLX_OFFLINE: true
+  # Faster Rust builds
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUSTUP_MAX_RETRIES: 10
 
 jobs:
   # ============================================
-  # Backend: Lint and Type Check
+  # Detect changes for conditional job execution
   # ============================================
-  lint-backend:
+  changes:
     runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for PR comparison
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.event.pull_request.base.sha || github.event.before }}
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            docker:
+              - 'Dockerfile'
+              - '.dockerignore'
+            ci:
+              - '.github/workflows/**'
+
+  # ============================================
+  # Backend: Lint, Build and Test (Combined)
+  # ============================================
+  test-backend:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main'
     defaults:
       run:
         working-directory: ./backend
@@ -26,53 +71,21 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
-          
-      - name: Cache cargo registry
-        uses: actions/cache@v4
+      
+      # Use Swatinem/rust-cache for better caching
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
+          workspaces: backend -> target
+          cache-on-failure: true
+          shared-key: "rust-cache"
             
       - name: Check formatting
         run: cargo fmt -- --check
         
       - name: Clippy
         run: cargo clippy --release -- -D warnings
-
-  # ============================================
-  # Backend: Build and Test
-  # ============================================
-  test-backend:
-    runs-on: ubuntu-latest
-    needs: lint-backend
-    defaults:
-      run:
-        working-directory: ./backend
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-          
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            backend/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-            
+        
       - name: Build
         run: cargo build --release
         
@@ -84,6 +97,8 @@ jobs:
   # ============================================
   test-frontend:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main'
     defaults:
       run:
         working-directory: ./frontend
@@ -98,7 +113,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
           
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline
         
       - name: Type check
         run: npm run type-check || true
@@ -107,46 +122,31 @@ jobs:
         run: npm run build
 
   # ============================================
-  # Security Scan (Docker Image)
-  # ============================================
-  security-scan:
-    runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        
-      - name: Build Docker image for scanning
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          load: true
-          tags: splitbuddy:scan
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: false
-          
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'splitbuddy:scan'
-          format: 'table'
-          exit-code: '0'  # Don't fail on vulnerabilities, just report
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
-
-  # ============================================
   # Deploy to Heroku (main branch only)
   # ============================================
   deploy:
-    needs: [test-backend, test-frontend]
+    needs: [changes, test-backend, test-frontend]
+    # Run if all tests pass OR if tests were skipped (no changes)
+    if: |
+      always() && 
+      github.ref == 'refs/heads/main' && 
+      github.event_name == 'push' &&
+      (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped') &&
+      (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped')
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    outputs:
+      previous_commit: ${{ steps.save-commit.outputs.hash }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      
+      - name: Save previous commit hash
+        id: save-commit
+        run: |
+          PREVIOUS_COMMIT=$(git rev-parse HEAD~1)
+          echo "hash=$PREVIOUS_COMMIT" >> $GITHUB_OUTPUT
+          echo "📌 Saved previous commit: $PREVIOUS_COMMIT"
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -163,30 +163,157 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: registry.heroku.com/${{ secrets.HEROKU_APP_NAME }}/web
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
           provenance: false
           sbom: false
           build-args: |
             RUST_BUILD_MODE=release
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
             
+      - name: Install Heroku CLI
+        run: |
+          if ! command -v heroku &> /dev/null; then
+            echo "📦 Installing Heroku CLI..."
+            curl -fsSL https://cli-assets.heroku.com/install.sh | sh
+          fi
+          heroku --version
+      
       - name: Release to Heroku
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
           HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
         run: |
-          curl -X PATCH https://api.heroku.com/apps/$HEROKU_APP_NAME/formation \
-            -H "Content-Type: application/json" \
-            -H "Accept: application/vnd.heroku+json; version=3.docker-releases" \
-            -H "Authorization: Bearer $HEROKU_API_KEY" \
-            -d '{
-              "updates": [{
-                "type": "web",
-                "docker_image": "'$(docker inspect registry.heroku.com/$HEROKU_APP_NAME/web --format={{.Id}})'"
-              }]
-            }'
+          set -e
+          echo "🚀 Releasing Docker image to Heroku..."
+          heroku container:release web --app "$HEROKU_APP_NAME"
+          echo "✅ Release command completed successfully"
+      
+      - name: Verify Deployment
+        env:
+          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+        run: |
+          echo "🔍 Verifying deployment..."
+          sleep 10
+          
+          for i in 1 2 3; do
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$HEROKU_APP_NAME.herokuapp.com/api/health" || echo "000")
+            
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "✅ App is healthy! (HTTP $HTTP_STATUS)"
+              exit 0
+            fi
+            
+            echo "⏳ Attempt $i/3: App not ready yet (HTTP $HTTP_STATUS), waiting..."
+            sleep 10
+          done
+          
+          echo "⚠️ Warning: Could not verify app health (HTTP $HTTP_STATUS)"
             
       - name: Deployment Summary
         run: |
           echo "🚀 Deployed to Heroku: https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com"
           echo "📦 Docker image: registry.heroku.com/${{ secrets.HEROKU_APP_NAME }}/web"
+
+  # ============================================
+  # Security Scan (Optional, runs on schedule or manual)
+  # ============================================
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    # Only run on main push, can be disabled for faster deploys
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    continue-on-error: true  # Don't block deploy on security scan
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Build Docker image for scanning
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          tags: splitbuddy:scan
+          cache-from: type=gha
+          provenance: false
+          
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'splitbuddy:scan'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+  # ============================================
+  # Sync revert branch (on deploy success)
+  # ============================================
+  sync-revert-success:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.deploy.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Sync to revert branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          echo "✅ Deploy thành công → Cập nhật revert branch"
+          
+          git fetch origin revert:revert 2>/dev/null || true
+          
+          CURRENT_COMMIT=$(git rev-parse HEAD)
+          echo "📌 Current commit: $CURRENT_COMMIT"
+          
+          if git show-ref --verify --quiet refs/remotes/origin/revert; then
+            git checkout -b revert origin/revert 2>/dev/null || git checkout revert
+          else
+            git checkout -b revert
+          fi
+          
+          git reset --hard origin/main
+          git push origin revert --force
+          
+          echo "✅ Revert branch = main ($CURRENT_COMMIT)"
+
+  # ============================================
+  # Sync revert branch (on deploy failure)
+  # ============================================
+  sync-revert-failure:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: always() && github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.deploy.result == 'failure'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Sync to revert branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          echo "❌ Deploy thất bại → Giữ commit trước đó"
+          
+          git fetch origin revert:revert 2>/dev/null || true
+          
+          PREVIOUS_COMMIT=$(git rev-parse HEAD~1)
+          echo "📌 Previous commit: $PREVIOUS_COMMIT"
+          
+          if git show-ref --verify --quiet refs/remotes/origin/revert; then
+            git checkout -b revert origin/revert 2>/dev/null || git checkout revert
+          else
+            git checkout -b revert
+          fi
+          
+          git reset --hard $PREVIOUS_COMMIT
+          git push origin revert --force
+          
+          echo "✅ Revert branch = $PREVIOUS_COMMIT"
+          echo "💡 Dùng revert branch để rollback nếu cần"
