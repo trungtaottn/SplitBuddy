@@ -19,7 +19,6 @@ pub mod response;
 pub mod sessions;
 pub mod uploads;
 pub mod users;
-pub mod validation;
 pub mod wrapped;
 pub mod ws;
 

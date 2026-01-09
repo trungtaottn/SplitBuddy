@@ -3,31 +3,9 @@
 //! This module provides functionality to log security-sensitive and
 //! business-critical actions for compliance and debugging purposes.
 
-use axum::http::HeaderMap;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
-
-/// Extract client IP and User-Agent from request headers
-pub fn extract_client_info(headers: &HeaderMap) -> (Option<String>, Option<String>) {
-    let ip = headers
-        .get("x-forwarded-for")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.split(',').next().unwrap_or(s).trim().to_string())
-        .or_else(|| {
-            headers
-                .get("x-real-ip")
-                .and_then(|v| v.to_str().ok())
-                .map(String::from)
-        });
-
-    let user_agent = headers
-        .get("user-agent")
-        .and_then(|v| v.to_str().ok())
-        .map(String::from);
-
-    (ip, user_agent)
-}
 
 /// Audit log action types
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,31 +17,31 @@ pub enum AuditAction {
     Register,
     PasswordChange,
     PasswordReset,
-    
+
     // Sessions
     SessionCreate,
     SessionClose,
     SessionReopen,
     SessionDelete,
-    
+
     // Bills
     BillCreate,
     BillUpdate,
     BillDelete,
-    
+
     // Debts
     SettlementRequest,
     SettlementConfirm,
     SettlementReject,
     GuestSettlement,
-    
+
     // Admin actions
     AdminUserCreate,
     AdminUserUpdate,
     FeatureToggle,
     MusicUpload,
     MusicDelete,
-    
+
     // Other
     Custom(String),
 }
@@ -170,27 +148,16 @@ impl AuditLogBuilder {
         self
     }
 
-    pub fn metadata(mut self, data: serde_json::Value) -> Self {
-        self.metadata = data;
-        self
-    }
-
-    pub fn client_info(mut self, ip: Option<String>, user_agent: Option<String>) -> Self {
-        self.ip_address = ip;
-        self.user_agent = user_agent;
-        self
-    }
-
     /// Save the audit log entry to the database
     pub async fn save(self, pool: &PgPool) -> Result<Uuid, sqlx::Error> {
         let id = Uuid::new_v4();
-        
+
         sqlx::query(
             r#"
             INSERT INTO audit_logs (id, user_id, user_email, action, entity_type, entity_id, 
                                    description, metadata, ip_address, user_agent, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
-            "#
+            "#,
         )
         .bind(id)
         .bind(self.user_id)
@@ -266,7 +233,7 @@ pub async fn fetch_audit_logs(
           AND ($6::timestamptz IS NULL OR created_at <= $6)
         ORDER BY created_at DESC
         LIMIT $7 OFFSET $8
-        "#
+        "#,
     )
     .bind(query.user_id)
     .bind(&query.action)
@@ -289,7 +256,7 @@ pub async fn fetch_audit_logs(
           AND ($4::uuid IS NULL OR entity_id = $4)
           AND ($5::timestamptz IS NULL OR created_at >= $5)
           AND ($6::timestamptz IS NULL OR created_at <= $6)
-        "#
+        "#,
     )
     .bind(query.user_id)
     .bind(&query.action)

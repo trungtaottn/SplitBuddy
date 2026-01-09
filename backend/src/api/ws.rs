@@ -6,7 +6,7 @@
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        State, Query,
+        Query, State,
     },
     response::IntoResponse,
     routing::get,
@@ -27,23 +27,49 @@ use crate::middleware::auth::verify_token;
 #[serde(tag = "type", content = "data")]
 pub enum WsEvent {
     /// A bill was added or updated in a session
-    BillUpdated { session_id: Uuid, bill_id: Uuid },
+    BillUpdated {
+        session_id: Uuid,
+        bill_id: Uuid,
+    },
     /// A debt was settled or settlement was requested
-    DebtUpdated { session_id: Uuid, debt_id: Uuid },
+    DebtUpdated {
+        session_id: Uuid,
+        debt_id: Uuid,
+    },
     /// Session status changed (closed/reopened)
-    SessionStatusChanged { session_id: Uuid, status: String },
+    SessionStatusChanged {
+        session_id: Uuid,
+        status: String,
+    },
     /// A participant joined or left a session
-    ParticipantChanged { session_id: Uuid, action: String },
+    ParticipantChanged {
+        session_id: Uuid,
+        action: String,
+    },
     /// Game event (spin, truth/dare, etc.)
-    GameEvent { session_id: Uuid, event_type: String },
+    GameEvent {
+        session_id: Uuid,
+        event_type: String,
+    },
     /// User achievement unlocked
-    AchievementUnlocked { user_id: Uuid, achievement_id: Uuid },
+    AchievementUnlocked {
+        user_id: Uuid,
+        achievement_id: Uuid,
+    },
     /// New notification received
-    NotificationReceived { notification_id: Uuid, title: String, notification_type: String },
+    NotificationReceived {
+        notification_id: Uuid,
+        title: String,
+        notification_type: String,
+    },
     /// Connection established confirmation
-    Connected { user_id: Uuid },
+    Connected {
+        user_id: Uuid,
+    },
     /// Error message
-    Error { message: String },
+    Error {
+        message: String,
+    },
     /// Ping/pong for keepalive
     Ping,
     Pong,
@@ -59,7 +85,6 @@ pub struct WsQuery {
 /// Connected user info
 #[derive(Debug, Clone)]
 pub struct ConnectedUser {
-    pub user_id: Uuid,
     pub session_subscriptions: Vec<Uuid>,
 }
 
@@ -81,11 +106,6 @@ impl WsManager {
         }
     }
 
-    /// Broadcast an event to a specific user
-    pub async fn send_to_user(&self, user_id: Uuid, event: WsEvent) {
-        let _ = self.tx.send((user_id, event));
-    }
-
     /// Broadcast an event to all users subscribed to a session
     pub async fn broadcast_to_session(&self, session_id: Uuid, event: WsEvent) {
         let connections = self.connections.read().await;
@@ -99,10 +119,12 @@ impl WsManager {
     /// Register a user connection
     pub async fn register_user(&self, user_id: Uuid) {
         let mut connections = self.connections.write().await;
-        connections.insert(user_id, ConnectedUser {
+        connections.insert(
             user_id,
-            session_subscriptions: Vec::new(),
-        });
+            ConnectedUser {
+                session_subscriptions: Vec::new(),
+            },
+        );
         tracing::debug!("User {} connected via WebSocket", user_id);
     }
 
@@ -138,12 +160,15 @@ impl WsManager {
         let shutdown_event = WsEvent::Error {
             message: "Server is shutting down".to_string(),
         };
-        
+
         for user_id in connections.keys() {
             let _ = self.tx.send((*user_id, shutdown_event.clone()));
         }
-        
-        tracing::info!("📢 Broadcast shutdown to {} connected clients", connections.len());
+
+        tracing::info!(
+            "📢 Broadcast shutdown to {} connected clients",
+            connections.len()
+        );
     }
 }
 
@@ -164,9 +189,7 @@ async fn ws_handler(
 ) -> impl IntoResponse {
     // Verify JWT token
     match verify_token(&state.config, &query.token) {
-        Ok(claims) => {
-            ws.on_upgrade(move |socket| handle_socket(socket, state, claims.sub))
-        }
+        Ok(claims) => ws.on_upgrade(move |socket| handle_socket(socket, state, claims.sub)),
         Err(_) => {
             // Return error response - WebSocket upgrade will fail
             ws.on_upgrade(|mut socket| async move {
@@ -183,23 +206,23 @@ async fn ws_handler(
 
 async fn handle_socket(socket: WebSocket, state: AppState, user_id: Uuid) {
     let (mut sender, mut receiver) = socket.split();
-    
+
     // Register user
     state.ws_manager.register_user(user_id).await;
-    
+
     // Send connected confirmation
     let connected_event = WsEvent::Connected { user_id };
     if let Ok(msg) = serde_json::to_string(&connected_event) {
         let _ = sender.send(Message::Text(msg)).await;
     }
-    
+
     // Subscribe to broadcast channel
     let mut rx = state.ws_manager.tx.subscribe();
-    
+
     // Clone for the receive task
     let ws_manager = state.ws_manager.clone();
     let user_id_clone = user_id;
-    
+
     // Task to forward broadcast messages to this user's WebSocket
     let mut send_task = tokio::spawn(async move {
         while let Ok((target_user_id, event)) = rx.recv().await {
@@ -212,7 +235,7 @@ async fn handle_socket(socket: WebSocket, state: AppState, user_id: Uuid) {
             }
         }
     });
-    
+
     // Task to handle incoming messages from the client
     let ws_manager_recv = ws_manager.clone();
     let mut recv_task = tokio::spawn(async move {
@@ -223,10 +246,14 @@ async fn handle_socket(socket: WebSocket, state: AppState, user_id: Uuid) {
                     if let Ok(event) = serde_json::from_str::<ClientMessage>(&text) {
                         match event {
                             ClientMessage::Subscribe { session_id } => {
-                                ws_manager_recv.subscribe_to_session(user_id, session_id).await;
+                                ws_manager_recv
+                                    .subscribe_to_session(user_id, session_id)
+                                    .await;
                             }
                             ClientMessage::Unsubscribe { session_id } => {
-                                ws_manager_recv.unsubscribe_from_session(user_id, session_id).await;
+                                ws_manager_recv
+                                    .unsubscribe_from_session(user_id, session_id)
+                                    .await;
                             }
                             ClientMessage::Ping => {
                                 // Ping handled, will send pong below
@@ -239,7 +266,7 @@ async fn handle_socket(socket: WebSocket, state: AppState, user_id: Uuid) {
             }
         }
     });
-    
+
     // Wait for either task to finish
     tokio::select! {
         _ = &mut send_task => {
@@ -249,7 +276,7 @@ async fn handle_socket(socket: WebSocket, state: AppState, user_id: Uuid) {
             send_task.abort();
         }
     }
-    
+
     // Cleanup
     state.ws_manager.unregister_user(user_id).await;
 }
