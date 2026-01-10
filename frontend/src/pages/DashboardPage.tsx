@@ -6,8 +6,8 @@ import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, TrendingDown, TrendingUp, Beer, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Plus, TrendingDown, TrendingUp, Beer, Search, ChevronLeft, ChevronRight, LayoutTemplate } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
 import AiGreeting from '@/components/AiGreeting'
@@ -17,6 +17,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { SessionListSkeleton } from '@/components/ui/skeleton'
 import { useOnboarding } from '@/components/Onboarding'
 import { staggerContainer, staggerItem } from '@/components/PageTransition'
+import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupDetail, PaginatedResponse } from '@/types/api'
 
 export default function DashboardPage() {
@@ -221,17 +222,27 @@ export default function DashboardPage() {
         <h2 className="text-xl font-heading font-semibold text-foreground flex items-center gap-2">
           <Beer className="h-5 w-5 text-primary" /> Cuộc nhậu của tôi
         </h2>
-        <FunTooltip messages={FUN_MESSAGES.createSession}>
-          <Button 
-            onClick={() => setShowCreateModal(true)} 
-            variant="stamp"
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
             className="gap-2"
-            data-onboarding="create-session"
+            onClick={() => navigate('/templates')}
           >
-            <Plus className="h-4 w-4" strokeWidth={1.5} />
-            Nhậu đê...
+            <LayoutTemplate className="h-4 w-4" strokeWidth={1.5} />
+            Templates
           </Button>
-        </FunTooltip>
+          <FunTooltip messages={FUN_MESSAGES.createSession}>
+            <Button 
+              onClick={() => setShowCreateModal(true)} 
+              variant="stamp"
+              className="gap-2"
+              data-onboarding="create-session"
+            >
+              <Plus className="h-4 w-4" strokeWidth={1.5} />
+              Nhậu đê...
+            </Button>
+          </FunTooltip>
+        </div>
       </div>
 
       {/* Search & Filter - Retro Style */}
@@ -334,14 +345,17 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <CardTitle>Tạo cuộc nhậu mới</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateSession} className="space-y-4">
+      <ResponsiveModal
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false)
+          setSelectedGroupId('')
+          setSelectedParticipants([])
+        }}
+        title="Tạo cuộc nhậu mới"
+        desktopClassName="max-w-md"
+      >
+        <form onSubmit={handleCreateSession} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Tên cuộc nhậu</Label>
                   <Input
@@ -460,7 +474,7 @@ export default function DashboardPage() {
                           key={index}
                           className="flex items-center gap-1 rounded-sm bg-secondary border border-border px-2.5 py-1 text-xs font-medium text-foreground"
                         >
-                          <span>👤 {name}</span>
+                          <span> {name}</span>
                           <button
                             type="button"
                             onClick={() => removeGuest(index)}
@@ -491,11 +505,8 @@ export default function DashboardPage() {
                     {createSession.isPending ? 'Đang tạo...' : 'Tạo'}
                   </Button>
                 </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+        </form>
+      </ResponsiveModal>
     </div>
   )
 }

@@ -9,6 +9,7 @@ import { UserPlus, Key, Users, ToggleLeft, ToggleRight, Settings, Music, Upload,
 import { toast } from '@/components/ui/toaster'
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
 import { useMusic } from '@/contexts/MusicContext'
+import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import type { ApiResponse, FeatureFlag } from '@/types/api'
 
 interface MusicTrack {
@@ -599,14 +600,13 @@ export default function AdminPage() {
         </CardContent>
       </Card>
 
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Tạo tài khoản mới</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateUser} className="space-y-4">
+      <ResponsiveModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Tạo tài khoản mới"
+        desktopClassName="max-w-md"
+      >
+        <form onSubmit={handleCreateUser} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Họ tên</Label>
                   <Input
@@ -652,20 +652,20 @@ export default function AdminPage() {
                     {createUser.isPending ? 'Đang tạo...' : 'Tạo'}
                   </Button>
                 </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+        </form>
+      </ResponsiveModal>
 
-      {showResetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Đặt lại mật khẩu</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleResetPassword} className="space-y-4">
+      <ResponsiveModal
+        isOpen={showResetModal}
+        onClose={() => {
+          setShowResetModal(false)
+          setSelectedUserId(null)
+          setResetPassword('')
+        }}
+        title="Đặt lại mật khẩu"
+        desktopClassName="max-w-md"
+      >
+        <form onSubmit={handleResetPassword} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="resetPassword">Mật khẩu mới</Label>
                   <Input
@@ -694,11 +694,8 @@ export default function AdminPage() {
                     {resetUserPassword.isPending ? 'Đang xử lý...' : 'Đặt lại'}
                   </Button>
                 </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+        </form>
+      </ResponsiveModal>
     </div>
   )
 }

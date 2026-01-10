@@ -80,9 +80,9 @@ const EMPTY_STATES: Record<EmptyStateType, {
     description: 'Create a group to manage your drinking buddies.',
     illustration: (
       <div className="relative flex gap-1">
-        <span className="text-4xl opacity-30">👤</span>
-        <span className="text-4xl opacity-50">👤</span>
-        <span className="text-4xl opacity-30">👤</span>
+        <span className="text-4xl opacity-30"></span>
+        <span className="text-4xl opacity-50"></span>
+        <span className="text-4xl opacity-30"></span>
       </div>
     ),
   },

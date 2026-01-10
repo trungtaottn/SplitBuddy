@@ -294,6 +294,7 @@ async fn main() -> anyhow::Result<()> {
     // Create uploads directories if they don't exist
     tokio::fs::create_dir_all("uploads/avatars").await.ok();
     tokio::fs::create_dir_all("uploads/receipts").await.ok();
+    tokio::fs::create_dir_all("uploads/bank_qr").await.ok();
 
     // Configure rate limiting with custom key extractor for localhost handling
     let governor_conf = Arc::new(

@@ -24,6 +24,8 @@ const GroupDebtsPage = lazy(() => import('./pages/GroupDebtsPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const GamesPage = lazy(() => import('./pages/GamesPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+const TemplatesPage = lazy(() => import('./pages/TemplatesPage'))
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'))
 
 // Loading fallback component
 function PageLoader() {
@@ -143,6 +145,22 @@ function App() {
                     <ProfilePage />
                   </Suspense>
                 } 
+              />
+              <Route
+                path="templates"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <TemplatesPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="analytics"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <AnalyticsPage />
+                  </Suspense>
+                }
               />
               <Route 
                 path="admin" 

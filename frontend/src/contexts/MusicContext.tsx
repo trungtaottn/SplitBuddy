@@ -59,10 +59,10 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       if (paginated && Array.isArray(paginated.data)) {
         // Đánh dấu track là YouTube hay không
         const tracksWithType = paginated.data.map((t: Track) => ({
-          ...t,
+            ...t,
           isYouTube: isYouTubeUrl(t.src),
-        }))
-        setTracks(tracksWithType)
+          }))
+          setTracks(tracksWithType)
       } else {
         setTracks([])
       }

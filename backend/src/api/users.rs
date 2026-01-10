@@ -142,6 +142,7 @@ pub struct BankAccountResponse {
     pub account_number: String,
     pub account_holder_name: String,
     pub is_default: bool,
+    pub qr_image_url: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -166,6 +167,8 @@ pub struct AddBankAccountRequest {
     ))]
     pub account_holder_name: String,
     pub is_default: Option<bool>,
+    #[validate(length(max = 500, message = "QR image URL must be less than 500 characters"))]
+    pub qr_image_url: Option<String>,
 }
 
 #[derive(Deserialize, Validate)]
@@ -180,6 +183,8 @@ pub struct UpdateBankAccountRequest {
     ))]
     pub account_holder_name: Option<String>,
     pub is_default: Option<bool>,
+    #[validate(length(max = 500, message = "QR image URL must be less than 500 characters"))]
+    pub qr_image_url: Option<String>,
 }
 
 use crate::api::response::created;
@@ -191,7 +196,7 @@ async fn list_bank_accounts(
 ) -> Result<Json<ApiResponse<Vec<BankAccountResponse>>>, AppError> {
     let accounts: Vec<BankAccountResponse> = sqlx::query_as(
         r#"
-        SELECT id, bank_name, account_number, account_holder_name, is_default, created_at
+        SELECT id, bank_name, account_number, account_holder_name, is_default, qr_image_url, created_at
         FROM user_bank_accounts
         WHERE user_id = $1
         ORDER BY is_default DESC, created_at DESC
@@ -239,9 +244,9 @@ async fn add_bank_account(
     let account_id = Uuid::new_v4();
     let account: BankAccountResponse = sqlx::query_as(
         r#"
-        INSERT INTO user_bank_accounts (id, user_id, bank_name, account_number, account_holder_name, is_default, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-        RETURNING id, bank_name, account_number, account_holder_name, is_default, created_at
+        INSERT INTO user_bank_accounts (id, user_id, bank_name, account_number, account_holder_name, is_default, qr_image_url, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        RETURNING id, bank_name, account_number, account_holder_name, is_default, qr_image_url, created_at
         "#,
     )
     .bind(account_id)
@@ -250,6 +255,7 @@ async fn add_bank_account(
     .bind(&payload.account_number)
     .bind(&payload.account_holder_name)
     .bind(is_default)
+    .bind(&payload.qr_image_url)
     .fetch_one(&state.pool)
     .await?;
 
@@ -305,15 +311,17 @@ async fn update_bank_account(
             account_number = COALESCE($2, account_number),
             account_holder_name = COALESCE($3, account_holder_name),
             is_default = COALESCE($4, is_default),
+            qr_image_url = COALESCE($5, qr_image_url),
             updated_at = NOW()
-        WHERE id = $5 AND user_id = $6
-        RETURNING id, bank_name, account_number, account_holder_name, is_default, created_at
+        WHERE id = $6 AND user_id = $7
+        RETURNING id, bank_name, account_number, account_holder_name, is_default, qr_image_url, created_at
         "#,
     )
     .bind(payload.bank_name)
     .bind(payload.account_number)
     .bind(payload.account_holder_name)
     .bind(payload.is_default)
+    .bind(payload.qr_image_url)
     .bind(account_id)
     .bind(auth_user.user_id)
     .fetch_one(&state.pool)

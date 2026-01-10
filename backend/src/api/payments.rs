@@ -71,11 +71,12 @@ pub async fn generate_qr(
         bank_name: String,
         account_number: String,
         account_holder_name: String,
+        qr_image_url: Option<String>,
     }
 
     let account: Option<BankAccount> = sqlx::query_as(
         r#"
-        SELECT bank_name, account_number, account_holder_name
+        SELECT bank_name, account_number, account_holder_name, qr_image_url
         FROM user_bank_accounts
         WHERE user_id = $1 AND is_default = true
         LIMIT 1
@@ -100,17 +101,20 @@ pub async fn generate_qr(
             message: "Invalid amount format".to_string(),
         })?;
 
-    // Generate VietQR string according to NAPAS standard
-    // Format: 0002010102123857... (EMV QR Code format)
-    let qr_data = generate_vietqr_string(
-        &account.account_number,
-        &account.account_holder_name,
-        amount,
-        params.note.as_deref(),
-    );
-
-    // Generate QR code image (base64 encoded PNG)
-    let qr_image = generate_qr_image(&qr_data)?;
+    // Prefer user's uploaded bank-provided QR image (this is guaranteed to be scannable)
+    // Fallback: generate an internal QR payload (note: not all banking apps may accept this without full VietQR BIN mapping)
+    let (qr_data, qr_image) = if let Some(url) = account.qr_image_url.clone() {
+        ("".to_string(), url)
+    } else {
+        let qr_data = generate_vietqr_string(
+            &account.account_number,
+            &account.account_holder_name,
+            amount,
+            params.note.as_deref(),
+        );
+        let qr_image = generate_qr_image(&qr_data)?;
+        (qr_data, qr_image)
+    };
 
     Ok(ok(QrResponse {
         qr_data,

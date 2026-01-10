@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { Celebration } from '@/components/ui/Celebration'
 import { staggerContainer, staggerItem } from '@/components/PageTransition'
+import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import type { Group, GroupDetail, ApiResponse, CreateGroupDto, AddMemberDto, GroupMember } from '@/types/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
@@ -302,14 +303,13 @@ export default function GroupsPage() {
       )}
 
       {/* Create Group Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Tạo nhóm mới</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateGroup} className="space-y-4">
+      <ResponsiveModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Tạo nhóm mới"
+        desktopClassName="max-w-md"
+      >
+        <form onSubmit={handleCreateGroup} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Tên nhóm</Label>
                   <Input
@@ -342,26 +342,23 @@ export default function GroupsPage() {
                     {createGroup.isPending ? 'Đang tạo...' : 'Tạo nhóm'}
                   </Button>
                 </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+        </form>
+      </ResponsiveModal>
 
       {/* Group Detail Modal */}
-      {showDetailModal && groupDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                {groupDetail.name}
-              </CardTitle>
-              {groupDetail.description && (
-                <p className="text-sm text-muted-foreground">{groupDetail.description}</p>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-4">
+      <ResponsiveModal
+        isOpen={showDetailModal && !!groupDetail}
+        onClose={() => {
+          setShowDetailModal(false)
+          setSelectedGroupId(null)
+        }}
+        title={groupDetail ? groupDetail.name : 'Chi tiết nhóm'}
+        desktopClassName="max-w-lg"
+      >
+        {groupDetail?.description && (
+          <p className="text-sm text-muted-foreground -mt-2">{groupDetail.description}</p>
+        )}
+        <div className="space-y-4">
               {/* Add member form */}
               <form onSubmit={handleAddMember} className="space-y-3">
                 <Input
@@ -382,8 +379,8 @@ export default function GroupsPage() {
 
               {/* Members list */}
               <div className="space-y-2">
-                <h4 className="font-medium">Thành viên ({groupDetail.members.length})</h4>
-                {groupDetail.members.map((member) => (
+                <h4 className="font-medium">Thành viên ({groupDetail?.members?.length ?? 0})</h4>
+                {groupDetail?.members?.map((member) => (
                   <div
                     key={member.id}
                     className="flex items-center justify-between rounded-lg border p-3"
@@ -428,28 +425,27 @@ export default function GroupsPage() {
               >
                 Đóng
               </Button>
-            </CardContent>
-          </Card>
         </div>
-      )}
+      </ResponsiveModal>
 
       {/* Quick Session Modal */}
-      {showQuickSessionModal && quickSessionGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-md animate-in zoom-in-95">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Beer className="h-5 w-5 text-orange-500" />
-                Tạo buổi nhậu nhanh
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+      <ResponsiveModal
+        isOpen={showQuickSessionModal && !!quickSessionGroup}
+        onClose={() => {
+          setShowQuickSessionModal(false)
+          setQuickSessionGroup(null)
+          setQuickSessionLocation('')
+        }}
+        title="Tạo buổi nhậu nhanh"
+        desktopClassName="max-w-md"
+      >
+        <div className="space-y-4">
               <div className="rounded-lg bg-orange-50 p-3 border border-orange-200">
                 <p className="text-sm text-orange-800">
-                  <span className="font-semibold">Nhóm:</span> {quickSessionGroup.name}
+                  <span className="font-semibold">Nhóm:</span> {quickSessionGroup?.name}
                 </p>
                 <p className="text-sm text-orange-600 mt-1">
-                  {quickSessionGroup.member_count} thành viên sẽ tham gia
+                  {quickSessionGroup?.member_count} thành viên sẽ tham gia
                 </p>
               </div>
 
@@ -503,10 +499,8 @@ export default function GroupsPage() {
                   {quickCreateSession.isPending ? 'Đang tạo...' : 'Bắt đầu nhậu!'}
                 </Button>
               </div>
-            </CardContent>
-          </Card>
         </div>
-      )}
+      </ResponsiveModal>
     </div>
   )
 }

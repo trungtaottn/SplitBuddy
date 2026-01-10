@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, Re
 import { api } from '@/lib/axios'
 import type { FeatureFlagPublic, ApiResponse } from '@/types/api'
 
-const POLLING_INTERVAL = 30000 // 30 seconds
+const POLLING_INTERVAL = 120000 // 2 minutes (120 seconds) - feature flags change infrequently
 
 interface FeatureFlagsContextType {
   features: Record<string, boolean>

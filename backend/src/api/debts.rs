@@ -32,7 +32,7 @@ pub struct DebtSummaryResponse {
     pub total_owed_to_me: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, sqlx::FromRow)]
 pub struct DebtItemResponse {
     pub id: Uuid,
     pub session_id: Uuid,
@@ -43,6 +43,11 @@ pub struct DebtItemResponse {
     pub amount: Decimal,
     pub status: DebtStatus,
     pub is_guest: bool, // Whether the counterpart (debtor for owed_to_me) is a guest
+    // Optional payment info for settlement UX (only available for registered users with default bank account)
+    pub counterpart_bank_name: Option<String>,
+    pub counterpart_account_number: Option<String>,
+    pub counterpart_account_holder_name: Option<String>,
+    pub counterpart_qr_image_url: Option<String>,
 }
 
 #[derive(Serialize)]

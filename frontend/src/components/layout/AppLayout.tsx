@@ -1,12 +1,13 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
-import { LogOut, User, Wallet, Home, Users, Shield, Sparkles } from 'lucide-react'
+import { LogOut, User, Wallet, Home, Users, Shield, Sparkles, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MusicPlayer } from '@/components/ui/MusicPlayer'
 import { AnimatedOutlet } from '@/components/PageTransition'
 import { SkipLink } from '@/components/SkipLink'
 import { BeerIcon } from '@/components/ui/BeerIcon'
+import { NotificationBell } from '@/components/NotificationBell'
 
 /**
  * AppLayout - Vintage Paper Style
@@ -110,11 +111,24 @@ export default function AppLayout() {
                     </Button>
                   </Link>
                 )}
+                <Link to="/analytics">
+                  <Button
+                    variant={isActive('/analytics') ? 'outline' : 'ghost'}
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <TrendingUp className="h-4 w-4" strokeWidth={1.5} />
+                    <span>Analytics</span>
+                  </Button>
+                </Link>
               </>
             )}
 
             {/* Divider */}
             <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Notifications */}
+            {!isAdmin && <NotificationBell />}
 
             {/* User section */}
             <Link 
@@ -141,6 +155,7 @@ export default function AppLayout() {
 
           {/* Mobile: User info */}
           <div className="flex items-center gap-2 md:hidden">
+            {!isAdmin && <NotificationBell />}
             <Link 
               to="/profile" 
               className="max-w-24 truncate text-sm font-medium text-foreground"

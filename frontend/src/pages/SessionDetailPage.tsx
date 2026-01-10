@@ -6,14 +6,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check, Lock, Unlock, Download, UserPlus, Ghost } from 'lucide-react'
+import { ArrowLeft, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check, Lock, Unlock, Download, UserPlus, Ghost, Image as ImageIcon, Upload } from 'lucide-react'
 import { BillInput, BillInputInline } from '@/components/BillInput'
 import { PageSkeleton } from '@/components/ui/skeleton'
 import { SuccessToast } from '@/components/ui/Celebration'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
 import { showError } from '@/utils/errorHandler'
-import type { SessionDetail, Bill, ApiResponse, CreateBillDto, PayerInput, SplitDetailInput, GroupDetail } from '@/types/api'
+import { ResponsiveModal } from '@/components/ui/responsive-modal'
+import type { SessionDetail, Bill, ApiResponse, CreateBillDto, PayerInput, SplitDetailInput, GroupDetail, ExpenseCategory } from '@/types/api'
 
 type TabType = 'overview' | 'bills' | 'debts'
 
@@ -29,6 +30,7 @@ export default function SessionDetailPage() {
     amount: string
     payerId: string
     splitParticipants: string[]
+    receipt_url?: string | null
   } | null>(null)
 
   const { data: session, isLoading } = useQuery({
@@ -46,6 +48,19 @@ export default function SessionDetailPage() {
       return res.data.data
     },
   })
+
+  const { data: categories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<ExpenseCategory[]>>('/categories')
+      return res.data.data
+    },
+  })
+
+  const categoriesById = (categories || []).reduce<Record<string, ExpenseCategory>>((acc, c) => {
+    acc[c.id] = c
+    return acc
+  }, {})
 
   const createBill = useMutation({
     mutationFn: async (data: CreateBillDto) => {
@@ -70,13 +85,15 @@ export default function SessionDetailPage() {
       description, 
       amount, 
       payerId,
-      splitParticipants 
+      splitParticipants,
+      receipt_url
     }: { 
       billId: string
       description: string
       amount: string
       payerId: string
       splitParticipants: string[]
+      receipt_url?: string | null
     }) => {
       const payers: PayerInput[] = [{ participant_id: payerId, amount }]
       const amountPerPerson = (parseFloat(amount) / splitParticipants.length).toFixed(0)
@@ -91,6 +108,7 @@ export default function SessionDetailPage() {
         split_strategy: 'EQUAL',
         payers,
         split_details,
+        receipt_url,
       })
     },
     onSuccess: () => {
@@ -439,7 +457,7 @@ export default function SessionDetailPage() {
                     </>
                   ) : (
                     <>
-                      <span>{p.user_id ? '👤' : '👻'}</span>
+                      <span>{p.user_id ? '' : '👻'}</span>
                       <span>{p.display_name}</span>
                       {p.role === 'owner' && (
                         <span className="text-xs">(Chủ xị)</span>
@@ -484,7 +502,7 @@ export default function SessionDetailPage() {
                               : 'text-muted-foreground hover:text-foreground'
                           }`}
                         >
-                          👤 Nhóm
+                           Nhóm
                         </button>
                         <button
                           onClick={() => setAddMode('guest')}
@@ -599,6 +617,8 @@ export default function SessionDetailPage() {
                     payers: data.payers,
                     split_strategy: data.split_strategy,
                     split_details: data.split_details,
+                    category_id: data.category_id ?? null,
+                    receipt_url: data.receipt_url,
                   })
                 }}
                 onCancel={() => setShowBillModal(false)}
@@ -712,15 +732,104 @@ export default function SessionDetailPage() {
                           )}
                         </div>
                         
-                        <div className="flex gap-2">
+                        {/* Receipt Upload/Edit */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium flex items-center gap-1">
+                            <ImageIcon className="h-4 w-4" /> Ảnh hóa đơn (tùy chọn)
+                          </Label>
+                          {editingBill.receipt_url ? (
+                            <div className="relative group">
+                              <img
+                                src={editingBill.receipt_url}
+                                alt="Receipt"
+                                className="w-full h-48 object-contain rounded-lg border-2 border-primary/20"
+                              />
+                              <div className="absolute top-2 right-2 flex gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => window.open(editingBill.receipt_url!, '_blank')}
+                                  className="bg-black/50 text-white hover:bg-black/70"
+                                >
+                                  <Download className="h-3 w-3 mr-1" />
+                                  Xem
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => setEditingBill({ ...editingBill, receipt_url: null })}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0]
+                                  if (!file) return
+
+                                  if (!file.type.startsWith('image/')) {
+                                    toast.error('Chỉ chấp nhận file ảnh')
+                                    return
+                                  }
+
+                                  if (file.size > 10 * 1024 * 1024) {
+                                    toast.error('File ảnh phải nhỏ hơn 10MB')
+                                    return
+                                  }
+
+                                  try {
+                                    const formData = new FormData()
+                                    formData.append('file', file)
+                                    const res = await api.post<{ data: { url: string } }>('/uploads/receipt', formData, {
+                                      headers: { 'Content-Type': 'multipart/form-data' },
+                                    })
+                                    setEditingBill({ ...editingBill, receipt_url: res.data.data.url })
+                                    toast.success('Upload ảnh hóa đơn thành công!')
+                                  } catch (error) {
+                                    console.error('Upload receipt error:', error)
+                                    toast.error('Không thể upload ảnh. Vui lòng thử lại.')
+                                  }
+                                }}
+                                className="hidden"
+                                id={`receipt-upload-${editingBill.id}`}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => document.getElementById(`receipt-upload-${editingBill.id}`)?.click()}
+                                className="flex-1 gap-2"
+                              >
+                                <Upload className="h-4 w-4" />
+                                Chọn ảnh hóa đơn
+                              </Button>
+                            </div>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Hỗ trợ: JPEG, PNG, GIF, WebP (tối đa 10MB)
+                          </p>
+                        </div>
+                        
+                        <div className="flex gap-2 pt-2 border-t">
                           <Button
+                            type="button"
                             size="sm"
                             variant="outline"
                             onClick={() => setEditingBill(null)}
+                            className="flex-1"
                           >
+                            <X className="h-4 w-4 mr-1" />
                             Hủy
                           </Button>
                           <Button
+                            type="button"
                             size="sm"
                             onClick={() => updateBill.mutate({
                               billId: bill.id,
@@ -728,9 +837,12 @@ export default function SessionDetailPage() {
                               amount: editingBill.amount,
                               payerId: editingBill.payerId,
                               splitParticipants: editingBill.splitParticipants,
+                              receipt_url: editingBill.receipt_url,
                             })}
                             disabled={updateBill.isPending || editingBill.splitParticipants.length === 0 || !editingBill.payerId}
+                            className="flex-1"
                           >
+                            <Check className="h-4 w-4 mr-1" />
                             {updateBill.isPending ? 'Đang lưu...' : 'Lưu'}
                           </Button>
                         </div>
@@ -745,6 +857,24 @@ export default function SessionDetailPage() {
                               <p className="text-sm text-muted-foreground">
                                 {new Date(bill.created_at).toLocaleDateString('vi-VN')}
                               </p>
+                              {bill.category_id && categoriesById[bill.category_id] && (
+                                <div className="mt-1">
+                                  <span
+                                    className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border"
+                                    style={
+                                      categoriesById[bill.category_id]?.color
+                                        ? {
+                                            borderColor: categoriesById[bill.category_id].color!,
+                                            color: categoriesById[bill.category_id].color!,
+                                          }
+                                        : undefined
+                                    }
+                                  >
+                                    <span>{categoriesById[bill.category_id].icon || '🏷️'}</span>
+                                    <span>{categoriesById[bill.category_id].name}</span>
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -760,12 +890,13 @@ export default function SessionDetailPage() {
                                 amount: bill.amount,
                                 payerId: bill.payers?.[0]?.participant_id || '',
                                 splitParticipants: bill.participants?.map(p => p.participant_id) || [],
+                                receipt_url: bill.receipt_url || null,
                               })}
                             >
                               ✏️
                             </Button>
                             {deletingBillId === bill.id ? (
-                              <div className="flex items-center gap-1">
+                              <>
                                 <Button
                                   size="sm"
                                   variant="destructive"
@@ -781,7 +912,7 @@ export default function SessionDetailPage() {
                                 >
                                   Hủy
                                 </Button>
-                              </div>
+                              </>
                             ) : (
                               <Button
                                 size="sm"
@@ -794,6 +925,29 @@ export default function SessionDetailPage() {
                             )}
                           </div>
                         </div>
+                        
+                        {/* Receipt Image - Hiển thị ngay sau description */}
+                        {bill.receipt_url && (
+                          <div className="relative group">
+                            <img
+                              src={bill.receipt_url}
+                              alt="Receipt"
+                              className="w-full max-h-64 object-contain rounded-lg border-2 border-primary/20 cursor-pointer hover:border-primary/40 transition-colors"
+                              onClick={() => window.open(bill.receipt_url!, '_blank')}
+                            />
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => window.open(bill.receipt_url!, '_blank')}
+                                className="bg-black/50 text-white hover:bg-black/70"
+                              >
+                                <Download className="h-3 w-3 mr-1" />
+                                Xem
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                         
                         {/* Payer info */}
                         {bill.payers && bill.payers.length > 0 && (
@@ -874,7 +1028,7 @@ export default function SessionDetailPage() {
                             return (
                               <div key={p.id} className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2">
                                 <div className="flex items-center gap-2">
-                                  <span>{p.user_id ? '👤' : '👻'}</span>
+                                  <span>{p.user_id ? '' : '👻'}</span>
                                   <span className="font-medium">{p.display_name}</span>
                                 </div>
                                 <div className="text-right">
@@ -906,41 +1060,33 @@ export default function SessionDetailPage() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-600">
-                <Trash2 className="h-5 w-5" />
-                Xác nhận xóa
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Bạn có chắc muốn xóa buổi nhậu <strong>"{session?.name}"</strong>? 
-                Tất cả hoá đơn và công nợ liên quan sẽ bị xóa vĩnh viễn.
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowDeleteConfirm(false)}
-                >
-                  Huỷ
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="flex-1"
-                  onClick={() => deleteSession.mutate()}
-                  disabled={deleteSession.isPending}
-                >
-                  {deleteSession.isPending ? 'Đang xóa...' : 'Xóa'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      <ResponsiveModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Xác nhận xóa"
+        desktopClassName="max-w-sm"
+        showHandle={false}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Bạn có chắc muốn xóa buổi nhậu <strong>"{session?.name}"</strong>? Tất cả hoá đơn và công nợ liên quan sẽ bị
+            xóa vĩnh viễn.
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setShowDeleteConfirm(false)}>
+              Huỷ
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={() => deleteSession.mutate()}
+              disabled={deleteSession.isPending}
+            >
+              {deleteSession.isPending ? 'Đang xóa...' : 'Xóa'}
+            </Button>
+          </div>
         </div>
-      )}
+      </ResponsiveModal>
 
       {/* Success Toast for Bill Creation */}
       <SuccessToast

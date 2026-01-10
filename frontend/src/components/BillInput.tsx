@@ -1,12 +1,14 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, X, Check, Users, Banknote, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, X, Check, Users, Banknote, ChevronDown, ChevronUp, Upload, Image as ImageIcon } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { cn } from '@/lib/utils'
-import type { Participant, PayerInput, SplitDetailInput } from '@/types/api'
+import { api } from '@/lib/axios'
+import { toast } from '@/components/ui/toaster'
+import type { ApiResponse, ExpenseCategory, Participant, PayerInput, SplitDetailInput } from '@/types/api'
 
 // Common bill descriptions for autocomplete
 const BILL_SUGGESTIONS = [
@@ -38,6 +40,8 @@ interface BillInputProps {
     payers: PayerInput[]
     split_strategy: string
     split_details?: SplitDetailInput[]
+    category_id?: string | null
+    receipt_url?: string | null
   }) => void
   onCancel: () => void
   isSubmitting?: boolean
@@ -59,11 +63,40 @@ export function BillInput({
   const [customSplits, setCustomSplits] = useState<Record<string, string>>({})
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(initialExpanded)
+  const [categories, setCategories] = useState<ExpenseCategory[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null)
+  const [uploadingReceipt, setUploadingReceipt] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Auto-select all participants for split on mount
   useEffect(() => {
     setSelectedSplitParticipants(participants.map(p => p.id))
   }, [participants])
+
+  // Fetch expense categories
+  useEffect(() => {
+    let mounted = true
+    setCategoriesLoading(true)
+    api.get<ApiResponse<ExpenseCategory[]>>('/categories')
+      .then((res) => {
+        if (!mounted) return
+        setCategories(res.data.data || [])
+      })
+      .catch(() => {
+        if (!mounted) return
+        setCategories([])
+      })
+      .finally(() => {
+        if (!mounted) return
+        setCategoriesLoading(false)
+      })
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   // Filter suggestions based on input
   const filteredSuggestions = useMemo(() => {
@@ -137,7 +170,57 @@ export function BillInput({
       payers,
       split_strategy: splitMode,
       split_details,
+      category_id: selectedCategoryId || null,
+      receipt_url: receiptUrl,
     })
+  }
+
+  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Chỉ chấp nhận file ảnh')
+      return
+    }
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File ảnh phải nhỏ hơn 10MB')
+      return
+    }
+
+    setUploadingReceipt(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await api.post<{ data: { url: string } }>('/uploads/receipt', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+
+      setReceiptUrl(res.data.data.url)
+      toast.success('Upload ảnh hóa đơn thành công!')
+    } catch (error) {
+      console.error('Upload receipt error:', error)
+      toast.error('Không thể upload ảnh. Vui lòng thử lại.')
+    } finally {
+      setUploadingReceipt(false)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleRemoveReceipt = () => {
+    setReceiptUrl(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   const toggleParticipant = (pid: string) => {
@@ -225,6 +308,26 @@ export function BillInput({
             </div>
           </div>
 
+          {/* Category selection (optional) */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Phân loại (tùy chọn)</Label>
+            <select
+              value={selectedCategoryId}
+              onChange={(e) => setSelectedCategoryId(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              disabled={categoriesLoading}
+            >
+              <option value="">
+                {categoriesLoading ? 'Đang tải danh mục...' : 'Không phân loại'}
+              </option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {(c.icon || '🏷️') + ' ' + c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Payer selection */}
           <div className="space-y-2">
             <Label className="text-sm font-medium flex items-center gap-1">
@@ -243,7 +346,7 @@ export function BillInput({
                       : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
                   )}
                 >
-                  {p.user_id ? '👤' : '👻'} {p.display_name}
+                  {p.user_id ? '' : '👻'} {p.display_name}
                 </button>
               ))}
             </div>
@@ -321,6 +424,64 @@ export function BillInput({
               </div>
             </div>
           )}
+
+          {/* Receipt Upload */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-1">
+              <ImageIcon className="h-4 w-4" /> Ảnh hóa đơn (tùy chọn)
+            </Label>
+            {receiptUrl ? (
+              <div className="relative group">
+                <img
+                  src={receiptUrl}
+                  alt="Receipt"
+                  className="w-full h-48 object-contain rounded-lg border-2 border-primary/20"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={handleRemoveReceipt}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleReceiptUpload}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingReceipt}
+                  className="flex-1 gap-2"
+                >
+                  {uploadingReceipt ? (
+                    <>
+                      <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      Đang upload...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Chọn ảnh hóa đơn
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Hỗ trợ: JPEG, PNG, GIF, WebP (tối đa 10MB)
+            </p>
+          </div>
 
           {/* Advanced options toggle */}
           <button

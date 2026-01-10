@@ -110,7 +110,7 @@ export function GameHistory({ sessionId }: GameHistoryProps) {
                 {entry.player_name && (
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs text-gray-500">
-                      👤 {entry.player_name}
+                       {entry.player_name}
                     </span>
                     {entry.drink_count && entry.drink_count > 0 && (
                       <span className="text-xs text-orange-600 flex items-center gap-0.5">

@@ -63,9 +63,10 @@ impl AppCache {
                 .time_to_live(Duration::from_secs(300))
                 .max_capacity(100)
                 .build(),
-            // All features list cache - 1 minute TTL (changes less frequently checked)
+            // All features list cache - 5 minute TTL (feature flags change infrequently)
+            // Cache invalidation is handled when admin updates flags
             all_features: Cache::builder()
-                .time_to_live(Duration::from_secs(60))
+                .time_to_live(Duration::from_secs(300))
                 .max_capacity(1)
                 .build(),
             // Session details cache - 5 minute TTL, max 500 entries

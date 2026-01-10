@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
   Check, Clock, Wallet, Users, Beer, Calendar, Zap, 
   ChevronDown, ChevronUp, Copy, TrendingUp,
-  ArrowUpRight, ArrowDownRight, MessageSquare
+  ArrowUpRight, ArrowDownRight, MessageSquare, QrCode
 } from 'lucide-react'
 import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
 import { formatCurrency } from '@/utils/formatCurrency'
@@ -16,6 +16,8 @@ import { showError } from '@/utils/errorHandler'
 import { cn } from '@/lib/utils'
 import { DebtCardSkeleton, StatsSkeleton } from '@/components/ui/skeleton'
 import { staggerContainer, staggerItem } from '@/components/PageTransition'
+import { QRCodeGenerator } from '@/components/QRCodeGenerator'
+import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import type { DebtSummary, ApiResponse, SessionDebt } from '@/types/api'
 
 type TabType = 'summary' | 'sessions'
@@ -36,6 +38,8 @@ function DebtCard({
   isGuest,
   onSettle,
   onSettleGuest,
+  onShowPayQr,
+  canShowPayQr,
   isSettling,
 }: {
   type: 'owe' | 'owed'
@@ -46,6 +50,8 @@ function DebtCard({
   isGuest: boolean
   onSettle: () => void
   onSettleGuest?: () => void
+  onShowPayQr?: () => void
+  canShowPayQr?: boolean
   isSettling: boolean
 }) {
   const isOwe = type === 'owe'
@@ -138,6 +144,17 @@ function DebtCard({
           <MessageSquare className="h-3 w-3 mr-1" />
           Nhắc nợ
         </Button>
+        {type === 'owe' && canShowPayQr && onShowPayQr && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1 h-8 text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
+            onClick={onShowPayQr}
+          >
+            <QrCode className="h-3 w-3 mr-1" />
+            QR
+          </Button>
+        )}
         
         {/* Action button based on type and status */}
         {isOwe && isPending && (
@@ -187,6 +204,19 @@ export default function DebtsPage() {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<TabType>('sessions')
   const [isNettingExpanded, setIsNettingExpanded] = useState(false)
+  const [qrModal, setQrModal] = useState<{ open: boolean; amount: string; note: string }>({
+    open: false,
+    amount: '',
+    note: '',
+  })
+  const [payToModal, setPayToModal] = useState<{
+    open: boolean
+    name: string
+    bankName?: string | null
+    accountNumber?: string | null
+    accountHolder?: string | null
+    qrImageUrl?: string | null
+  }>({ open: false, name: '' })
 
   const { data: debts, isLoading } = useQuery({
     queryKey: ['debts', 'me'],
@@ -549,6 +579,22 @@ export default function DebtsPage() {
                               
                               return (
                                 <div className="flex items-center gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 text-xs border-success/30 text-success hover:bg-success/10"
+                                    onClick={() => {
+                                      setQrModal({
+                                        open: true,
+                                        amount: String(Math.round(Math.abs(debt.netAmount))),
+                                        note: `Thanh toan no - ${debt.counterpartName}`,
+                                      })
+                                    }}
+                                    title="Tạo VietQR để người kia quét trả bạn (dùng tài khoản default)"
+                                  >
+                                    <QrCode className="h-3 w-3 mr-1" />
+                                    VietQR
+                                  </Button>
                                   {waitingDebts.length > 0 && (
                                     <Button
                                       size="sm"
@@ -654,7 +700,7 @@ export default function DebtsPage() {
           <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
             <CardContent className="py-8 text-center">
               <TrendingUp className="h-12 w-12 mx-auto mb-2 text-green-500" />
-              <p className="text-green-700 dark:text-green-300 font-medium">Bạn không nợ ai! 🎉</p>
+              <p className="text-green-700 dark:text-green-300 font-medium">Bạn không nợ ai!</p>
             </CardContent>
           </Card>
         ) : (
@@ -677,6 +723,20 @@ export default function DebtsPage() {
                   amount={debt.amount}
                   status={debt.status}
                   isGuest={debt.is_guest}
+                  canShowPayQr={
+                    !!debt.counterpart_qr_image_url ||
+                    (!!debt.counterpart_bank_name && !!debt.counterpart_account_number)
+                  }
+                  onShowPayQr={() =>
+                    setPayToModal({
+                      open: true,
+                      name: debt.counterpart_name,
+                      bankName: debt.counterpart_bank_name,
+                      accountNumber: debt.counterpart_account_number,
+                      accountHolder: debt.counterpart_account_holder_name,
+                      qrImageUrl: debt.counterpart_qr_image_url,
+                    })
+                  }
                   onSettle={() => requestSettle.mutate(debt.id)}
                   isSettling={requestSettle.isPending}
                 />
@@ -736,6 +796,60 @@ export default function DebtsPage() {
       </div>
         </>
       )}
+
+      {/* VietQR Modal */}
+      <ResponsiveModal
+        isOpen={qrModal.open}
+        onClose={() => setQrModal({ open: false, amount: '', note: '' })}
+        title="VietQR"
+        desktopClassName="max-w-3xl"
+      >
+        <QRCodeGenerator initialAmount={qrModal.amount} initialNote={qrModal.note} />
+      </ResponsiveModal>
+
+      {/* Pay-to Modal (show counterpart uploaded QR / bank info) */}
+      <ResponsiveModal
+        isOpen={payToModal.open}
+        onClose={() => setPayToModal({ open: false, name: '' })}
+        title={`Trả cho ${payToModal.name}`}
+        desktopClassName="max-w-xl"
+      >
+        <div className="space-y-3">
+          {payToModal.qrImageUrl ? (
+            <div className="rounded-lg border p-3 bg-white">
+              <img
+                src={payToModal.qrImageUrl}
+                alt="Bank QR"
+                className="w-full h-64 object-contain"
+              />
+            </div>
+          ) : (
+            <div className="rounded-lg border p-3 text-sm text-muted-foreground">
+              Người này chưa upload ảnh QR ngân hàng. Bạn có thể chuyển khoản thủ công theo thông tin bên dưới (nếu có).
+            </div>
+          )}
+
+          {(payToModal.bankName || payToModal.accountNumber || payToModal.accountHolder) && (
+            <div className="text-sm">
+              {payToModal.bankName && (
+                <p>
+                  <span className="font-medium">Ngân hàng:</span> {payToModal.bankName}
+                </p>
+              )}
+              {payToModal.accountNumber && (
+                <p>
+                  <span className="font-medium">Số TK:</span> {payToModal.accountNumber}
+                </p>
+              )}
+              {payToModal.accountHolder && (
+                <p>
+                  <span className="font-medium">Chủ TK:</span> {payToModal.accountHolder}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </ResponsiveModal>
     </div>
   )
 }

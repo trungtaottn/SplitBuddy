@@ -18,43 +18,52 @@ impl DebtRepository {
         &self,
         user_id: Uuid,
     ) -> Result<(Vec<DebtItemResponse>, Vec<DebtItemResponse>), AppError> {
-        let i_owe = sqlx::query_as!(
-            DebtItemResponse,
+        let i_owe = sqlx::query_as::<_, DebtItemResponse>(
             r#"
             SELECT 
                 d.id,
                 d.session_id,
                 s.name as session_name,
                 d.creditor_id as counterpart_id,
-                COALESCE(u.full_name, sp_creditor.guest_name, 'Unknown') as "counterpart_name!",
+                COALESCE(u.full_name, sp_creditor.guest_name, 'Unknown') as counterpart_name,
                 d.amount,
-                d.status as "status: DebtStatus",
-                (sp_creditor.user_id IS NULL) as "is_guest!"
+                d.status,
+                (sp_creditor.user_id IS NULL) as is_guest,
+                uba.bank_name as counterpart_bank_name,
+                uba.account_number as counterpart_account_number,
+                uba.account_holder_name as counterpart_account_holder_name,
+                uba.qr_image_url as counterpart_qr_image_url
             FROM debts d
             JOIN sessions s ON d.session_id = s.id
             JOIN session_participants sp_debtor ON d.debtor_id = sp_debtor.id
             JOIN session_participants sp_creditor ON d.creditor_id = sp_creditor.id
             LEFT JOIN users u ON sp_creditor.user_id = u.id
+            LEFT JOIN user_bank_accounts uba 
+              ON uba.user_id = sp_creditor.user_id 
+             AND uba.is_default = true
             WHERE sp_debtor.user_id = $1 AND d.status != 'settled'
             ORDER BY d.amount DESC
             "#,
-            user_id
         )
+        .bind(user_id)
         .fetch_all(&self.pool)
         .await?;
 
-        let owed_to_me = sqlx::query_as!(
-            DebtItemResponse,
+        let owed_to_me = sqlx::query_as::<_, DebtItemResponse>(
             r#"
             SELECT 
                 d.id,
                 d.session_id,
                 s.name as session_name,
                 d.debtor_id as counterpart_id,
-                COALESCE(u.full_name, sp_debtor.guest_name, 'Unknown') as "counterpart_name!",
+                COALESCE(u.full_name, sp_debtor.guest_name, 'Unknown') as counterpart_name,
                 d.amount,
-                d.status as "status: DebtStatus",
-                (sp_debtor.user_id IS NULL) as "is_guest!"
+                d.status,
+                (sp_debtor.user_id IS NULL) as is_guest,
+                NULL::text as counterpart_bank_name,
+                NULL::text as counterpart_account_number,
+                NULL::text as counterpart_account_holder_name,
+                NULL::text as counterpart_qr_image_url
             FROM debts d
             JOIN sessions s ON d.session_id = s.id
             JOIN session_participants sp_debtor ON d.debtor_id = sp_debtor.id
@@ -63,8 +72,8 @@ impl DebtRepository {
             WHERE sp_creditor.user_id = $1 AND d.status != 'settled'
             ORDER BY d.amount DESC
             "#,
-            user_id
         )
+        .bind(user_id)
         .fetch_all(&self.pool)
         .await?;
 

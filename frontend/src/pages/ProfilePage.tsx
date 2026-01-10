@@ -8,10 +8,11 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/toaster'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
-import { User, Lock, Camera, Save, Eye, EyeOff, Loader2, Palette, Sparkles, Trophy, Star, Lightbulb, HelpCircle } from 'lucide-react'
+import { User, Lock, Camera, Save, Eye, EyeOff, Loader2, Palette, Sparkles, Trophy, Star, Lightbulb, HelpCircle, Landmark, Plus, Pencil, Trash2, Bell, QrCode, X } from 'lucide-react'
 import WrappedModal from '@/components/WrappedModal'
 import { useOnboarding } from '@/components/Onboarding'
-import type { ApiResponse, PersonaWithUser, UserAchievement } from '@/types/api'
+import { ResponsiveModal } from '@/components/ui/responsive-modal'
+import type { ApiResponse, PersonaWithUser, UserAchievement, BankAccount, AddBankAccountDto, UpdateBankAccountDto } from '@/types/api'
 
 interface UserProfile {
   id: string
@@ -27,6 +28,49 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showWrapped, setShowWrapped] = useState(false)
   const [appVersion, setAppVersion] = useState('')
+  const [showBankModal, setShowBankModal] = useState(false)
+  const [editingBank, setEditingBank] = useState<BankAccount | null>(null)
+  const [bankName, setBankName] = useState('')
+  const [accountNumber, setAccountNumber] = useState('')
+  const [accountHolder, setAccountHolder] = useState('')
+  const [isDefaultBank, setIsDefaultBank] = useState(false)
+  const [bankQrUrl, setBankQrUrl] = useState<string | null>(null)
+  const [pushSupported, setPushSupported] = useState(false)
+  const [pushEnabled, setPushEnabled] = useState(false)
+  const [pushLoading, setPushLoading] = useState(false)
+
+  // Check push support + current subscription
+  useEffect(() => {
+    const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+    setPushSupported(supported)
+
+    if (!supported) return
+
+    ;(async () => {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration()
+        if (!reg) {
+          setPushEnabled(false)
+          return
+        }
+        const sub = await reg.pushManager.getSubscription()
+        setPushEnabled(!!sub)
+      } catch {
+        setPushEnabled(false)
+      }
+    })()
+  }, [])
+
+  const urlBase64ToUint8Array = (base64String: string) => {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+    const rawData = window.atob(base64)
+    const outputArray = new Uint8Array(rawData.length)
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i)
+    }
+    return outputArray
+  }
 
   // Fetch app version
   useEffect(() => {
@@ -73,6 +117,78 @@ export default function ProfilePage() {
       const res = await api.get<ApiResponse<UserProfile>>('/users/me')
       return res.data.data
     },
+  })
+
+  // Bank accounts
+  const { data: bankAccounts } = useQuery({
+    queryKey: ['bank-accounts'],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<BankAccount[]>>('/users/me/bank-accounts')
+      return res.data.data
+    },
+  })
+
+  const resetBankForm = () => {
+    setBankName('')
+    setAccountNumber('')
+    setAccountHolder('')
+    setIsDefaultBank(false)
+    setBankQrUrl(null)
+    setEditingBank(null)
+  }
+
+  const openAddBank = () => {
+    resetBankForm()
+    setShowBankModal(true)
+  }
+
+  const openEditBank = (b: BankAccount) => {
+    setEditingBank(b)
+    setBankName(b.bank_name)
+    setAccountNumber(b.account_number)
+    setAccountHolder(b.account_holder_name)
+    setIsDefaultBank(!!b.is_default)
+    setBankQrUrl(b.qr_image_url || null)
+    setShowBankModal(true)
+  }
+
+  const addBankAccount = useMutation({
+    mutationFn: async (data: AddBankAccountDto) => {
+      const res = await api.post<ApiResponse<BankAccount>>('/users/me/bank-accounts', data)
+      return res.data.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] })
+      toast.success('Đã thêm tài khoản ngân hàng!')
+      setShowBankModal(false)
+      resetBankForm()
+    },
+    onError: () => toast.error('Không thể thêm tài khoản ngân hàng.'),
+  })
+
+  const updateBankAccount = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateBankAccountDto }) => {
+      const res = await api.put<ApiResponse<BankAccount>>(`/users/me/bank-accounts/${id}`, data)
+      return res.data.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] })
+      toast.success('Đã cập nhật tài khoản ngân hàng!')
+      setShowBankModal(false)
+      resetBankForm()
+    },
+    onError: () => toast.error('Không thể cập nhật tài khoản ngân hàng.'),
+  })
+
+  const deleteBankAccount = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/users/me/bank-accounts/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] })
+      toast.success('Đã xóa tài khoản ngân hàng!')
+    },
+    onError: () => toast.error('Không thể xóa tài khoản ngân hàng.'),
   })
 
   // Update profile mutation
@@ -371,6 +487,190 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
+      {/* Bank Accounts */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between gap-2 text-lg">
+            <span className="flex items-center gap-2">
+              <Landmark className="h-5 w-5" />
+              Tài khoản ngân hàng
+            </span>
+            <Button variant="outline" size="sm" className="gap-2" onClick={openAddBank}>
+              <Plus className="h-4 w-4" />
+              Thêm
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {(bankAccounts || []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">Chưa có tài khoản ngân hàng nào.</p>
+          ) : (
+            <div className="space-y-2">
+              {bankAccounts?.map((b) => (
+                <div
+                  key={b.id}
+                  className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium truncate">{b.bank_name}</p>
+                      {b.is_default && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/30">
+                          Default
+                        </span>
+                      )}
+                      {b.qr_image_url && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/40 text-muted-foreground border border-border/50">
+                          QR
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {b.account_number} — {b.account_holder_name}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => openEditBank(b)} aria-label="Sửa">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteBankAccount.mutate(b.id)}
+                      aria-label="Xóa"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Tài khoản default sẽ được dùng để tạo VietQR khi thanh toán.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Push Notifications */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Bell className="h-5 w-5" />
+            Push Notifications (PWA)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!pushSupported ? (
+            <p className="text-sm text-muted-foreground">
+              Trình duyệt hiện tại không hỗ trợ Push Notifications.
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Bật để nhận thông báo đẩy (cần cài PWA và cho phép notifications).
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  disabled={pushLoading || pushEnabled}
+                  onClick={async () => {
+                    const vapidKey = (import.meta as unknown as { env: Record<string, string | undefined> }).env.VITE_VAPID_PUBLIC_KEY
+                    if (!vapidKey) {
+                      toast.error('Thiếu VITE_VAPID_PUBLIC_KEY trong env')
+                      return
+                    }
+                    setPushLoading(true)
+                    try {
+                      const permission = await Notification.requestPermission()
+                      if (permission !== 'granted') {
+                        toast.error('Bạn cần cho phép Notifications')
+                        return
+                      }
+
+                      // Ensure SW registration exists (works best in production build with PWA)
+                      const reg =
+                        (await navigator.serviceWorker.getRegistration()) ||
+                        (await navigator.serviceWorker.register('/sw.js'))
+
+                      const existing = await reg.pushManager.getSubscription()
+                      const sub =
+                        existing ||
+                        (await reg.pushManager.subscribe({
+                          userVisibleOnly: true,
+                          applicationServerKey: urlBase64ToUint8Array(vapidKey),
+                        }))
+
+                      const json = sub.toJSON()
+                      const endpoint = json.endpoint
+                      const keys = json.keys
+
+                      if (!endpoint || !keys?.p256dh || !keys?.auth) {
+                        toast.error('Subscription không hợp lệ')
+                        return
+                      }
+
+                      await api.post('/notifications/push/subscribe', {
+                        endpoint,
+                        keys: {
+                          p256dh: keys.p256dh,
+                          auth: keys.auth,
+                        },
+                      })
+
+                      setPushEnabled(true)
+                      toast.success('Đã bật push notifications!')
+                    } catch (e) {
+                      console.error(e)
+                      toast.error('Không thể bật push notifications')
+                    } finally {
+                      setPushLoading(false)
+                    }
+                  }}
+                >
+                  {pushLoading ? 'Đang bật...' : 'Bật'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  disabled={pushLoading || !pushEnabled}
+                  onClick={async () => {
+                    setPushLoading(true)
+                    try {
+                      const reg = await navigator.serviceWorker.getRegistration()
+                      if (!reg) return
+                      const sub = await reg.pushManager.getSubscription()
+                      if (!sub) {
+                        setPushEnabled(false)
+                        return
+                      }
+
+                      const endpoint = sub.endpoint
+                      await api.post('/notifications/push/unsubscribe', { endpoint })
+                      await sub.unsubscribe()
+                      setPushEnabled(false)
+                      toast.success('Đã tắt push notifications')
+                    } catch (e) {
+                      console.error(e)
+                      toast.error('Không thể tắt push notifications')
+                    } finally {
+                      setPushLoading(false)
+                    }
+                  }}
+                >
+                  {pushLoading ? 'Đang tắt...' : 'Tắt'}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Lưu ý: Push hoạt động tốt nhất khi app được cài đặt như PWA và chạy trên HTTPS.
+              </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Persona & Achievements */}
       <Card>
         <CardHeader>
@@ -467,6 +767,159 @@ export default function ProfilePage() {
         isOpen={showWrapped} 
         onClose={() => setShowWrapped(false)} 
       />
+
+      {/* Bank Modal */}
+      <ResponsiveModal
+        isOpen={showBankModal}
+        onClose={() => {
+          setShowBankModal(false)
+          resetBankForm()
+        }}
+        title={editingBank ? 'Cập nhật tài khoản' : 'Thêm tài khoản'}
+        desktopClassName="max-w-lg"
+      >
+        <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (!bankName.trim() || !accountNumber.trim() || !accountHolder.trim()) {
+                    toast.error('Vui lòng nhập đầy đủ thông tin')
+                    return
+                  }
+
+                  const payload: AddBankAccountDto = {
+                    bank_name: bankName.trim(),
+                    account_number: accountNumber.trim(),
+                    account_holder_name: accountHolder.trim(),
+                    is_default: isDefaultBank,
+                    qr_image_url: bankQrUrl,
+                  }
+
+                  if (editingBank) {
+                    updateBankAccount.mutate({ id: editingBank.id, data: payload })
+                  } else {
+                    addBankAccount.mutate(payload)
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label>Tên ngân hàng</Label>
+                  <Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="VD: Vietcombank" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Số tài khoản</Label>
+                  <Input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder="VD: 0123456789" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Chủ tài khoản</Label>
+                  <Input value={accountHolder} onChange={(e) => setAccountHolder(e.target.value)} placeholder="VD: NGUYEN VAN A" />
+                </div>
+
+                {/* Bank QR image upload (recommended) */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <QrCode className="h-4 w-4" />
+                    Ảnh QR ngân hàng (khuyến nghị)
+                  </Label>
+                  {bankQrUrl ? (
+                    <div className="relative group">
+                      <img
+                        src={bankQrUrl}
+                        alt="Bank QR"
+                        className="w-full h-48 object-contain rounded-lg border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setBankQrUrl(null)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        id="bank-qr-upload"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          if (!file.type.startsWith('image/')) {
+                            toast.error('Chỉ chấp nhận file ảnh')
+                            return
+                          }
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast.error('File ảnh phải nhỏ hơn 5MB')
+                            return
+                          }
+                          try {
+                            const formData = new FormData()
+                            formData.append('file', file)
+                            const res = await api.post<ApiResponse<{ url: string }>>('/uploads/bank-qr', formData, {
+                              headers: { 'Content-Type': 'multipart/form-data' },
+                            })
+                            setBankQrUrl(res.data.data.url)
+                            toast.success('Đã upload QR!')
+                          } catch (err) {
+                            console.error(err)
+                            toast.error('Không thể upload QR. Vui lòng thử lại.')
+                          } finally {
+                            // reset input so the same file can be re-selected
+                            ;(e.target as HTMLInputElement).value = ''
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1 gap-2"
+                        onClick={() => document.getElementById('bank-qr-upload')?.click()}
+                      >
+                        <QrCode className="h-4 w-4" />
+                        Upload ảnh QR
+                      </Button>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Hãy chụp/screenshot QR chuyển khoản trong app ngân hàng và upload lên. Khi người khác cần trả tiền, app sẽ ưu tiên dùng QR này để quét.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={isDefaultBank}
+                    onChange={(e) => setIsDefaultBank(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  Đặt làm tài khoản mặc định
+                </label>
+
+                <div className="flex gap-2 pt-2 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowBankModal(false)
+                      resetBankForm()
+                    }}
+                  >
+                    Hủy
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                    disabled={addBankAccount.isPending || updateBankAccount.isPending}
+                  >
+                    {addBankAccount.isPending || updateBankAccount.isPending ? 'Đang lưu...' : 'Lưu'}
+                  </Button>
+                </div>
+        </form>
+      </ResponsiveModal>
     </div>
   )
 }
