@@ -57,12 +57,12 @@ check-backend:
 	@echo "🔍 Checking backend..."
 	@echo "  → cargo fmt --check"
 	cd backend && cargo fmt -- --check
-	@echo "  → cargo clippy"
-	cd backend && cargo clippy --release -- -D warnings
-	@echo "  → cargo build"
-	cd backend && cargo build --release
-	@echo "  → cargo test"
-	cd backend && cargo test --release
+	@echo "  → SQLX_OFFLINE=true cargo clippy"
+	cd backend && SQLX_OFFLINE=true cargo clippy --release -- -D warnings
+	@echo "  → SQLX_OFFLINE=true cargo build"
+	cd backend && SQLX_OFFLINE=true cargo build --release
+	@echo "  → SQLX_OFFLINE=true cargo test"
+	cd backend && SQLX_OFFLINE=true cargo test --release
 	@echo "✅ Backend checks passed!"
 
 ## Check frontend
