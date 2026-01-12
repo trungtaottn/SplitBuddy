@@ -8,7 +8,7 @@ import { formatCurrency } from '@/utils/formatCurrency'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/axios'
 import { toast } from '@/components/ui/toaster'
-import type { ApiResponse, ExpenseCategory, Participant, PayerInput, SplitDetailInput } from '@/types/api'
+import type { ApiResponse, ExpenseCategory, Participant, PayerInput, SplitDetailInput, Bill } from '@/types/api'
 
 // Common bill descriptions for autocomplete
 const BILL_SUGGESTIONS = [
@@ -46,6 +46,8 @@ interface BillInputProps {
   onCancel: () => void
   isSubmitting?: boolean
   initialExpanded?: boolean
+  initialData?: Bill | null
+  categories?: ExpenseCategory[]
 }
 
 export function BillInput({
@@ -54,15 +56,49 @@ export function BillInput({
   onCancel,
   isSubmitting = false,
   initialExpanded = false,
+  initialData,
+  categories: propCategories,
 }: BillInputProps) {
-  const [description, setDescription] = useState('')
-  const [amount, setAmount] = useState('')
-  const [selectedPayer, setSelectedPayer] = useState('')
-  const [splitMode, setSplitMode] = useState<'EQUAL' | 'CUSTOM'>('EQUAL')
+  const [description, setDescription] = useState(initialData?.description || '')
+  const [amount, setAmount] = useState(initialData?.amount?.toString() || '')
+  const [selectedPayer, setSelectedPayer] = useState(initialData?.payers?.[0]?.participant_id || '')
+  // Determine split mode from initialData
+  const [splitMode, setSplitMode] = useState<'EQUAL' | 'CUSTOM'>(
+    initialData?.split_strategy === 'CUSTOM' ? 'CUSTOM' : 'EQUAL'
+  )
+
+  // Setup initial split participants
   const [selectedSplitParticipants, setSelectedSplitParticipants] = useState<string[]>([])
   const [customSplits, setCustomSplits] = useState<Record<string, string>>({})
+
+  // Initialize splits on mount
+  useEffect(() => {
+    if (initialData) {
+      if (initialData.participants) {
+        setSelectedSplitParticipants(initialData.participants.map(p => p.participant_id))
+
+        if (initialData.split_strategy === 'CUSTOM') {
+          const splits: Record<string, string> = {}
+          initialData.participants.forEach(p => {
+            splits[p.participant_id] = p.amount_owed.toString()
+          })
+          setCustomSplits(splits)
+        }
+      }
+      if (initialData.category_id) {
+        setSelectedCategoryId(initialData.category_id)
+      }
+      if (initialData.receipt_url) {
+        setReceiptUrl(initialData.receipt_url)
+      }
+    } else {
+      // Default to all participants if creating new
+      setSelectedSplitParticipants(participants.map(p => p.id))
+    }
+  }, [initialData, participants])
+
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const [isAdvancedOpen, setIsAdvancedOpen] = useState(initialExpanded)
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(initialExpanded || !!initialData)
   const [categories, setCategories] = useState<ExpenseCategory[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
@@ -70,13 +106,15 @@ export function BillInput({
   const [uploadingReceipt, setUploadingReceipt] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-select all participants for split on mount
-  useEffect(() => {
-    setSelectedSplitParticipants(participants.map(p => p.id))
-  }, [participants])
 
-  // Fetch expense categories
+
+  // Fetch expense categories if not provided
   useEffect(() => {
+    if (propCategories && propCategories.length > 0) {
+      setCategories(propCategories)
+      return
+    }
+
     let mounted = true
     setCategoriesLoading(true)
     api.get<ApiResponse<ExpenseCategory[]>>('/categories')
@@ -96,13 +134,13 @@ export function BillInput({
     return () => {
       mounted = false
     }
-  }, [])
+  }, [propCategories])
 
   // Filter suggestions based on input
   const filteredSuggestions = useMemo(() => {
     if (!description) return BILL_SUGGESTIONS.slice(0, 4)
     const lower = description.toLowerCase()
-    return BILL_SUGGESTIONS.filter(s => 
+    return BILL_SUGGESTIONS.filter(s =>
       s.label.toLowerCase().includes(lower) ||
       s.keywords.some(k => k.includes(lower))
     ).slice(0, 4)
@@ -147,7 +185,7 @@ export function BillInput({
     if (!selectedPayer || !amount || selectedSplitParticipants.length === 0) return
 
     const payers: PayerInput[] = [{ participant_id: selectedPayer, amount }]
-    
+
     let split_details: SplitDetailInput[] | undefined
     if (splitMode === 'EQUAL') {
       const perPerson = (parseFloat(amount) / selectedSplitParticipants.length).toFixed(0)
@@ -251,7 +289,7 @@ export function BillInput({
                 />
               </div>
             </div>
-            
+
             {/* Suggestions dropdown */}
             {showSuggestions && filteredSuggestions.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border rounded-lg shadow-lg z-10 overflow-hidden">
@@ -358,7 +396,7 @@ export function BillInput({
               {/* Header */}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-heading font-medium flex items-center gap-1.5 text-foreground">
-                  <Users className="h-4 w-4 text-primary" /> 
+                  <Users className="h-4 w-4 text-primary" />
                   Chia cho {selectedSplitParticipants.length} người
                 </span>
                 {splitMode === 'EQUAL' && (
@@ -367,7 +405,7 @@ export function BillInput({
                   </span>
                 )}
               </div>
-              
+
               {/* Divider */}
               <div className="divider-retro" />
 
@@ -390,7 +428,7 @@ export function BillInput({
                       </div>
                       {/* Progress bar */}
                       <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className="h-full bg-primary rounded-full transition-all duration-300"
                           style={{ width: `${percentage}%` }}
                         />
@@ -584,8 +622,8 @@ export function BillInput({
                   </div>
                   <div className={cn(
                     "text-sm font-medium text-right",
-                    Math.abs(customSplitTotal - parseFloat(amount || '0')) < 1 
-                      ? "text-green-600" 
+                    Math.abs(customSplitTotal - parseFloat(amount || '0')) < 1
+                      ? "text-green-600"
                       : "text-red-600"
                   )}>
                     Tổng: {formatCurrency(customSplitTotal)} / {formatCurrency(amount || '0')}

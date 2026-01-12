@@ -4,8 +4,8 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::api::sessions::{
-    BillResponse, ParticipantBasicInfo, ParticipantResponse, PayerInput, SessionDetailResponse,
-    SessionResponse, SplitDetailInput,
+    BillDetailResponse, BillParticipantInfo, BillPayerInfo, BillResponse, ParticipantBasicInfo,
+    ParticipantResponse, PayerInput, SessionDetailResponse, SessionResponse, SplitDetailInput,
 };
 use crate::domain::session::{ParticipantRole, SessionStatus};
 use crate::error::AppError;
@@ -1347,5 +1347,120 @@ impl SessionRepository {
         tx.commit().await?;
 
         Ok(())
+    }
+    pub async fn find_bills_with_details(
+        &self,
+        session_id: Uuid,
+    ) -> Result<Vec<BillDetailResponse>, AppError> {
+        let bills = sqlx::query!(
+            r#"
+            SELECT 
+                id, session_id, description, amount, split_strategy, created_by, created_at
+            FROM bills
+            WHERE session_id = $1
+            ORDER BY created_at DESC
+            "#,
+            session_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        if bills.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let bill_ids: Vec<Uuid> = bills.iter().map(|b| b.id).collect();
+
+        struct PayerRow {
+            bill_id: Uuid,
+            participant_id: Uuid,
+            name: Option<String>,
+            amount_paid: Decimal,
+        }
+
+        let payers = sqlx::query_as!(
+            PayerRow,
+            r#"
+            SELECT 
+                bp.bill_id,
+                bp.participant_id,
+                COALESCE(u.full_name, sp.guest_name, 'Unknown') as name,
+                bp.amount_paid
+            FROM bill_payers bp
+            JOIN session_participants sp ON bp.participant_id = sp.id
+            LEFT JOIN users u ON sp.user_id = u.id
+            WHERE bp.bill_id = ANY($1)
+            "#,
+            &bill_ids
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        struct SplitRow {
+            bill_id: Uuid,
+            participant_id: Uuid,
+            name: Option<String>,
+            amount_owed: Decimal,
+        }
+
+        let participants = sqlx::query_as!(
+            SplitRow,
+            r#"
+            SELECT 
+                bs.bill_id,
+                bs.participant_id,
+                COALESCE(u.full_name, sp.guest_name, 'Unknown') as name,
+                bs.amount_owed
+            FROM bill_splits bs
+            JOIN session_participants sp ON bs.participant_id = sp.id
+            LEFT JOIN users u ON sp.user_id = u.id
+            WHERE bs.bill_id = ANY($1)
+            "#,
+            &bill_ids
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        use std::collections::HashMap;
+        let mut payers_map: HashMap<Uuid, Vec<BillPayerInfo>> = HashMap::new();
+        for p in payers {
+            payers_map
+                .entry(p.bill_id)
+                .or_default()
+                .push(BillPayerInfo {
+                    participant_id: p.participant_id,
+                    name: p.name.unwrap_or_else(|| "Unknown".to_string()),
+                    amount_paid: p.amount_paid,
+                });
+        }
+
+        let mut participants_map: HashMap<Uuid, Vec<BillParticipantInfo>> = HashMap::new();
+        for p in participants {
+            participants_map
+                .entry(p.bill_id)
+                .or_default()
+                .push(BillParticipantInfo {
+                    participant_id: p.participant_id,
+                    name: p.name.unwrap_or_else(|| "Unknown".to_string()),
+                    amount_owed: p.amount_owed,
+                });
+        }
+
+        let result = bills
+            .into_iter()
+            .map(|b| BillDetailResponse {
+                id: b.id,
+                session_id: b.session_id,
+                description: b.description,
+                amount: b.amount,
+                split_strategy: b.split_strategy,
+                created_by: b.created_by,
+                created_at: b.created_at,
+                payers: payers_map.remove(&b.id).unwrap_or_default(),
+                participants: participants_map.remove(&b.id).unwrap_or_default(),
+            })
+            .collect();
+
+        Ok(result)
     }
 }

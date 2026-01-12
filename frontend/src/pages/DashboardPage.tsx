@@ -42,7 +42,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const hasCompletedOnboarding = localStorage.getItem('splitbuddy-onboarding-completed')
     const hasSeenOnboarding = localStorage.getItem('splitbuddy-onboarding-shown')
-    
+
     if (!hasCompletedOnboarding && !hasSeenOnboarding) {
       // Delay to let the page load first
       const timer = setTimeout(() => {
@@ -96,7 +96,7 @@ export default function DashboardPage() {
     },
   })
 
-  const { data: groupDetail } = useQuery({
+  const { data: groupDetail, isFetching: isGroupDetailLoading } = useQuery({
     queryKey: ['groups', selectedGroupId],
     queryFn: async () => {
       if (!selectedGroupId) return null
@@ -128,6 +128,9 @@ export default function DashboardPage() {
       toast.error('Có lỗi xảy ra. Vui lòng thử lại.')
     },
   })
+
+  // Prevent race condition: disable submit when loading group members
+  const isSubmitDisabled = createSession.isPending || (!!selectedGroupId && isGroupDetailLoading)
 
   const handleCreateSession = (e: React.FormEvent) => {
     e.preventDefault()
@@ -169,13 +172,13 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* AI Greeting */}
-      <AiGreeting 
+      <AiGreeting
         onCreateSession={() => setShowCreateModal(true)}
         onViewDebts={() => navigate('/debts')}
       />
 
       {/* Debt Summary Cards - Minimalist Retro */}
-      <motion.div 
+      <motion.div
         className="grid gap-4 md:grid-cols-2"
         variants={staggerContainer}
         initial="hidden"
@@ -232,8 +235,8 @@ export default function DashboardPage() {
             Templates
           </Button>
           <FunTooltip messages={FUN_MESSAGES.createSession}>
-            <Button 
-              onClick={() => setShowCreateModal(true)} 
+            <Button
+              onClick={() => setShowCreateModal(true)}
               variant="stamp"
               className="gap-2"
               data-onboarding="create-session"
@@ -356,155 +359,155 @@ export default function DashboardPage() {
         desktopClassName="max-w-md"
       >
         <form onSubmit={handleCreateSession} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Tên cuộc nhậu</Label>
-                  <Input
-                    id="name"
-                    placeholder="VD: Nhậu tất niên"
-                    value={newSessionName}
-                    onChange={(e) => setNewSessionName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location">Địa điểm (tuỳ chọn)</Label>
-                  <Input
-                    id="location"
-                    placeholder="VD: Quán Ốc 123"
-                    value={newSessionLocation}
-                    onChange={(e) => setNewSessionLocation(e.target.value)}
-                  />
-                </div>
+          <div className="space-y-2">
+            <Label htmlFor="name">Tên cuộc nhậu</Label>
+            <Input
+              id="name"
+              placeholder="VD: Nhậu tất niên"
+              value={newSessionName}
+              onChange={(e) => setNewSessionName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="location">Địa điểm (tuỳ chọn)</Label>
+            <Input
+              id="location"
+              placeholder="VD: Quán Ốc 123"
+              value={newSessionLocation}
+              onChange={(e) => setNewSessionLocation(e.target.value)}
+            />
+          </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="session_date">Ngày nhậu</Label>
-                  <Input
-                    id="session_date"
-                    type="date"
-                    value={newSessionDate}
-                    onChange={(e) => setNewSessionDate(e.target.value)}
-                  />
-                </div>
+          <div className="space-y-2">
+            <Label htmlFor="session_date">Ngày nhậu</Label>
+            <Input
+              id="session_date"
+              type="date"
+              value={newSessionDate}
+              onChange={(e) => setNewSessionDate(e.target.value)}
+            />
+          </div>
 
-                {/* Group Selection */}
-                {groups && groups.length > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="group">Chọn nhóm (tuỳ chọn)</Label>
-                    <select
-                      id="group"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={selectedGroupId}
-                      onChange={(e) => {
-                        setSelectedGroupId(e.target.value)
-                        setSelectedParticipants([])
-                      }}
-                    >
-                      <option value="">-- Không chọn nhóm --</option>
-                      {groups.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.name} ({g.member_count} người)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+          {/* Group Selection */}
+          {groups && groups.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="group">Chọn nhóm (tuỳ chọn)</Label>
+              <select
+                id="group"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={selectedGroupId}
+                onChange={(e) => {
+                  setSelectedGroupId(e.target.value)
+                  setSelectedParticipants([])
+                }}
+              >
+                <option value="">-- Không chọn nhóm --</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name} ({g.member_count} người)
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-                {/* Participant Selection */}
-                {selectedGroupId && groupDetail && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Chọn thành viên tham gia</Label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={selectAllParticipants}
-                      >
-                        Chọn tất cả
-                      </Button>
-                    </div>
-                    <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border p-3">
-                      {groupDetail.members.map((member) => (
-                        <label
-                          key={member.user_id}
-                          className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedParticipants.includes(member.user_id)}
-                            onChange={() => toggleParticipant(member.user_id)}
-                            className="h-4 w-4 rounded border-gray-300"
-                          />
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm text-primary">
-                            {member.full_name.charAt(0)}
-                          </div>
-                          <span className="text-sm">{member.full_name}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Đã chọn {selectedParticipants.length} người
-                    </p>
-                  </div>
-                )}
-
-                {/* Guest Input */}
-                <div className="space-y-2">
-                  <Label>Thêm khách (không có trong nhóm)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Tên khách..."
-                      value={newGuestName}
-                      onChange={(e) => setNewGuestName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          addGuest()
-                        }
-                      }}
-                    />
-                    <Button type="button" variant="outline" onClick={addGuest}>
-                      Thêm
-                    </Button>
-                  </div>
-                  {guestNames.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {guestNames.map((name, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-1 rounded-sm bg-secondary border border-border px-2.5 py-1 text-xs font-medium text-foreground"
-                        >
-                          <span> {name}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeGuest(index)}
-                            className="ml-1 text-muted-foreground hover:text-destructive"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => {
-                      setShowCreateModal(false)
-                      setSelectedGroupId('')
-                      setSelectedParticipants([])
-                    }}
+          {/* Participant Selection */}
+          {selectedGroupId && groupDetail && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Chọn thành viên tham gia</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={selectAllParticipants}
+                >
+                  Chọn tất cả
+                </Button>
+              </div>
+              <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border p-3">
+                {groupDetail.members.map((member) => (
+                  <label
+                    key={member.user_id}
+                    className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
-                    Huỷ
-                  </Button>
-                  <Button type="submit" className="flex-1" disabled={createSession.isPending}>
-                    {createSession.isPending ? 'Đang tạo...' : 'Tạo'}
-                  </Button>
-                </div>
+                    <input
+                      type="checkbox"
+                      checked={selectedParticipants.includes(member.user_id)}
+                      onChange={() => toggleParticipant(member.user_id)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm text-primary">
+                      {member.full_name.charAt(0)}
+                    </div>
+                    <span className="text-sm">{member.full_name}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Đã chọn {selectedParticipants.length} người
+              </p>
+            </div>
+          )}
+
+          {/* Guest Input */}
+          <div className="space-y-2">
+            <Label>Thêm khách (không có trong nhóm)</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Tên khách..."
+                value={newGuestName}
+                onChange={(e) => setNewGuestName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addGuest()
+                  }
+                }}
+              />
+              <Button type="button" variant="outline" onClick={addGuest}>
+                Thêm
+              </Button>
+            </div>
+            {guestNames.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {guestNames.map((name, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-1 rounded-sm bg-secondary border border-border px-2.5 py-1 text-xs font-medium text-foreground"
+                  >
+                    <span> {name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeGuest(index)}
+                      className="ml-1 text-muted-foreground hover:text-destructive"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setShowCreateModal(false)
+                setSelectedGroupId('')
+                setSelectedParticipants([])
+              }}
+            >
+              Huỷ
+            </Button>
+            <Button type="submit" className="flex-1" disabled={isSubmitDisabled}>
+              {createSession.isPending ? 'Đang tạo...' : isGroupDetailLoading ? 'Đang tải...' : 'Tạo'}
+            </Button>
+          </div>
         </form>
       </ResponsiveModal>
     </div>

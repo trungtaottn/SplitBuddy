@@ -100,7 +100,7 @@ export default function GroupsPage() {
   })
 
   // Fetch group detail for quick session (to get member IDs)
-  const { data: quickSessionGroupDetail } = useQuery({
+  const { data: quickSessionGroupDetail, isFetching: isQuickSessionLoading } = useQuery({
     queryKey: ['groups', quickSessionGroup?.id],
     queryFn: async () => {
       if (!quickSessionGroup?.id) return null
@@ -145,11 +145,11 @@ export default function GroupsPage() {
 
   const submitQuickSession = () => {
     if (!quickSessionGroup || !quickSessionGroupDetail) return
-    
+
     const memberIds = quickSessionGroupDetail.members
       .filter(m => m.user_id)
       .map(m => m.user_id as string)
-    
+
     quickCreateSession.mutate({
       groupId: quickSessionGroup.id,
       location: quickSessionLocation,
@@ -170,7 +170,7 @@ export default function GroupsPage() {
     if (!memberEmail) {
       return
     }
-    addMember.mutate({ 
+    addMember.mutate({
       email: memberEmail,
     })
   }
@@ -241,7 +241,7 @@ export default function GroupsPage() {
           }}
         />
       ) : (
-        <motion.div 
+        <motion.div
           className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
           variants={staggerContainer}
           initial="hidden"
@@ -256,47 +256,47 @@ export default function GroupsPage() {
                 className="cursor-pointer animate-card-lift"
                 onClick={() => openGroupDetail(group.id)}
               >
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Users className="h-5 w-5 text-primary" />
-                  {group.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {group.description && (
-                  <p className="mb-2 text-sm text-muted-foreground">{group.description}</p>
-                )}
-                <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-primary/10 px-2 py-1 text-sm text-primary">
-                    {group.member_count} thành viên
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="gap-1 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
-                      onClick={(e) => handleQuickCreateSession(e, group)}
-                      disabled={quickCreateSession.isPending}
-                    >
-                      <Beer className="h-4 w-4" />
-                      Nhậu ngay!
-                    </Button>
-                    {isEnabled('group_debts') && (
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Users className="h-5 w-5 text-primary" />
+                    {group.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {group.description && (
+                    <p className="mb-2 text-sm text-muted-foreground">{group.description}</p>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="rounded-full bg-primary/10 px-2 py-1 text-sm text-primary">
+                      {group.member_count} thành viên
+                    </span>
+                    <div className="flex gap-2">
                       <Button
                         size="sm"
-                        variant="outline"
-                        className="gap-1"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          navigate(`/groups/${group.id}/debts`)
-                        }}
+                        className="gap-1 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+                        onClick={(e) => handleQuickCreateSession(e, group)}
+                        disabled={quickCreateSession.isPending}
                       >
-                        <BarChart3 className="h-4 w-4" />
+                        <Beer className="h-4 w-4" />
+                        Nhậu ngay!
                       </Button>
-                    )}
+                      {isEnabled('group_debts') && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/groups/${group.id}/debts`)
+                          }}
+                        >
+                          <BarChart3 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
             </motion.div>
           ))}
         </motion.div>
@@ -310,38 +310,38 @@ export default function GroupsPage() {
         desktopClassName="max-w-md"
       >
         <form onSubmit={handleCreateGroup} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Tên nhóm</Label>
-                  <Input
-                    id="name"
-                    placeholder="VD: Hội nhậu xóm"
-                    value={groupName}
-                    onChange={(e) => setGroupName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Mô tả (tuỳ chọn)</Label>
-                  <Input
-                    id="description"
-                    placeholder="VD: Nhóm bạn nhậu khu phố 3"
-                    value={groupDescription}
-                    onChange={(e) => setGroupDescription(e.target.value)}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setShowCreateModal(false)}
-                  >
-                    Huỷ
-                  </Button>
-                  <Button type="submit" className="flex-1" disabled={createGroup.isPending}>
-                    {createGroup.isPending ? 'Đang tạo...' : 'Tạo nhóm'}
-                  </Button>
-                </div>
+          <div className="space-y-2">
+            <Label htmlFor="name">Tên nhóm</Label>
+            <Input
+              id="name"
+              placeholder="VD: Hội nhậu xóm"
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="description">Mô tả (tuỳ chọn)</Label>
+            <Input
+              id="description"
+              placeholder="VD: Nhóm bạn nhậu khu phố 3"
+              value={groupDescription}
+              onChange={(e) => setGroupDescription(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowCreateModal(false)}
+            >
+              Huỷ
+            </Button>
+            <Button type="submit" className="flex-1" disabled={createGroup.isPending}>
+              {createGroup.isPending ? 'Đang tạo...' : 'Tạo nhóm'}
+            </Button>
+          </div>
         </form>
       </ResponsiveModal>
 
@@ -359,72 +359,72 @@ export default function GroupsPage() {
           <p className="text-sm text-muted-foreground -mt-2">{groupDetail.description}</p>
         )}
         <div className="space-y-4">
-              {/* Add member form */}
-              <form onSubmit={handleAddMember} className="space-y-3">
-                <Input
-                  placeholder="Email thành viên *"
-                  value={memberEmail}
-                  onChange={(e) => setMemberEmail(e.target.value)}
-                  type="email"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  💡 Thành viên phải có tài khoản (liên hệ Admin để tạo)
-                </p>
-                <Button type="submit" disabled={addMember.isPending || !memberEmail} className="w-full gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Thêm thành viên
-                </Button>
-              </form>
+          {/* Add member form */}
+          <form onSubmit={handleAddMember} className="space-y-3">
+            <Input
+              placeholder="Email thành viên *"
+              value={memberEmail}
+              onChange={(e) => setMemberEmail(e.target.value)}
+              type="email"
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              💡 Thành viên phải có tài khoản (liên hệ Admin để tạo)
+            </p>
+            <Button type="submit" disabled={addMember.isPending || !memberEmail} className="w-full gap-2">
+              <UserPlus className="h-4 w-4" />
+              Thêm thành viên
+            </Button>
+          </form>
 
-              {/* Members list */}
-              <div className="space-y-2">
-                <h4 className="font-medium">Thành viên ({groupDetail?.members?.length ?? 0})</h4>
-                {groupDetail?.members?.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between rounded-lg border p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        {member.full_name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-medium">{member.full_name}</p>
-                        <p className="text-sm text-muted-foreground">{member.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {member.role === 'admin' && (
-                        <span className="rounded bg-primary/10 px-2 py-1 text-xs text-primary">
-                          Admin
-                        </span>
-                      )}
-                      {member.user_id !== user?.id && member.role !== 'admin' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeMember.mutate(member.user_id)}
-                          disabled={removeMember.isPending}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  setShowDetailModal(false)
-                  setSelectedGroupId(null)
-                }}
+          {/* Members list */}
+          <div className="space-y-2">
+            <h4 className="font-medium">Thành viên ({groupDetail?.members?.length ?? 0})</h4>
+            {groupDetail?.members?.map((member) => (
+              <div
+                key={member.id}
+                className="flex items-center justify-between rounded-lg border p-3"
               >
-                Đóng
-              </Button>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    {member.full_name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-medium">{member.full_name}</p>
+                    <p className="text-sm text-muted-foreground">{member.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {member.role === 'admin' && (
+                    <span className="rounded bg-primary/10 px-2 py-1 text-xs text-primary">
+                      Admin
+                    </span>
+                  )}
+                  {member.user_id !== user?.id && member.role !== 'admin' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeMember.mutate(member.user_id)}
+                      disabled={removeMember.isPending}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              setShowDetailModal(false)
+              setSelectedGroupId(null)
+            }}
+          >
+            Đóng
+          </Button>
         </div>
       </ResponsiveModal>
 
@@ -440,65 +440,65 @@ export default function GroupsPage() {
         desktopClassName="max-w-md"
       >
         <div className="space-y-4">
-              <div className="rounded-lg bg-orange-50 p-3 border border-orange-200">
-                <p className="text-sm text-orange-800">
-                  <span className="font-semibold">Nhóm:</span> {quickSessionGroup?.name}
-                </p>
-                <p className="text-sm text-orange-600 mt-1">
-                  {quickSessionGroup?.member_count} thành viên sẽ tham gia
-                </p>
-              </div>
+          <div className="rounded-lg bg-orange-50 p-3 border border-orange-200">
+            <p className="text-sm text-orange-800">
+              <span className="font-semibold">Nhóm:</span> {quickSessionGroup?.name}
+            </p>
+            <p className="text-sm text-orange-600 mt-1">
+              {quickSessionGroup?.member_count} thành viên sẽ tham gia
+            </p>
+          </div>
 
-              {quickSessionGroupDetail && (
-                <div className="space-y-2">
-                  <Label className="text-sm text-muted-foreground">Thành viên tham gia:</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {quickSessionGroupDetail.members.map((member) => (
-                      <span
-                        key={member.id}
-                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs"
-                      >
-                        <div className="h-4 w-4 rounded-full bg-primary/30 flex items-center justify-center text-[10px] font-bold">
-                          {member.full_name.charAt(0).toUpperCase()}
-                        </div>
-                        {member.full_name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="quickLocation">Địa điểm (tuỳ chọn)</Label>
-                <Input
-                  id="quickLocation"
-                  placeholder="VD: Quán bia hơi, Nhà anh A..."
-                  value={quickSessionLocation}
-                  onChange={(e) => setQuickSessionLocation(e.target.value)}
-                />
+          {quickSessionGroupDetail && (
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Thành viên tham gia:</Label>
+              <div className="flex flex-wrap gap-2">
+                {quickSessionGroupDetail.members.map((member) => (
+                  <span
+                    key={member.id}
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs"
+                  >
+                    <div className="h-4 w-4 rounded-full bg-primary/30 flex items-center justify-center text-[10px] font-bold">
+                      {member.full_name.charAt(0).toUpperCase()}
+                    </div>
+                    {member.full_name}
+                  </span>
+                ))}
               </div>
+            </div>
+          )}
 
-              <div className="flex gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    setShowQuickSessionModal(false)
-                    setQuickSessionGroup(null)
-                    setQuickSessionLocation('')
-                  }}
-                >
-                  Huỷ
-                </Button>
-                <Button
-                  className="flex-1 gap-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
-                  onClick={submitQuickSession}
-                  disabled={quickCreateSession.isPending || !quickSessionGroupDetail}
-                >
-                  <Beer className="h-4 w-4" />
-                  {quickCreateSession.isPending ? 'Đang tạo...' : 'Bắt đầu nhậu!'}
-                </Button>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="quickLocation">Địa điểm (tuỳ chọn)</Label>
+            <Input
+              id="quickLocation"
+              placeholder="VD: Quán bia hơi, Nhà anh A..."
+              value={quickSessionLocation}
+              onChange={(e) => setQuickSessionLocation(e.target.value)}
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setShowQuickSessionModal(false)
+                setQuickSessionGroup(null)
+                setQuickSessionLocation('')
+              }}
+            >
+              Huỷ
+            </Button>
+            <Button
+              className="flex-1 gap-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+              onClick={submitQuickSession}
+              disabled={quickCreateSession.isPending || !quickSessionGroupDetail || isQuickSessionLoading}
+            >
+              <Beer className="h-4 w-4" />
+              {quickCreateSession.isPending ? 'Đang tạo...' : isQuickSessionLoading ? 'Đang tải...' : 'Bắt đầu nhậu!'}
+            </Button>
+          </div>
         </div>
       </ResponsiveModal>
     </div>
