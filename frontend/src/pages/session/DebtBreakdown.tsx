@@ -62,7 +62,9 @@ export function DebtBreakdown({ session, bills }: DebtBreakdownProps) {
                     <div className="space-y-3">
                         <div className="rounded-lg bg-primary/10 p-4 text-center">
                             <p className="text-sm text-muted-foreground">Tổng tiền cuộc nhậu</p>
-                            <p className="text-2xl font-bold text-primary">{formatCurrency(session.total_amount)}</p>
+                            <p className="text-2xl font-bold text-primary">
+                                {formatCurrency(session.total_amount, session.base_currency)}
+                            </p>
                         </div>
 
                         <div className="rounded-lg border p-4">
@@ -78,7 +80,9 @@ export function DebtBreakdown({ session, bills }: DebtBreakdownProps) {
                                             </div>
                                             <div className="text-right">
                                                 {data.owed > 0 ? (
-                                                    <span className="font-bold text-primary">{formatCurrency(data.owed.toFixed(0))}</span>
+                                                    <span className="font-bold text-primary">
+                                                        {formatCurrency(data.owed, session.base_currency)}
+                                                    </span>
                                                 ) : (
                                                     <span className="text-muted-foreground">-</span>
                                                 )}

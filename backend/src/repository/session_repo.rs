@@ -8,6 +8,7 @@ use crate::api::sessions::{
     ParticipantResponse, PayerInput, SessionDetailResponse, SessionResponse, SplitDetailInput,
 };
 use crate::domain::session::{ParticipantRole, SessionStatus};
+use crate::domain::split_calculator::SplitCalculator;
 use crate::error::AppError;
 
 pub struct SessionRepository {
@@ -19,7 +20,11 @@ impl SessionRepository {
         Self { pool }
     }
 
-    pub async fn find_by_user(&self, user_id: Uuid) -> Result<Vec<SessionResponse>, AppError> {
+    pub async fn find_by_user(
+        &self,
+        user_id: Uuid,
+        include_archived: bool,
+    ) -> Result<Vec<SessionResponse>, AppError> {
         #[derive(sqlx::FromRow)]
         struct SessionRow {
             id: Uuid,
@@ -31,6 +36,10 @@ impl SessionRepository {
             session_date: chrono::NaiveDate,
             participant_count: i64,
             total_amount: Decimal,
+            base_currency: String,
+            minimize_debts: bool,
+            timezone: String,
+            archived_at: Option<chrono::DateTime<chrono::Utc>>,
         }
 
         let rows: Vec<SessionRow> = sqlx::query_as(
@@ -44,15 +53,21 @@ impl SessionRepository {
                 s.created_at,
                 s.session_date,
                 (SELECT COUNT(*) FROM session_participants WHERE session_id = s.id)::bigint as participant_count,
-                (SELECT COALESCE(SUM(amount), 0) FROM bills WHERE session_id = s.id) as total_amount
+                (SELECT COALESCE(SUM(amount), 0) FROM bills WHERE session_id = s.id) as total_amount,
+                s.base_currency,
+                s.minimize_debts,
+                s.timezone,
+                s.archived_at
             FROM sessions s
             WHERE s.id IN (
                 SELECT session_id FROM session_participants WHERE user_id = $1
             )
+            AND ($2::bool OR s.archived_at IS NULL)
             ORDER BY s.session_date DESC, s.created_at DESC
             "#
         )
         .bind(user_id)
+        .bind(include_archived)
         .fetch_all(&self.pool)
         .await?;
 
@@ -86,6 +101,10 @@ impl SessionRepository {
                     session_date: row.session_date,
                     participant_count: row.participant_count,
                     total_amount: row.total_amount,
+                    base_currency: row.base_currency,
+                    minimize_debts: row.minimize_debts,
+                    timezone: row.timezone,
+                    archived_at: row.archived_at,
                     participants,
                     my_debt,
                     my_owed,
@@ -105,6 +124,7 @@ impl SessionRepository {
         status: Option<&str>,
         from: Option<chrono::NaiveDate>,
         to: Option<chrono::NaiveDate>,
+        include_archived: bool,
         page: i64,
         limit: i64,
     ) -> Result<(Vec<SessionResponse>, i64), AppError> {
@@ -119,6 +139,10 @@ impl SessionRepository {
             session_date: chrono::NaiveDate,
             participant_count: i64,
             total_amount: Decimal,
+            base_currency: String,
+            minimize_debts: bool,
+            timezone: String,
+            archived_at: Option<chrono::DateTime<chrono::Utc>>,
         }
 
         let offset = (page - 1) * limit;
@@ -135,7 +159,11 @@ impl SessionRepository {
                 s.created_at,
                 s.session_date,
                 (SELECT COUNT(*) FROM session_participants WHERE session_id = s.id)::bigint as participant_count,
-                (SELECT COALESCE(SUM(amount), 0) FROM bills WHERE session_id = s.id) as total_amount
+                (SELECT COALESCE(SUM(amount), 0) FROM bills WHERE session_id = s.id) as total_amount,
+                s.base_currency,
+                s.minimize_debts,
+                s.timezone,
+                s.archived_at
             FROM sessions s
             WHERE s.id IN (
                 SELECT session_id FROM session_participants WHERE user_id = $1
@@ -144,8 +172,9 @@ impl SessionRepository {
             AND ($3::text IS NULL OR s.status::text = $3)
             AND ($4::date IS NULL OR s.session_date >= $4)
             AND ($5::date IS NULL OR s.session_date <= $5)
+            AND ($6::bool OR s.archived_at IS NULL)
             ORDER BY s.session_date DESC, s.created_at DESC
-            LIMIT $6 OFFSET $7
+            LIMIT $7 OFFSET $8
             "#
         )
         .bind(user_id)
@@ -153,6 +182,7 @@ impl SessionRepository {
         .bind(status)
         .bind(from)
         .bind(to)
+        .bind(include_archived)
         .bind(limit)
         .bind(offset)
         .fetch_all(&self.pool)
@@ -170,6 +200,7 @@ impl SessionRepository {
             AND ($3::text IS NULL OR s.status::text = $3)
             AND ($4::date IS NULL OR s.session_date >= $4)
             AND ($5::date IS NULL OR s.session_date <= $5)
+            AND ($6::bool OR s.archived_at IS NULL)
             "#,
         )
         .bind(user_id)
@@ -177,6 +208,7 @@ impl SessionRepository {
         .bind(status)
         .bind(from)
         .bind(to)
+        .bind(include_archived)
         .fetch_one(&self.pool)
         .await?;
 
@@ -210,6 +242,10 @@ impl SessionRepository {
                     session_date: row.session_date,
                     participant_count: row.participant_count,
                     total_amount: row.total_amount,
+                    base_currency: row.base_currency,
+                    minimize_debts: row.minimize_debts,
+                    timezone: row.timezone,
+                    archived_at: row.archived_at,
                     participants,
                     my_debt,
                     my_owed,
@@ -491,9 +527,20 @@ impl SessionRepository {
 
         sqlx::query(
             r#"
-            INSERT INTO sessions (id, name, location, status, created_by, session_date, created_at, updated_at)
-            VALUES ($1, $2, $3, 'active', $4, $5, NOW(), NOW())
-            "#
+            INSERT INTO sessions (
+                id,
+                name,
+                location,
+                status,
+                created_by,
+                session_date,
+                base_currency,
+                timezone,
+                created_at,
+                updated_at
+            )
+            VALUES ($1, $2, $3, 'active', $4, $5, 'VND', 'Asia/Ho_Chi_Minh', NOW(), NOW())
+            "#,
         )
         .bind(session_id)
         .bind(name)
@@ -543,6 +590,10 @@ impl SessionRepository {
             session_date,
             participant_count: 1,
             total_amount: Decimal::ZERO,
+            base_currency: "VND".to_string(),
+            minimize_debts: true,
+            timezone: "Asia/Ho_Chi_Minh".to_string(),
+            archived_at: None,
             participants,
             my_debt: Decimal::ZERO,
             my_owed: Decimal::ZERO,
@@ -560,6 +611,8 @@ impl SessionRepository {
         group_id: Option<Uuid>,
         participant_ids: Option<&[Uuid]>,
         guest_names: Option<&[String]>,
+        base_currency: Option<&str>,
+        timezone: Option<&str>,
     ) -> Result<SessionResponse, AppError> {
         let mut tx = self.pool.begin().await?;
 
@@ -568,8 +621,20 @@ impl SessionRepository {
 
         sqlx::query(
             r#"
-            INSERT INTO sessions (id, name, location, status, created_by, group_id, session_date, created_at, updated_at)
-            VALUES ($1, $2, $3, 'active', $4, $5, $6, NOW(), NOW())
+            INSERT INTO sessions (
+                id,
+                name,
+                location,
+                status,
+                created_by,
+                group_id,
+                session_date,
+                base_currency,
+                timezone,
+                created_at,
+                updated_at
+            )
+            VALUES ($1, $2, $3, 'active', $4, $5, $6, COALESCE($7, 'VND'), COALESCE($8, 'Asia/Ho_Chi_Minh'), NOW(), NOW())
             "#
         )
         .bind(session_id)
@@ -578,6 +643,8 @@ impl SessionRepository {
         .bind(created_by)
         .bind(group_id)
         .bind(date)
+        .bind(base_currency)
+        .bind(timezone)
         .execute(&mut *tx)
         .await?;
 
@@ -641,6 +708,9 @@ impl SessionRepository {
         // Get participants basic info
         let participants = self.get_session_participants_basic(session_id).await?;
 
+        let resolved_base_currency = base_currency.unwrap_or("VND");
+        let resolved_timezone = timezone.unwrap_or("Asia/Ho_Chi_Minh");
+
         Ok(SessionResponse {
             id: session_id,
             name: name.to_string(),
@@ -651,6 +721,10 @@ impl SessionRepository {
             session_date: date,
             participant_count,
             total_amount: Decimal::ZERO,
+            base_currency: resolved_base_currency.to_string(),
+            minimize_debts: true,
+            timezone: resolved_timezone.to_string(),
+            archived_at: None,
             participants,
             my_debt: Decimal::ZERO,
             my_owed: Decimal::ZERO,
@@ -676,6 +750,10 @@ impl SessionRepository {
             session_date: chrono::NaiveDate,
             total_amount: Decimal,
             group_id: Option<Uuid>,
+            base_currency: String,
+            minimize_debts: bool,
+            timezone: String,
+            archived_at: Option<chrono::DateTime<chrono::Utc>>,
         }
 
         let session: Option<SessionDetailRow> = sqlx::query_as(
@@ -689,7 +767,11 @@ impl SessionRepository {
                 s.created_at,
                 s.session_date,
                 COALESCE(SUM(b.amount), 0) as total_amount,
-                s.group_id
+                s.group_id,
+                s.base_currency,
+                s.minimize_debts,
+                s.timezone,
+                s.archived_at
             FROM sessions s
             LEFT JOIN bills b ON s.id = b.session_id
             WHERE s.id = $1
@@ -737,6 +819,10 @@ impl SessionRepository {
             session_date: session.session_date,
             total_amount: session.total_amount,
             group_id: session.group_id,
+            base_currency: session.base_currency,
+            minimize_debts: session.minimize_debts,
+            timezone: session.timezone,
+            archived_at: session.archived_at,
             participants: participants
                 .into_iter()
                 .map(|p| ParticipantResponse {
@@ -801,6 +887,18 @@ impl SessionRepository {
         Ok(())
     }
 
+    pub async fn get_session_base_currency(&self, session_id: Uuid) -> Result<String, AppError> {
+        let base_currency = sqlx::query_scalar!(
+            r#"SELECT base_currency FROM sessions WHERE id = $1"#,
+            session_id
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(AppError::SessionNotFound { session_id })?;
+
+        Ok(base_currency)
+    }
+
     pub async fn update_status(
         &self,
         session_id: Uuid,
@@ -820,6 +918,10 @@ impl SessionRepository {
             created_by: Uuid,
             created_at: chrono::DateTime<chrono::Utc>,
             session_date: chrono::NaiveDate,
+            base_currency: String,
+            minimize_debts: bool,
+            timezone: String,
+            archived_at: Option<chrono::DateTime<chrono::Utc>>,
         }
 
         let session: SessionRow = sqlx::query_as(
@@ -827,7 +929,8 @@ impl SessionRepository {
             UPDATE sessions
             SET status = $1::session_status, updated_at = NOW()
             WHERE id = $2
-            RETURNING id, name, location, status::text, created_by, created_at, session_date
+            RETURNING id, name, location, status::text, created_by, created_at, session_date,
+                      base_currency, minimize_debts, timezone, archived_at
             "#,
         )
         .bind(status_str)
@@ -868,8 +971,178 @@ impl SessionRepository {
             session_date: session.session_date,
             participant_count,
             total_amount,
+            base_currency: session.base_currency,
+            minimize_debts: session.minimize_debts,
+            timezone: session.timezone,
+            archived_at: session.archived_at,
             participants,
             my_debt: Decimal::ZERO, // Not tracking user context here
+            my_owed: Decimal::ZERO,
+            settled_amount,
+        })
+    }
+
+    pub async fn update_minimize_debts(
+        &self,
+        session_id: Uuid,
+        minimize_debts: bool,
+    ) -> Result<SessionResponse, AppError> {
+        #[derive(sqlx::FromRow)]
+        struct SessionRow {
+            id: Uuid,
+            name: String,
+            location: Option<String>,
+            status: String,
+            created_by: Uuid,
+            created_at: chrono::DateTime<chrono::Utc>,
+            session_date: chrono::NaiveDate,
+            base_currency: String,
+            minimize_debts: bool,
+            timezone: String,
+            archived_at: Option<chrono::DateTime<chrono::Utc>>,
+        }
+
+        let mut tx = self.pool.begin().await?;
+
+        let session: SessionRow = sqlx::query_as(
+            r#"
+            UPDATE sessions
+            SET minimize_debts = $1, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, name, location, status::text, created_by, created_at, session_date,
+                      base_currency, minimize_debts, timezone, archived_at
+            "#,
+        )
+        .bind(minimize_debts)
+        .bind(session_id)
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or(AppError::SessionNotFound { session_id })?;
+
+        Self::recalculate_debts(&mut tx, session_id).await?;
+
+        tx.commit().await?;
+
+        let participant_count = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) as "count!" FROM session_participants WHERE session_id = $1"#,
+            session_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let total_amount = sqlx::query_scalar!(
+            r#"SELECT COALESCE(SUM(amount), 0) as "total!" FROM bills WHERE session_id = $1"#,
+            session_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let participants = self.get_session_participants_basic(session_id).await?;
+        let settled_amount = self.get_session_settled_amount(session_id).await?;
+
+        Ok(SessionResponse {
+            id: session.id,
+            name: session.name,
+            location: session.location,
+            status: if session.status == "closed" {
+                SessionStatus::Closed
+            } else {
+                SessionStatus::Active
+            },
+            created_by: session.created_by,
+            created_at: session.created_at,
+            session_date: session.session_date,
+            participant_count,
+            total_amount,
+            base_currency: session.base_currency,
+            minimize_debts: session.minimize_debts,
+            timezone: session.timezone,
+            archived_at: session.archived_at,
+            participants,
+            my_debt: Decimal::ZERO,
+            my_owed: Decimal::ZERO,
+            settled_amount,
+        })
+    }
+
+    pub async fn set_archived(
+        &self,
+        session_id: Uuid,
+        archived: bool,
+    ) -> Result<SessionResponse, AppError> {
+        #[derive(sqlx::FromRow)]
+        struct SessionRow {
+            id: Uuid,
+            name: String,
+            location: Option<String>,
+            status: String,
+            created_by: Uuid,
+            created_at: chrono::DateTime<chrono::Utc>,
+            session_date: chrono::NaiveDate,
+            base_currency: String,
+            minimize_debts: bool,
+            timezone: String,
+            archived_at: Option<chrono::DateTime<chrono::Utc>>,
+        }
+
+        let archived_at = if archived {
+            Some(chrono::Utc::now())
+        } else {
+            None
+        };
+
+        let session: SessionRow = sqlx::query_as(
+            r#"
+            UPDATE sessions
+            SET archived_at = $1, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, name, location, status::text, created_by, created_at, session_date,
+                      base_currency, minimize_debts, timezone, archived_at
+            "#,
+        )
+        .bind(archived_at)
+        .bind(session_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(AppError::SessionNotFound { session_id })?;
+
+        let participant_count = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) as "count!" FROM session_participants WHERE session_id = $1"#,
+            session_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let total_amount = sqlx::query_scalar!(
+            r#"SELECT COALESCE(SUM(amount), 0) as "total!" FROM bills WHERE session_id = $1"#,
+            session_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let participants = self.get_session_participants_basic(session_id).await?;
+        let settled_amount = self.get_session_settled_amount(session_id).await?;
+
+        Ok(SessionResponse {
+            id: session.id,
+            name: session.name,
+            location: session.location,
+            status: if session.status == "closed" {
+                SessionStatus::Closed
+            } else {
+                SessionStatus::Active
+            },
+            created_by: session.created_by,
+            created_at: session.created_at,
+            session_date: session.session_date,
+            participant_count,
+            total_amount,
+            base_currency: session.base_currency,
+            minimize_debts: session.minimize_debts,
+            timezone: session.timezone,
+            archived_at: session.archived_at,
+            participants,
+            my_debt: Decimal::ZERO,
             my_owed: Decimal::ZERO,
             settled_amount,
         })
@@ -993,6 +1266,11 @@ impl SessionRepository {
                 session_id,
                 description,
                 amount,
+                COALESCE(amount_original, amount) as "amount_original!",
+                currency_code,
+                exchange_rate,
+                rate_source,
+                rate_timestamp,
                 split_strategy,
                 created_by,
                 created_at
@@ -1014,6 +1292,11 @@ impl SessionRepository {
         session_id: Uuid,
         description: &str,
         amount: Decimal,
+        amount_original: Decimal,
+        currency_code: &str,
+        exchange_rate: Decimal,
+        rate_source: &str,
+        rate_timestamp: chrono::DateTime<chrono::Utc>,
         split_strategy: &str,
         created_by: Uuid,
         payers: &[PayerInput],
@@ -1026,14 +1309,33 @@ impl SessionRepository {
 
         sqlx::query(
             r#"
-            INSERT INTO bills (id, session_id, description, amount, split_strategy, created_by, category_id, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            INSERT INTO bills (
+                id,
+                session_id,
+                description,
+                amount,
+                amount_original,
+                currency_code,
+                exchange_rate,
+                rate_source,
+                rate_timestamp,
+                split_strategy,
+                created_by,
+                category_id,
+                created_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
             "#,
         )
         .bind(bill_id)
         .bind(session_id)
         .bind(description)
         .bind(amount)
+        .bind(amount_original)
+        .bind(currency_code)
+        .bind(exchange_rate)
+        .bind(rate_source)
+        .bind(rate_timestamp)
         .bind(split_strategy)
         .bind(created_by)
         .bind(category_id)
@@ -1111,6 +1413,11 @@ impl SessionRepository {
             session_id,
             description: description.to_string(),
             amount,
+            amount_original,
+            currency_code: currency_code.to_string(),
+            exchange_rate,
+            rate_source: rate_source.to_string(),
+            rate_timestamp,
             split_strategy: split_strategy.to_string(),
             created_by,
             created_at: chrono::Utc::now(),
@@ -1124,7 +1431,12 @@ impl SessionRepository {
         amount: Decimal,
     ) -> Result<(), AppError> {
         let participants = sqlx::query_scalar!(
-            r#"SELECT id FROM session_participants WHERE session_id = $1"#,
+            r#"
+            SELECT id
+            FROM session_participants
+            WHERE session_id = $1 AND is_active = true
+            ORDER BY joined_at ASC, id ASC
+            "#,
             session_id
         )
         .fetch_all(&mut **tx)
@@ -1132,9 +1444,11 @@ impl SessionRepository {
 
         let participant_count = participants.len();
         if participant_count > 0 {
-            let split_amount = amount / Decimal::from(participant_count);
+            let split_amounts = SplitCalculator::calculate_equal_split(amount, participant_count);
 
-            for participant_id in participants {
+            for (participant_id, split_amount) in
+                participants.into_iter().zip(split_amounts.into_iter())
+            {
                 sqlx::query!(
                     r#"
                     INSERT INTO bill_splits (id, bill_id, participant_id, amount_owed)
@@ -1163,6 +1477,24 @@ impl SessionRepository {
         .execute(&mut **tx)
         .await?;
 
+        let minimize_debts = sqlx::query_scalar!(
+            r#"SELECT minimize_debts FROM sessions WHERE id = $1"#,
+            session_id
+        )
+        .fetch_one(&mut **tx)
+        .await?;
+
+        if minimize_debts {
+            return Self::recalculate_minimized_debts(tx, session_id).await;
+        }
+
+        Self::recalculate_direct_debts(tx, session_id).await
+    }
+
+    async fn recalculate_minimized_debts(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        session_id: Uuid,
+    ) -> Result<(), AppError> {
         let balances = sqlx::query!(
             r#"
             SELECT 
@@ -1229,6 +1561,125 @@ impl SessionRepository {
         Ok(())
     }
 
+    async fn recalculate_direct_debts(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        session_id: Uuid,
+    ) -> Result<(), AppError> {
+        use std::collections::HashMap;
+
+        #[derive(sqlx::FromRow)]
+        struct PayerRow {
+            bill_id: Uuid,
+            participant_id: Uuid,
+            amount_paid: Decimal,
+        }
+
+        #[derive(sqlx::FromRow)]
+        struct SplitRow {
+            bill_id: Uuid,
+            participant_id: Uuid,
+            amount_owed: Decimal,
+        }
+
+        let payers: Vec<PayerRow> = sqlx::query_as(
+            r#"
+            SELECT bp.bill_id, bp.participant_id, bp.amount_paid
+            FROM bill_payers bp
+            JOIN bills b ON bp.bill_id = b.id
+            WHERE b.session_id = $1
+            "#,
+        )
+        .bind(session_id)
+        .fetch_all(&mut **tx)
+        .await?;
+
+        let splits: Vec<SplitRow> = sqlx::query_as(
+            r#"
+            SELECT bs.bill_id, bs.participant_id, bs.amount_owed
+            FROM bill_splits bs
+            JOIN bills b ON bs.bill_id = b.id
+            WHERE b.session_id = $1
+            "#,
+        )
+        .bind(session_id)
+        .fetch_all(&mut **tx)
+        .await?;
+
+        let mut payers_by_bill: HashMap<Uuid, Vec<PayerRow>> = HashMap::new();
+        for payer in payers {
+            payers_by_bill.entry(payer.bill_id).or_default().push(payer);
+        }
+
+        let mut splits_by_bill: HashMap<Uuid, Vec<SplitRow>> = HashMap::new();
+        for split in splits {
+            splits_by_bill.entry(split.bill_id).or_default().push(split);
+        }
+
+        let mut debts_map: HashMap<(Uuid, Uuid), Decimal> = HashMap::new();
+
+        for (bill_id, bill_splits) in splits_by_bill {
+            let bill_payers = match payers_by_bill.get(&bill_id) {
+                Some(payers) => payers,
+                None => continue,
+            };
+
+            let total_paid: Decimal = bill_payers.iter().map(|p| p.amount_paid).sum();
+            if total_paid <= Decimal::ZERO {
+                continue;
+            }
+
+            let weights: Vec<Decimal> = bill_payers.iter().map(|p| p.amount_paid).collect();
+
+            for split in bill_splits {
+                if split.amount_owed <= Decimal::ZERO {
+                    continue;
+                }
+
+                let allocations = SplitCalculator::calculate_weighted_split_with_scale(
+                    split.amount_owed,
+                    &weights,
+                    2,
+                );
+
+                for (payer, amount) in bill_payers.iter().zip(allocations.into_iter()) {
+                    if split.participant_id == payer.participant_id {
+                        continue;
+                    }
+
+                    if amount <= Decimal::ZERO {
+                        continue;
+                    }
+
+                    let key = (split.participant_id, payer.participant_id);
+                    let entry = debts_map.entry(key).or_insert(Decimal::ZERO);
+                    *entry += amount;
+                }
+            }
+        }
+
+        for ((debtor_id, creditor_id), amount) in debts_map {
+            if amount <= Decimal::ZERO {
+                continue;
+            }
+
+            sqlx::query!(
+                r#"
+                INSERT INTO debts (id, session_id, debtor_id, creditor_id, amount, status, created_at)
+                VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
+                "#,
+                Uuid::new_v4(),
+                session_id,
+                debtor_id,
+                creditor_id,
+                amount
+            )
+            .execute(&mut **tx)
+            .await?;
+        }
+
+        Ok(())
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub async fn update_bill(
         &self,
@@ -1236,6 +1687,11 @@ impl SessionRepository {
         session_id: Uuid,
         description: Option<&str>,
         amount: Option<Decimal>,
+        amount_original: Option<Decimal>,
+        currency_code: Option<&str>,
+        exchange_rate: Option<Decimal>,
+        rate_source: Option<&str>,
+        rate_timestamp: Option<chrono::DateTime<chrono::Utc>>,
         split_strategy: Option<&str>,
         payers: Option<&[PayerInput]>,
         split_details: Option<&[SplitDetailInput]>,
@@ -1251,15 +1707,28 @@ impl SessionRepository {
             SET 
                 description = COALESCE($1, description),
                 amount = COALESCE($2, amount),
-                split_strategy = COALESCE($3, split_strategy),
-                category_id = COALESCE($4, category_id),
-                receipt_url = COALESCE($5, receipt_url)
-            WHERE id = $6
-            RETURNING id, session_id, description, amount, split_strategy, created_by, created_at
+                amount_original = COALESCE($3, amount_original),
+                currency_code = COALESCE($4, currency_code),
+                exchange_rate = COALESCE($5, exchange_rate),
+                rate_source = COALESCE($6, rate_source),
+                rate_timestamp = COALESCE($7, rate_timestamp),
+                split_strategy = COALESCE($8, split_strategy),
+                category_id = COALESCE($9, category_id),
+                receipt_url = COALESCE($10, receipt_url)
+            WHERE id = $11
+            RETURNING id, session_id, description, amount,
+                      COALESCE(amount_original, amount) as amount_original,
+                      currency_code, exchange_rate, rate_source, rate_timestamp, split_strategy,
+                      created_by, created_at
             "#,
         )
         .bind(description)
         .bind(amount)
+        .bind(amount_original)
+        .bind(currency_code)
+        .bind(exchange_rate)
+        .bind(rate_source)
+        .bind(rate_timestamp)
         .bind(split_strategy)
         .bind(category_id)
         .bind(receipt_url)
@@ -1355,7 +1824,18 @@ impl SessionRepository {
         let bills = sqlx::query!(
             r#"
             SELECT 
-                id, session_id, description, amount, split_strategy, created_by, created_at
+                id,
+                session_id,
+                description,
+                amount,
+                COALESCE(amount_original, amount) as "amount_original!",
+                currency_code,
+                exchange_rate,
+                rate_source,
+                rate_timestamp,
+                split_strategy,
+                created_by,
+                created_at
             FROM bills
             WHERE session_id = $1
             ORDER BY created_at DESC
@@ -1453,6 +1933,11 @@ impl SessionRepository {
                 session_id: b.session_id,
                 description: b.description,
                 amount: b.amount,
+                amount_original: b.amount_original,
+                currency_code: b.currency_code,
+                exchange_rate: b.exchange_rate,
+                rate_source: b.rate_source,
+                rate_timestamp: b.rate_timestamp,
                 split_strategy: b.split_strategy,
                 created_by: b.created_by,
                 created_at: b.created_at,

@@ -63,6 +63,10 @@ export interface Session {
   session_date: string
   participant_count: number
   total_amount: string
+  base_currency: string
+  minimize_debts: boolean
+  timezone: string
+  archived_at: string | null
   // Enhanced fields for better UX
   participants: ParticipantBasicInfo[]
   my_debt: string       // How much current user owes in this session
@@ -81,6 +85,10 @@ export interface SessionDetail {
   participants: Participant[]
   total_amount: string
   group_id: string | null
+  base_currency: string
+  minimize_debts: boolean
+  timezone: string
+  archived_at: string | null
 }
 
 export interface Participant {
@@ -97,6 +105,11 @@ export interface Bill {
   session_id: string
   description: string
   amount: string
+  amount_original: string
+  currency_code: string
+  exchange_rate: string
+  rate_source: string
+  rate_timestamp: string
   split_strategy: string
   created_by: string
   created_at: string
@@ -154,6 +167,8 @@ export interface CreateSessionDto {
   session_date?: string
   group_id?: string
   participant_ids?: string[]
+  base_currency?: string
+  timezone?: string
 }
 
 export interface AddParticipantDto {
@@ -179,6 +194,8 @@ export interface CreateBillDto {
   split_details?: SplitDetailInput[]
   category_id?: string | null
   receipt_url?: string | null
+  currency_code?: string
+  exchange_rate?: string
 }
 
 // Group types
@@ -189,6 +206,7 @@ export interface Group {
   created_by: string
   created_at: string
   member_count: number
+  archived_at: string | null
 }
 
 export interface GroupDetail {
@@ -197,6 +215,7 @@ export interface GroupDetail {
   description: string | null
   created_by: string
   created_at: string
+  archived_at: string | null
   members: GroupMember[]
 }
 
@@ -228,6 +247,8 @@ export interface CreateSessionDto {
   group_id?: string
   participant_ids?: string[]
   guest_names?: string[]
+  base_currency?: string
+  timezone?: string
 }
 
 export interface SessionDebt {

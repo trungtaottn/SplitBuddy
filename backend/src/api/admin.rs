@@ -583,7 +583,8 @@ async fn delete_music(
         }
 
         // Delete from database
-        sqlx::query!("DELETE FROM music_tracks WHERE id = $1", id)
+        sqlx::query("DELETE FROM music_tracks WHERE id = $1")
+            .bind(id)
             .execute(&state.pool)
             .await?;
     }

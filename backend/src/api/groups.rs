@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     routing::get,
     Json, Router,
 };
@@ -31,6 +31,8 @@ pub fn routes() -> Router<AppState> {
             "/:id/members/:user_id",
             axum::routing::delete(remove_member),
         )
+        .route("/:id/archive", axum::routing::post(archive_group))
+        .route("/:id/restore", axum::routing::post(restore_group))
         .route("/:id/debts", get(get_group_debts))
         .route("/:id/debts/simplified", get(get_simplified_debts))
 }
@@ -43,6 +45,7 @@ pub struct GroupResponse {
     pub created_by: Uuid,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub member_count: i64,
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 #[derive(Serialize)]
@@ -52,6 +55,7 @@ pub struct GroupDetailResponse {
     pub description: Option<String>,
     pub created_by: Uuid,
     pub created_at: chrono::DateTime<chrono::Utc>,
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     pub members: Vec<MemberResponse>,
 }
 
@@ -72,6 +76,12 @@ pub struct CreateGroupRequest {
     pub description: Option<String>,
 }
 
+#[derive(Deserialize, Default)]
+pub struct GroupQuery {
+    #[serde(default)]
+    pub include_archived: bool,
+}
+
 #[derive(Deserialize)]
 #[allow(dead_code)]
 pub struct AddMemberRequest {
@@ -83,9 +93,12 @@ pub struct AddMemberRequest {
 async fn list_groups(
     State(state): State<AppState>,
     auth_user: AuthUser,
+    Query(query): Query<GroupQuery>,
 ) -> Result<Json<ApiResponse<Vec<GroupResponse>>>, AppError> {
     let repo = GroupRepository::new(state.pool.clone());
-    let groups = repo.find_by_user(auth_user.user_id).await?;
+    let groups = repo
+        .find_by_user(auth_user.user_id, query.include_archived)
+        .await?;
 
     let mut responses = Vec::new();
     for group in groups {
@@ -97,6 +110,7 @@ async fn list_groups(
             created_by: group.created_by,
             created_at: group.created_at,
             member_count: members.len() as i64,
+            archived_at: group.archived_at,
         });
     }
 
@@ -125,6 +139,7 @@ async fn create_group(
         created_by: group.created_by,
         created_at: group.created_at,
         member_count: 1,
+        archived_at: group.archived_at,
     }))
 }
 
@@ -158,6 +173,7 @@ async fn get_group(
         description: group.description,
         created_by: group.created_by,
         created_at: group.created_at,
+        archived_at: group.archived_at,
         members: members
             .into_iter()
             .map(|m| MemberResponse {
@@ -279,6 +295,60 @@ async fn remove_member(
     repo.remove_member(group_id, user_id).await?;
 
     Ok(ok(()))
+}
+
+async fn archive_group(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(group_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<GroupResponse>>, AppError> {
+    let repo = GroupRepository::new(state.pool.clone());
+
+    if !repo.is_admin(group_id, auth_user.user_id).await? {
+        return Err(AppError::Forbidden {
+            message: "Only group admin can archive this group".to_string(),
+        });
+    }
+
+    let group = repo.set_archived(group_id, true).await?;
+    let members = repo.get_members(group_id).await?;
+
+    Ok(ok(GroupResponse {
+        id: group.id,
+        name: group.name,
+        description: group.description,
+        created_by: group.created_by,
+        created_at: group.created_at,
+        member_count: members.len() as i64,
+        archived_at: group.archived_at,
+    }))
+}
+
+async fn restore_group(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(group_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<GroupResponse>>, AppError> {
+    let repo = GroupRepository::new(state.pool.clone());
+
+    if !repo.is_admin(group_id, auth_user.user_id).await? {
+        return Err(AppError::Forbidden {
+            message: "Only group admin can restore this group".to_string(),
+        });
+    }
+
+    let group = repo.set_archived(group_id, false).await?;
+    let members = repo.get_members(group_id).await?;
+
+    Ok(ok(GroupResponse {
+        id: group.id,
+        name: group.name,
+        description: group.description,
+        created_by: group.created_by,
+        created_at: group.created_at,
+        member_count: members.len() as i64,
+        archived_at: group.archived_at,
+    }))
 }
 
 #[derive(Serialize)]

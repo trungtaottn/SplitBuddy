@@ -17,6 +17,9 @@ interface SessionOverviewProps {
     isUpdatingParticipant: boolean
     isDeletingParticipant: boolean
     isAddingParticipant: boolean
+    onUpdateDebtStrategy: (minimizeDebts: boolean) => void
+    isUpdatingDebtStrategy: boolean
+    isOwner: boolean
 }
 
 export function SessionOverview({
@@ -28,12 +31,16 @@ export function SessionOverview({
     isUpdatingParticipant,
     isDeletingParticipant,
     isAddingParticipant,
+    onUpdateDebtStrategy,
+    isUpdatingDebtStrategy,
+    isOwner,
 }: SessionOverviewProps) {
     const [editingParticipant, setEditingParticipant] = useState<{ id: string; name: string } | null>(null)
     const [deletingParticipantId, setDeletingParticipantId] = useState<string | null>(null)
     const [showAddParticipant, setShowAddParticipant] = useState(false)
     const [addMode, setAddMode] = useState<'guest' | 'member'>('guest')
     const [newGuestName, setNewGuestName] = useState('')
+    const isArchived = Boolean(session.archived_at)
 
     // Filter group members who are not already participants
     const availableMembers = groupDetail?.members.filter(
@@ -48,7 +55,7 @@ export function SessionOverview({
                         <div>
                             <p className="text-sm text-muted-foreground">Tổng chi</p>
                             <p className="text-2xl font-bold text-primary">
-                                {formatCurrency(session.total_amount)}
+                                {formatCurrency(session.total_amount, session.base_currency)}
                             </p>
                         </div>
                         <div>
@@ -56,6 +63,41 @@ export function SessionOverview({
                             <p className="text-2xl font-bold">{session.participants.length}</p>
                         </div>
                     </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardContent className="p-6 space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <p className="text-sm text-muted-foreground">Tiền tệ gốc</p>
+                            <p className="text-lg font-semibold">{session.base_currency}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Cách tính công nợ</p>
+                            <div className="mt-2 flex gap-2">
+                                <Button
+                                    size="sm"
+                                    variant={session.minimize_debts ? 'default' : 'outline'}
+                                    onClick={() => onUpdateDebtStrategy(true)}
+                                    disabled={!isOwner || isArchived || isUpdatingDebtStrategy}
+                                >
+                                    Cấn trừ
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant={!session.minimize_debts ? 'default' : 'outline'}
+                                    onClick={() => onUpdateDebtStrategy(false)}
+                                    disabled={!isOwner || isArchived || isUpdatingDebtStrategy}
+                                >
+                                    Trực tiếp
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        Cấn trừ giúp giảm số lần chuyển tiền. Trực tiếp sẽ giữ đúng người trả ban đầu.
+                    </p>
                 </CardContent>
             </Card>
 
@@ -154,7 +196,7 @@ export function SessionOverview({
                     ))}
 
                     {/* Add Participant Button */}
-                    {session.status === 'active' && (
+                    {session.status === 'active' && !isArchived && (
                         showAddParticipant ? (
                             <div className="flex flex-wrap items-center gap-2">
                                 {/* Mode Toggle - show only if session has group */}

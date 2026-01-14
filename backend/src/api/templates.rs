@@ -255,6 +255,8 @@ pub async fn create_session_from_template(
             payload.group_id,
             Some(&participant_ids),
             None,
+            None,
+            None,
         )
         .await?;
 

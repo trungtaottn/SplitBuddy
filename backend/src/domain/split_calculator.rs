@@ -1,5 +1,6 @@
 #![allow(dead_code)]
-use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
+use rust_decimal::{Decimal, RoundingStrategy};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -19,27 +20,102 @@ pub struct DebtEntry {
 pub struct SplitCalculator;
 
 impl SplitCalculator {
-    pub fn calculate_equal_split(total_amount: Decimal, participant_count: usize) -> Vec<Decimal> {
+    pub fn calculate_equal_split_with_scale(
+        total_amount: Decimal,
+        participant_count: usize,
+        scale: u32,
+    ) -> Vec<Decimal> {
         if participant_count == 0 {
             return vec![];
         }
 
-        let count = Decimal::from(participant_count);
-        let base_amount = total_amount / count;
-        let remainder = total_amount - (base_amount * count);
+        let scale_factor = Decimal::from_i128_with_scale(10_i128.pow(scale), 0);
+        let total_minor = (total_amount * scale_factor)
+            .round_dp_with_strategy(0, RoundingStrategy::MidpointAwayFromZero)
+            .to_i128()
+            .unwrap_or(0);
 
-        let mut splits = vec![base_amount; participant_count];
+        let count = participant_count as i128;
+        let base = total_minor / count;
+        let remainder = (total_minor % count).unsigned_abs() as usize;
+        let sign = if total_minor < 0 { -1 } else { 1 };
 
-        let remainder_cents = (remainder * Decimal::from(100)).to_string();
-        if let Ok(cents) = remainder_cents.parse::<i32>() {
-            for i in 0..cents.unsigned_abs() as usize {
-                if i < splits.len() {
-                    splits[i] += Decimal::new(1, 2);
-                }
-            }
+        let mut splits = Vec::with_capacity(participant_count);
+        for i in 0..participant_count {
+            let extra = if i < remainder { sign } else { 0 };
+            let minor_amount = base + extra;
+            splits.push(Decimal::from_i128_with_scale(minor_amount, scale));
         }
 
         splits
+    }
+
+    pub fn calculate_equal_split(total_amount: Decimal, participant_count: usize) -> Vec<Decimal> {
+        Self::calculate_equal_split_with_scale(total_amount, participant_count, 2)
+    }
+
+    pub fn calculate_weighted_split_with_scale(
+        total_amount: Decimal,
+        weights: &[Decimal],
+        scale: u32,
+    ) -> Vec<Decimal> {
+        if weights.is_empty() {
+            return vec![];
+        }
+
+        let scale_factor = Decimal::from_i128_with_scale(10_i128.pow(scale), 0);
+        let total_minor = (total_amount * scale_factor)
+            .round_dp_with_strategy(0, RoundingStrategy::MidpointAwayFromZero)
+            .to_i128()
+            .unwrap_or(0);
+
+        let weight_minors: Vec<i128> = weights
+            .iter()
+            .map(|w| {
+                (w * scale_factor)
+                    .round_dp_with_strategy(0, RoundingStrategy::MidpointAwayFromZero)
+                    .to_i128()
+                    .unwrap_or(0)
+            })
+            .collect();
+
+        let total_weight: i128 = weight_minors.iter().sum();
+        if total_weight == 0 {
+            return vec![Decimal::ZERO; weights.len()];
+        }
+
+        let mut bases: Vec<i128> = Vec::with_capacity(weights.len());
+        let mut remainders: Vec<(usize, i128)> = Vec::with_capacity(weights.len());
+        for (idx, weight_minor) in weight_minors.iter().enumerate() {
+            let numerator = total_minor * *weight_minor;
+            let base = numerator / total_weight;
+            let remainder = (numerator % total_weight).abs();
+            bases.push(base);
+            remainders.push((idx, remainder));
+        }
+
+        let mut allocated: i128 = bases.iter().sum();
+        let mut leftover = total_minor - allocated;
+
+        remainders.sort_by(|a, b| b.1.cmp(&a.1));
+
+        let step = if leftover < 0 { -1 } else { 1 };
+        let mut i = 0usize;
+        while leftover != 0 && i < remainders.len() {
+            let idx = remainders[i].0;
+            bases[idx] += step;
+            allocated += step;
+            leftover = total_minor - allocated;
+            i += 1;
+            if i == remainders.len() && leftover != 0 {
+                i = 0;
+            }
+        }
+
+        bases
+            .into_iter()
+            .map(|minor| Decimal::from_i128_with_scale(minor, scale))
+            .collect()
     }
 
     pub fn calculate_net_balances(
@@ -140,6 +216,30 @@ mod tests {
         assert_eq!(splits.len(), 3);
         let sum: Decimal = splits.iter().sum();
         assert_eq!(sum, total);
+    }
+
+    #[test]
+    fn test_equal_split_rounding_distribution() {
+        let total = Decimal::new(100, 0);
+        let splits = SplitCalculator::calculate_equal_split(total, 3);
+
+        let min = splits.iter().min().unwrap();
+        let max = splits.iter().max().unwrap();
+        let diff = *max - *min;
+
+        assert_eq!(diff, Decimal::new(1, 2));
+    }
+
+    #[test]
+    fn test_weighted_split_distribution() {
+        let total = Decimal::new(100, 0);
+        let weights = vec![Decimal::new(1, 0), Decimal::new(2, 0), Decimal::new(1, 0)];
+        let splits = SplitCalculator::calculate_weighted_split_with_scale(total, &weights, 2);
+
+        assert_eq!(splits.len(), 3);
+        let sum: Decimal = splits.iter().sum();
+        assert_eq!(sum, total);
+        assert!(splits[1] > splits[0]);
     }
 
     #[test]

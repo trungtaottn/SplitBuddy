@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, TrendingDown, TrendingUp, Beer, Search, ChevronLeft, ChevronRight, LayoutTemplate } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
+import { CURRENCY_OPTIONS } from '@/utils/currency'
 import { toast } from '@/components/ui/toaster'
 import AiGreeting from '@/components/AiGreeting'
 import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
@@ -25,6 +26,7 @@ export default function DashboardPage() {
   const [newSessionName, setNewSessionName] = useState('')
   const [newSessionLocation, setNewSessionLocation] = useState('')
   const [newSessionDate, setNewSessionDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [newSessionCurrency, setNewSessionCurrency] = useState('VND')
   const [selectedGroupId, setSelectedGroupId] = useState<string>('')
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [guestNames, setGuestNames] = useState<string[]>([])
@@ -37,6 +39,7 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [currentPage, setCurrentPage] = useState(1)
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [includeArchived, setIncludeArchived] = useState(false)
 
   // Auto-start onboarding for new users
   useEffect(() => {
@@ -62,14 +65,15 @@ export default function DashboardPage() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [debouncedSearch, statusFilter])
+  }, [debouncedSearch, statusFilter, includeArchived])
 
   const { data: sessionsData, isLoading: sessionsLoading } = useQuery({
-    queryKey: ['sessions', debouncedSearch, statusFilter, currentPage],
+    queryKey: ['sessions', debouncedSearch, statusFilter, includeArchived, currentPage],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (debouncedSearch) params.set('search', debouncedSearch)
       if (statusFilter) params.set('status', statusFilter)
+      if (includeArchived) params.set('include_archived', 'true')
       params.set('page', String(currentPage))
       params.set('limit', '10')
       const res = await api.get<PaginatedResponse<Session[]>>(`/sessions?${params.toString()}`)
@@ -122,6 +126,7 @@ export default function DashboardPage() {
       setSelectedParticipants([])
       setGuestNames([])
       setNewGuestName('')
+      setNewSessionCurrency('VND')
       toast.success('Tạo cuộc nhậu thành công!')
     },
     onError: () => {
@@ -141,6 +146,7 @@ export default function DashboardPage() {
       group_id: selectedGroupId || undefined,
       participant_ids: selectedParticipants.length > 0 ? selectedParticipants : undefined,
       guest_names: guestNames.length > 0 ? guestNames : undefined,
+      base_currency: newSessionCurrency || undefined,
     })
   }
 
@@ -259,7 +265,7 @@ export default function DashboardPage() {
             className="pl-9"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -269,6 +275,15 @@ export default function DashboardPage() {
             <option value="active">Đang diễn ra</option>
             <option value="closed">Đã xong</option>
           </select>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            Hiện lưu trữ
+          </label>
         </div>
         {pagination && (
           <div className="flex items-center gap-1 text-sm text-muted-foreground font-body">
@@ -306,18 +321,20 @@ export default function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sessions?.map((session) => (
             <FunTooltip key={session.id} messages={FUN_MESSAGES.sessionCard}>
-              <SessionCard
-                id={session.id}
-                name={session.name}
-                location={session.location}
-                date={session.session_date}
-                status={session.status === 'closed' ? 'settled' : 'active'}
-                total_amount={Number(session.total_amount) || 0}
-                participants={session.participants || []}
-                user_debt={Number(session.my_debt) || 0}
-                user_owed={Number(session.my_owed) || 0}
-                settled_amount={Number(session.settled_amount) || 0}
-              />
+                <SessionCard
+                  id={session.id}
+                  name={session.name}
+                  location={session.location}
+                  date={session.session_date}
+                  status={session.status === 'closed' ? 'settled' : 'active'}
+                  total_amount={Number(session.total_amount) || 0}
+                  base_currency={session.base_currency}
+                  participants={session.participants || []}
+                  user_debt={Number(session.my_debt) || 0}
+                  user_owed={Number(session.my_owed) || 0}
+                  settled_amount={Number(session.settled_amount) || 0}
+                  archived_at={session.archived_at}
+                />
             </FunTooltip>
           ))}
         </div>
@@ -387,6 +404,22 @@ export default function DashboardPage() {
               value={newSessionDate}
               onChange={(e) => setNewSessionDate(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="base_currency">Tiền tệ gốc</Label>
+            <select
+              id="base_currency"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={newSessionCurrency}
+              onChange={(e) => setNewSessionCurrency(e.target.value)}
+            >
+              {CURRENCY_OPTIONS.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Group Selection */}

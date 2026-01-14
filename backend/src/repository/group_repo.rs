@@ -11,6 +11,7 @@ pub struct GroupRow {
     pub description: Option<String>,
     pub created_by: Uuid,
     pub created_at: chrono::DateTime<chrono::Utc>,
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -42,7 +43,7 @@ impl GroupRepository {
             r#"
             INSERT INTO groups (name, description, created_by)
             VALUES ($1, $2, $3)
-            RETURNING id, name, description, created_by, created_at
+            RETURNING id, name, description, created_by, created_at, archived_at
             "#,
             name,
             description,
@@ -66,17 +67,23 @@ impl GroupRepository {
         Ok(group)
     }
 
-    pub async fn find_by_user(&self, user_id: Uuid) -> Result<Vec<GroupRow>, AppError> {
+    pub async fn find_by_user(
+        &self,
+        user_id: Uuid,
+        include_archived: bool,
+    ) -> Result<Vec<GroupRow>, AppError> {
         let groups = sqlx::query_as!(
             GroupRow,
             r#"
-            SELECT g.id, g.name, g.description, g.created_by, g.created_at
+            SELECT g.id, g.name, g.description, g.created_by, g.created_at, g.archived_at
             FROM groups g
             INNER JOIN group_members gm ON g.id = gm.group_id
             WHERE gm.user_id = $1
+              AND ($2::bool OR g.archived_at IS NULL)
             ORDER BY g.created_at DESC
             "#,
-            user_id
+            user_id,
+            include_archived
         )
         .fetch_all(&self.pool)
         .await?;
@@ -88,7 +95,7 @@ impl GroupRepository {
         let group = sqlx::query_as!(
             GroupRow,
             r#"
-            SELECT id, name, description, created_by, created_at
+            SELECT id, name, description, created_by, created_at, archived_at
             FROM groups
             WHERE id = $1
             "#,
@@ -115,6 +122,51 @@ impl GroupRepository {
         .await?;
 
         Ok(result)
+    }
+
+    pub async fn is_admin(&self, group_id: Uuid, user_id: Uuid) -> Result<bool, AppError> {
+        let result = sqlx::query_scalar!(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM group_members 
+                WHERE group_id = $1 AND user_id = $2 AND role = 'admin'
+            ) as "exists!"
+            "#,
+            group_id,
+            user_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(result)
+    }
+
+    pub async fn set_archived(&self, group_id: Uuid, archived: bool) -> Result<GroupRow, AppError> {
+        let archived_at = if archived {
+            Some(chrono::Utc::now())
+        } else {
+            None
+        };
+
+        let group = sqlx::query_as!(
+            GroupRow,
+            r#"
+            UPDATE groups
+            SET archived_at = $1, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, name, description, created_by, created_at, archived_at
+            "#,
+            archived_at,
+            group_id
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(AppError::Validation {
+            field: "group_id".to_string(),
+            message: "Group not found".to_string(),
+        })?;
+
+        Ok(group)
     }
 
     pub async fn add_member(

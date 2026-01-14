@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, X, Check, Users, Banknote, ChevronDown, ChevronUp, Upload, Image as ImageIcon } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
+import { CURRENCY_OPTIONS } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/axios'
 import { toast } from '@/components/ui/toaster'
@@ -34,6 +35,7 @@ const QUICK_AMOUNTS = [
 
 interface BillInputProps {
   participants: Participant[]
+  baseCurrency: string
   onSubmit: (data: {
     description: string
     total_amount: string
@@ -42,6 +44,8 @@ interface BillInputProps {
     split_details?: SplitDetailInput[]
     category_id?: string | null
     receipt_url?: string | null
+    currency_code?: string
+    exchange_rate?: string
   }) => void
   onCancel: () => void
   isSubmitting?: boolean
@@ -52,6 +56,7 @@ interface BillInputProps {
 
 export function BillInput({
   participants,
+  baseCurrency,
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -60,8 +65,10 @@ export function BillInput({
   categories: propCategories,
 }: BillInputProps) {
   const [description, setDescription] = useState(initialData?.description || '')
-  const [amount, setAmount] = useState(initialData?.amount?.toString() || '')
+  const [amount, setAmount] = useState(initialData?.amount_original?.toString() || initialData?.amount?.toString() || '')
   const [selectedPayer, setSelectedPayer] = useState(initialData?.payers?.[0]?.participant_id || '')
+  const [currencyCode, setCurrencyCode] = useState(initialData?.currency_code || baseCurrency)
+  const [exchangeRate, setExchangeRate] = useState(initialData?.exchange_rate || '')
   // Determine split mode from initialData
   const [splitMode, setSplitMode] = useState<'EQUAL' | 'CUSTOM'>(
     initialData?.split_strategy === 'CUSTOM' ? 'CUSTOM' : 'EQUAL'
@@ -74,16 +81,34 @@ export function BillInput({
   // Initialize splits on mount
   useEffect(() => {
     if (initialData) {
-      if (initialData.participants) {
+      setDescription(initialData.description || '')
+      setAmount(initialData.amount_original?.toString() || initialData.amount?.toString() || '')
+      setSelectedPayer(initialData.payers?.[0]?.participant_id || '')
+      setCurrencyCode(initialData.currency_code || baseCurrency)
+      setExchangeRate(initialData.exchange_rate || '')
+      setSplitMode(initialData.split_strategy === 'CUSTOM' ? 'CUSTOM' : 'EQUAL')
+
+      if (initialData.participants && initialData.participants.length > 0) {
         setSelectedSplitParticipants(initialData.participants.map(p => p.participant_id))
 
         if (initialData.split_strategy === 'CUSTOM') {
           const splits: Record<string, string> = {}
+          const rate = parseFloat(initialData.exchange_rate || '1')
+          const useRate = initialData.currency_code && initialData.currency_code !== baseCurrency && rate > 0
+          const decimals = ['VND', 'JPY', 'KRW', 'IDR'].includes(initialData.currency_code || '')
+            ? 0
+            : 2
+
           initialData.participants.forEach(p => {
-            splits[p.participant_id] = p.amount_owed.toString()
+            const baseAmount = parseFloat(p.amount_owed || '0')
+            const originalAmount = useRate ? baseAmount / rate : baseAmount
+            splits[p.participant_id] = decimals === 0 ? Math.round(originalAmount).toString() : originalAmount.toFixed(decimals)
           })
           setCustomSplits(splits)
         }
+      } else {
+        setSelectedSplitParticipants(participants.map(p => p.id))
+        setCustomSplits({})
       }
       if (initialData.category_id) {
         setSelectedCategoryId(initialData.category_id)
@@ -92,10 +117,24 @@ export function BillInput({
         setReceiptUrl(initialData.receipt_url)
       }
     } else {
-      // Default to all participants if creating new
+      setDescription('')
+      setAmount('')
+      setSelectedPayer('')
+      setCurrencyCode(baseCurrency)
+      setExchangeRate('')
+      setSplitMode('EQUAL')
       setSelectedSplitParticipants(participants.map(p => p.id))
+      setCustomSplits({})
+      setSelectedCategoryId('')
+      setReceiptUrl(null)
     }
-  }, [initialData, participants])
+  }, [initialData, participants, baseCurrency])
+
+  useEffect(() => {
+    if (currencyCode === baseCurrency) {
+      setExchangeRate('')
+    }
+  }, [currencyCode, baseCurrency])
 
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(initialExpanded || !!initialData)
@@ -105,6 +144,25 @@ export function BillInput({
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null)
   const [uploadingReceipt, setUploadingReceipt] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const isZeroDecimalCurrency = ['VND', 'JPY', 'KRW', 'IDR'].includes(currencyCode)
+  const formattedAmount = isZeroDecimalCurrency && amount
+    ? Number(amount).toLocaleString('vi-VN')
+    : amount
+
+  const handleAmountChange = (rawValue: string) => {
+    if (isZeroDecimalCurrency) {
+      const value = rawValue.replace(/[^\d]/g, '')
+      setAmount(value)
+      return
+    }
+
+    const normalized = rawValue.replace(/,/g, '.')
+    const cleaned = normalized.replace(/[^0-9.]/g, '')
+    const parts = cleaned.split('.')
+    const value = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : cleaned
+    setAmount(value)
+  }
 
 
 
@@ -152,7 +210,10 @@ export function BillInput({
     if (numAmount === 0 || selectedSplitParticipants.length === 0) return null
 
     if (splitMode === 'EQUAL') {
-      const perPerson = Math.round(numAmount / selectedSplitParticipants.length)
+      const perPersonRaw = numAmount / selectedSplitParticipants.length
+      const perPerson = isZeroDecimalCurrency
+        ? Math.round(perPersonRaw)
+        : parseFloat(perPersonRaw.toFixed(2))
       return selectedSplitParticipants.map(pid => {
         const p = participants.find(x => x.id === pid)
         return {
@@ -210,6 +271,8 @@ export function BillInput({
       split_details,
       category_id: selectedCategoryId || null,
       receipt_url: receiptUrl,
+      currency_code: currencyCode,
+      exchange_rate: exchangeRate || undefined,
     })
   }
 
@@ -313,38 +376,83 @@ export function BillInput({
 
           {/* Amount with quick buttons */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Số tiền (VND)</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-sm font-medium">Số tiền</Label>
+              <select
+                value={currencyCode}
+                onChange={(e) => setCurrencyCode(e.target.value)}
+                className="rounded-md border border-input bg-background px-2 py-1 text-xs"
+              >
+                {CURRENCY_OPTIONS.map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <Input
               type="text"
-              inputMode="numeric"
+              inputMode={isZeroDecimalCurrency ? 'numeric' : 'decimal'}
               placeholder="0"
-              value={amount ? Number(amount).toLocaleString('vi-VN') : ''}
-              onChange={(e) => {
-                const value = e.target.value.replace(/[^\d]/g, '')
-                setAmount(value)
-              }}
+              value={formattedAmount}
+              onChange={(e) => handleAmountChange(e.target.value)}
               className="text-lg font-semibold"
               required
             />
+            {currencyCode !== baseCurrency && (
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <span>
+                  Quy đổi sang {baseCurrency}. Bạn có thể nhập tỷ giá thủ công bên dưới.
+                </span>
+              </div>
+            )}
             {/* Quick amount buttons */}
-            <div className="flex flex-wrap gap-2">
-              {QUICK_AMOUNTS.map((qa) => (
-                <Button
-                  key={qa.value}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    "text-xs px-3",
-                    amount === String(qa.value) && "bg-primary text-white border-primary"
-                  )}
-                  onClick={() => setAmount(String(qa.value))}
-                >
-                  {qa.label}
-                </Button>
-              ))}
-            </div>
+            {currencyCode === 'VND' && (
+              <div className="flex flex-wrap gap-2">
+                {QUICK_AMOUNTS.map((qa) => (
+                  <Button
+                    key={qa.value}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "text-xs px-3",
+                      amount === String(qa.value) && "bg-primary text-white border-primary"
+                    )}
+                    onClick={() => setAmount(String(qa.value))}
+                  >
+                    {qa.label}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
+
+          {currencyCode !== baseCurrency && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Tỷ giá ({currencyCode} → {baseCurrency}) <span className="text-muted-foreground">(tuỳ chọn)</span>
+              </Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                placeholder="Để trống = tự động"
+                value={exchangeRate}
+                onChange={(e) => {
+                  const normalized = e.target.value.replace(/,/g, '.')
+                  const cleaned = normalized.replace(/[^0-9.]/g, '')
+                  const parts = cleaned.split('.')
+                  const value = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : cleaned
+                  setExchangeRate(value)
+                }}
+              />
+              {amount && exchangeRate && (
+                <p className="text-xs text-muted-foreground">
+                  Ước tính: {formatCurrency((parseFloat(amount) * parseFloat(exchangeRate)).toFixed(2), baseCurrency)}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Category selection (optional) */}
           <div className="space-y-2">
@@ -401,7 +509,12 @@ export function BillInput({
                 </span>
                 {splitMode === 'EQUAL' && (
                   <span className="text-primary font-mono font-semibold text-sm bg-primary/10 px-2 py-0.5 rounded-lg">
-                    {formatCurrency(Math.round(parseFloat(amount) / selectedSplitParticipants.length))}/người
+                    {formatCurrency(
+                      isZeroDecimalCurrency
+                        ? Math.round(parseFloat(amount) / selectedSplitParticipants.length)
+                        : parseFloat((parseFloat(amount) / selectedSplitParticipants.length).toFixed(2)),
+                      currencyCode
+                    )}/người
                   </span>
                 )}
               </div>
@@ -423,7 +536,7 @@ export function BillInput({
                           {p.name}
                         </span>
                         <span className="font-mono font-semibold text-primary">
-                          {formatCurrency(p.amount)}
+                          {formatCurrency(p.amount, currencyCode)}
                         </span>
                       </div>
                       {/* Progress bar */}
@@ -453,7 +566,7 @@ export function BillInput({
                       ? "text-destructive"
                       : "text-success"
                   )}>
-                    {formatCurrency(splitPreview.reduce((sum, p) => sum + p.amount, 0))} / {formatCurrency(amount)}
+                    {formatCurrency(splitPreview.reduce((sum, p) => sum + p.amount, 0), currencyCode)} / {formatCurrency(amount, currencyCode)}
                     {(splitMode === 'EQUAL' || Math.abs(customSplitTotal - parseFloat(amount || '0')) < 1) && (
                       <Check className="h-4 w-4" />
                     )}
@@ -604,7 +717,7 @@ export function BillInput({
               {splitMode === 'CUSTOM' && (
                 <div className="space-y-2">
                   <Label className="text-sm">
-                    Nhập số tiền mỗi người (Tổng phải = {amount ? formatCurrency(amount) : '0đ'})
+                    Nhập số tiền mỗi người (Tổng phải = {amount ? formatCurrency(amount, currencyCode) : '0'})
                   </Label>
                   <div className="grid grid-cols-2 gap-2">
                     {participants.map((p) => (
@@ -626,7 +739,7 @@ export function BillInput({
                       ? "text-green-600"
                       : "text-red-600"
                   )}>
-                    Tổng: {formatCurrency(customSplitTotal)} / {formatCurrency(amount || '0')}
+                    Tổng: {formatCurrency(customSplitTotal, currencyCode)} / {formatCurrency(amount || '0', currencyCode)}
                     {Math.abs(customSplitTotal - parseFloat(amount || '0')) < 1 && ' ✓'}
                   </div>
                 </div>
@@ -682,4 +795,3 @@ export function BillInputInline({
     </button>
   )
 }
-

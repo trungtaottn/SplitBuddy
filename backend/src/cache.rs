@@ -30,6 +30,10 @@ pub struct CachedSession {
     pub session_date: chrono::NaiveDate,
     pub total_amount: Decimal,
     pub group_id: Option<Uuid>,
+    pub base_currency: String,
+    pub minimize_debts: bool,
+    pub timezone: String,
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     pub participants: Vec<ParticipantResponse>,
 }
 

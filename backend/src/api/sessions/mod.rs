@@ -16,6 +16,7 @@ use crate::domain::session::{ParticipantRole, SessionStatus};
 use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::repository::session_repo::SessionRepository;
+use crate::utils::forex::normalize_currency;
 
 pub mod bills;
 pub mod participants;
@@ -34,6 +35,9 @@ pub fn routes() -> Router<AppState> {
         )
         .route("/:id/close", post(close_session))
         .route("/:id/reopen", post(reopen_session))
+        .route("/:id/minimize-debts", put(update_minimize_debts))
+        .route("/:id/archive", post(archive_session))
+        .route("/:id/restore", post(restore_session))
         .route("/:id/bills", get(list_bills).post(create_bill))
         .route("/:id/bills/:bill_id", put(update_bill).delete(delete_bill))
         .route("/:id/export", get(export_session))
@@ -52,6 +56,10 @@ pub struct SessionResponse {
     pub session_date: chrono::NaiveDate,
     pub participant_count: i64,
     pub total_amount: Decimal,
+    pub base_currency: String,
+    pub minimize_debts: bool,
+    pub timezone: String,
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     // Enhanced fields for better UX
     pub participants: Vec<ParticipantBasicInfo>,
     pub my_debt: Decimal,        // How much current user owes in this session
@@ -78,6 +86,10 @@ pub struct SessionDetailResponse {
     pub participants: Vec<ParticipantResponse>,
     pub total_amount: Decimal,
     pub group_id: Option<Uuid>,
+    pub base_currency: String,
+    pub minimize_debts: bool,
+    pub timezone: String,
+    pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -105,6 +117,13 @@ pub struct CreateSessionRequest {
     pub participant_ids: Option<Vec<Uuid>>,
     #[validate(length(max = 10, message = "Maximum 10 guest names allowed"))]
     pub guest_names: Option<Vec<String>>,
+    pub base_currency: Option<String>,
+    pub timezone: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateMinimizeDebtsRequest {
+    pub minimize_debts: bool,
 }
 
 // These Bill structs are needed by Repo and Bills Module
@@ -115,6 +134,13 @@ pub struct BillResponse {
     pub description: String,
     #[serde(with = "rust_decimal::serde::str")]
     pub amount: Decimal,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub amount_original: Decimal,
+    pub currency_code: String,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub exchange_rate: Decimal,
+    pub rate_source: String,
+    pub rate_timestamp: chrono::DateTime<chrono::Utc>,
     pub split_strategy: String,
     pub created_by: Uuid,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -127,6 +153,13 @@ pub struct BillDetailResponse {
     pub description: String,
     #[serde(with = "rust_decimal::serde::str")]
     pub amount: Decimal,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub amount_original: Decimal,
+    pub currency_code: String,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub exchange_rate: Decimal,
+    pub rate_source: String,
+    pub rate_timestamp: chrono::DateTime<chrono::Utc>,
     pub split_strategy: String,
     pub created_by: Uuid,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -179,6 +212,8 @@ pub struct SessionQuery {
     pub page: i64,
     #[serde(default = "default_limit")]
     pub limit: i64,
+    #[serde(default)]
+    pub include_archived: bool,
 }
 
 fn default_page() -> i64 {
@@ -215,6 +250,7 @@ async fn list_sessions(
             query.status.as_deref(),
             query.from,
             query.to,
+            query.include_archived,
             query.page,
             query.limit,
         )
@@ -259,6 +295,17 @@ async fn create_session(
         .map(|l| l.trim().to_string())
         .filter(|l| !l.is_empty());
 
+    let base_currency = match payload.base_currency.as_deref() {
+        Some(code) => Some(normalize_currency(code)?),
+        None => None,
+    };
+
+    let timezone = payload
+        .timezone
+        .as_ref()
+        .map(|tz| tz.trim().to_string())
+        .filter(|tz| !tz.is_empty());
+
     let repo = SessionRepository::new(state.pool.clone());
 
     let session = repo
@@ -270,6 +317,8 @@ async fn create_session(
             payload.group_id,
             payload.participant_ids.as_deref(),
             payload.guest_names.as_deref(),
+            base_currency.as_deref(),
+            timezone.as_deref(),
         )
         .await?;
 
@@ -299,6 +348,10 @@ async fn get_session(
             session_date: cached.session_date,
             total_amount: cached.total_amount,
             group_id: cached.group_id,
+            base_currency: cached.base_currency,
+            minimize_debts: cached.minimize_debts,
+            timezone: cached.timezone,
+            archived_at: cached.archived_at,
             participants: cached.participants,
         }));
     }
@@ -322,6 +375,10 @@ async fn get_session(
             session_date: session.session_date,
             total_amount: session.total_amount,
             group_id: session.group_id,
+            base_currency: session.base_currency.clone(),
+            minimize_debts: session.minimize_debts,
+            timezone: session.timezone.clone(),
+            archived_at: session.archived_at,
             participants: session.participants.clone(),
         })
         .await;
@@ -410,6 +467,57 @@ async fn reopen_session(
             },
         )
         .await;
+
+    Ok(ok(session))
+}
+
+async fn update_minimize_debts(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(session_id): Path<Uuid>,
+    Json(payload): Json<UpdateMinimizeDebtsRequest>,
+) -> Result<Json<ApiResponse<SessionResponse>>, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    repo.verify_owner(session_id, auth_user.user_id).await?;
+
+    let session = repo
+        .update_minimize_debts(session_id, payload.minimize_debts)
+        .await?;
+
+    state.cache.invalidate_session(session_id).await;
+
+    Ok(ok(session))
+}
+
+async fn archive_session(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(session_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<SessionResponse>>, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    repo.verify_owner(session_id, auth_user.user_id).await?;
+
+    let session = repo.set_archived(session_id, true).await?;
+
+    state.cache.invalidate_session(session_id).await;
+
+    Ok(ok(session))
+}
+
+async fn restore_session(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(session_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<SessionResponse>>, AppError> {
+    let repo = SessionRepository::new(state.pool.clone());
+
+    repo.verify_owner(session_id, auth_user.user_id).await?;
+
+    let session = repo.set_archived(session_id, false).await?;
+
+    state.cache.invalidate_session(session_id).await;
 
     Ok(ok(session))
 }

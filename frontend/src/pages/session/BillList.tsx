@@ -11,9 +11,10 @@ interface BillListProps {
     onDelete: (billId: string) => void
     deletingBillId: string | null
     categoriesById: Record<string, ExpenseCategory>
+    baseCurrency: string
 }
 
-export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesById }: BillListProps) {
+export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesById, baseCurrency }: BillListProps) {
     if (bills.length === 0) {
         return (
             <Card>
@@ -63,9 +64,16 @@ export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesBy
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <p className="text-lg font-bold text-primary">
-                                            {formatCurrency(bill.amount)}
-                                        </p>
+                                        <div className="text-right">
+                                            <p className="text-lg font-bold text-primary">
+                                                {formatCurrency(bill.amount, baseCurrency)}
+                                            </p>
+                                            {bill.currency_code && bill.currency_code !== baseCurrency && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    {formatCurrency(bill.amount_original, bill.currency_code)}
+                                                </p>
+                                            )}
+                                        </div>
                                         <Button
                                             size="sm"
                                             variant="ghost"

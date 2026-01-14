@@ -33,11 +33,14 @@ export default function GroupsPage() {
   const [groupName, setGroupName] = useState('')
   const [groupDescription, setGroupDescription] = useState('')
   const [memberEmail, setMemberEmail] = useState('')
+  const [includeArchived, setIncludeArchived] = useState(false)
 
   const { data: groups, isLoading } = useQuery({
-    queryKey: ['groups'],
+    queryKey: ['groups', includeArchived],
     queryFn: async () => {
-      const res = await api.get<ApiResponse<Group[]>>('/groups')
+      const params = new URLSearchParams()
+      if (includeArchived) params.set('include_archived', 'true')
+      const res = await api.get<ApiResponse<Group[]>>(`/groups?${params.toString()}`)
       return res.data.data
     },
   })
@@ -96,6 +99,40 @@ export default function GroupsPage() {
     },
     onError: (error: unknown) => {
       showError(error, 'Không thể thêm thành viên. Vui lòng thử lại.')
+    },
+  })
+
+  const archiveGroup = useMutation({
+    mutationFn: async (groupId: string) => {
+      const res = await api.post<ApiResponse<Group>>(`/groups/${groupId}/archive`)
+      return res.data.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      if (selectedGroupId) {
+        queryClient.invalidateQueries({ queryKey: ['groups', selectedGroupId] })
+      }
+      toast.success('Đã lưu trữ nhóm')
+    },
+    onError: (error: unknown) => {
+      showError(error, 'Không thể lưu trữ nhóm.')
+    },
+  })
+
+  const restoreGroup = useMutation({
+    mutationFn: async (groupId: string) => {
+      const res = await api.post<ApiResponse<Group>>(`/groups/${groupId}/restore`)
+      return res.data.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      if (selectedGroupId) {
+        queryClient.invalidateQueries({ queryKey: ['groups', selectedGroupId] })
+      }
+      toast.success('Đã khôi phục nhóm')
+    },
+    onError: (error: unknown) => {
+      showError(error, 'Không thể khôi phục nhóm.')
     },
   })
 
@@ -215,6 +252,9 @@ export default function GroupsPage() {
     )
   }
 
+  const isGroupAdmin = groupDetail?.members?.some((m) => m.user_id === user?.id && m.role === 'admin') ?? false
+  const isGroupArchived = Boolean(groupDetail?.archived_at)
+
   return (
     <div className="space-y-6">
       {/* Header - Retro Typography */}
@@ -227,6 +267,16 @@ export default function GroupsPage() {
           <Plus className="h-4 w-4" />
           Tạo nhóm mới
         </Button>
+      </div>
+
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <input
+          type="checkbox"
+          checked={includeArchived}
+          onChange={(e) => setIncludeArchived(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300"
+        />
+        Hiện nhóm đã lưu trữ
       </div>
 
       {/* Celebration effect */}
@@ -260,6 +310,11 @@ export default function GroupsPage() {
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Users className="h-5 w-5 text-primary" />
                     {group.name}
+                    {group.archived_at && (
+                      <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Archived
+                      </span>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -275,7 +330,7 @@ export default function GroupsPage() {
                         size="sm"
                         className="gap-1 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
                         onClick={(e) => handleQuickCreateSession(e, group)}
-                        disabled={quickCreateSession.isPending}
+                        disabled={quickCreateSession.isPending || !!group.archived_at}
                       >
                         <Beer className="h-4 w-4" />
                         Nhậu ngay!
@@ -367,11 +422,19 @@ export default function GroupsPage() {
               onChange={(e) => setMemberEmail(e.target.value)}
               type="email"
               required
+              disabled={!isGroupAdmin || isGroupArchived}
             />
             <p className="text-xs text-muted-foreground">
               💡 Thành viên phải có tài khoản (liên hệ Admin để tạo)
             </p>
-            <Button type="submit" disabled={addMember.isPending || !memberEmail} className="w-full gap-2">
+            {isGroupArchived && (
+              <p className="text-xs text-muted-foreground">Nhóm đã lưu trữ, không thể thêm thành viên.</p>
+            )}
+            <Button
+              type="submit"
+              disabled={addMember.isPending || !memberEmail || !isGroupAdmin || isGroupArchived}
+              className="w-full gap-2"
+            >
               <UserPlus className="h-4 w-4" />
               Thêm thành viên
             </Button>
@@ -405,7 +468,7 @@ export default function GroupsPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => removeMember.mutate(member.user_id)}
-                      disabled={removeMember.isPending}
+                      disabled={removeMember.isPending || !isGroupAdmin || isGroupArchived}
                     >
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
@@ -414,6 +477,30 @@ export default function GroupsPage() {
               </div>
             ))}
           </div>
+
+          {isGroupAdmin && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                if (!groupDetail) return
+                if (isGroupArchived) {
+                  restoreGroup.mutate(groupDetail.id)
+                } else {
+                  archiveGroup.mutate(groupDetail.id)
+                }
+              }}
+              disabled={archiveGroup.isPending || restoreGroup.isPending}
+            >
+              {isGroupArchived
+                ? restoreGroup.isPending
+                  ? 'Đang khôi phục...'
+                  : 'Khôi phục nhóm'
+                : archiveGroup.isPending
+                  ? 'Đang lưu trữ...'
+                  : 'Lưu trữ nhóm'}
+            </Button>
+          )}
 
           <Button
             variant="outline"
