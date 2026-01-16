@@ -428,7 +428,7 @@ export default function WrappedModal({ isOpen, onClose, year = new Date().getFul
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md h-[600px] p-0 overflow-hidden bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 border-none">
+      <DialogContent className="max-w-xl h-[600px] p-0 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 border-none">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500" />

@@ -28,7 +28,7 @@ fn default_page() -> i64 {
     1
 }
 fn default_limit() -> i64 {
-    20
+    100
 }
 
 /// Pagination metadata

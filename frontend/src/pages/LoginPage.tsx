@@ -66,10 +66,10 @@ export default function LoginPage() {
 
     try {
       await login(email, password)
-      toast.success('WELCOME BACK, DIRECTOR.')
+      toast.success('Chào mừng trở lại')
       navigate('/', { replace: true })
     } catch {
-      toast.error('INVALID CREDENTIALS')
+      toast.error('Sai thông tin đăng nhập')
       setIsLoading(false)
     }
   }
@@ -146,7 +146,7 @@ export default function LoginPage() {
                     Password
                   </Label>
                   <a href="#" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
-                    Forgot?
+                    Quên mật khẩu?
                   </a>
                 </div>
                 <Input
@@ -170,7 +170,7 @@ export default function LoginPage() {
                   disabled={isLoading}
                   haptic={true}
                 >
-                  {isLoading ? 'AUTHENTICATING...' : 'ENTER DASHBOARD'}
+                  {isLoading ? 'Đang kiểm tra...' : 'Đăng nhập'}
                 </Button>
               </motion.div>
             </motion.form>

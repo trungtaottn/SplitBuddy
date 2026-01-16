@@ -307,7 +307,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="w-full space-y-8">
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-heading font-bold text-white tracking-tight">Tài khoản của tôi</h1>
@@ -660,7 +660,7 @@ export default function ProfilePage() {
                       </div>
                       <span className="font-medium text-zinc-300 text-sm">Giao diện</span>
                     </div>
-                    <ThemeToggle />
+                    <ThemeToggle showLabel={false} className="[&_span]:hidden" />
                   </div>
                   
                    <div className="p-4 flex items-center justify-between">

@@ -65,6 +65,86 @@ pub async fn add_participant(
         .add_participant(session_id, payload.user_id, payload.guest_name)
         .await?;
 
+    // Create notification for user if they were added to the session
+    if let Some(user_id) = payload.user_id {
+        tracing::info!(
+            "[NOTIFICATION DEBUG] User {} was added to session {}, checking preferences...",
+            user_id,
+            session_id
+        );
+
+        // Check if user has session_invites notifications enabled
+        let prefs_enabled: bool = sqlx::query_scalar(
+            r#"
+            SELECT COALESCE(session_invites, true)
+            FROM notification_preferences
+            WHERE user_id = $1
+            "#,
+        )
+        .bind(user_id)
+        .fetch_optional(&state.pool)
+        .await?
+        .unwrap_or(true); // Default to enabled if preferences don't exist
+
+        tracing::info!(
+            "[NOTIFICATION DEBUG] Preference check result: {}",
+            prefs_enabled
+        );
+
+        if prefs_enabled {
+            // Get session name for notification
+            let session_name: String =
+                sqlx::query_scalar("SELECT name FROM sessions WHERE id = $1")
+                    .bind(session_id)
+                    .fetch_one(&state.pool)
+                    .await?;
+
+            // Get inviter name
+            let inviter_name: String =
+                sqlx::query_scalar("SELECT full_name FROM users WHERE id = $1")
+                    .bind(auth_user.user_id)
+                    .fetch_one(&state.pool)
+                    .await?;
+
+            tracing::info!(
+                "[NOTIFICATION DEBUG] Creating notification: '{}' invited by '{}' to session '{}'",
+                user_id,
+                inviter_name,
+                session_name
+            );
+
+            // Create notification
+            let notification_id = uuid::Uuid::new_v4();
+            sqlx::query(
+                r#"
+                INSERT INTO notifications (id, user_id, type, title, message, data, is_read, created_at)
+                VALUES ($1, $2, 'session_invite', $3, $4, $5, false, NOW())
+                "#,
+            )
+            .bind(notification_id)
+            .bind(user_id)
+            .bind(format!("Bạn được thêm vào session: {}", session_name))
+            .bind(format!("{} đã thêm bạn vào session '{}'", inviter_name, session_name))
+            .bind(serde_json::json!({
+                "session_id": session_id,
+                "session_name": session_name,
+                "inviter_id": auth_user.user_id,
+                "inviter_name": inviter_name
+            }))
+            .execute(&state.pool)
+            .await?;
+
+            tracing::info!(
+                "[NOTIFICATION DEBUG] ✅ Notification {} created successfully!",
+                notification_id
+            );
+        } else {
+            tracing::info!("[NOTIFICATION DEBUG] ❌ Notification NOT created - user has disabled session_invites");
+        }
+    } else {
+        tracing::info!("[NOTIFICATION DEBUG] No user_id provided, this is a guest participant - no notification created");
+    }
+
     Ok(created(participant))
 }
 

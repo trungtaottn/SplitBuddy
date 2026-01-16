@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -68,6 +68,13 @@ export default function SessionDetailPage() {
     acc[cat.id] = cat
     return acc
   }, {} as Record<string, ExpenseCategory>)
+
+  // Invalidate sessions query on unmount to refresh dashboard
+  useEffect(() => {
+    return () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+    }
+  }, [queryClient])
 
   // Mutations
   const updateSessionStatus = useMutation({

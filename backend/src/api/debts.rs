@@ -159,6 +159,74 @@ async fn confirm_settle(
         )
         .await;
 
+    // Create notification for the debtor that their payment was confirmed
+    // Get debt details to notify the debtor
+    let debt_details: Option<(Uuid, String, String, Decimal)> = sqlx::query_as(
+        r#"
+        SELECT 
+            d.debtor_id,
+            COALESCE(u.full_name, sp.guest_name, 'Unknown') as creditor_name,
+            s.name as session_name,
+            d.amount
+        FROM debts d
+        JOIN sessions s ON d.session_id = s.id
+        LEFT JOIN session_participants sp ON d.creditor_id = sp.id
+        LEFT JOIN users u ON sp.user_id = u.id
+        WHERE d.id = $1
+        "#,
+    )
+    .bind(debt_id)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    if let Some((debtor_id, creditor_name, session_name, amount)) = debt_details {
+        // Check if debtor is a registered user (not a guest)
+        let debtor_user_id: Option<Uuid> =
+            sqlx::query_scalar("SELECT user_id FROM session_participants WHERE id = $1")
+                .bind(debtor_id)
+                .fetch_optional(&state.pool)
+                .await?
+                .flatten();
+
+        if let Some(user_id) = debtor_user_id {
+            // Check settlement_notifications preference
+            let prefs_enabled: bool = sqlx::query_scalar(
+                r#"
+                SELECT COALESCE(settlement_notifications, true)
+                FROM notification_preferences
+                WHERE user_id = $1
+                "#,
+            )
+            .bind(user_id)
+            .fetch_optional(&state.pool)
+            .await?
+            .unwrap_or(true);
+
+            if prefs_enabled {
+                let notification_id = uuid::Uuid::new_v4();
+                sqlx::query(
+                    r#"
+                    INSERT INTO notifications (id, user_id, type, title, message, data, is_read, created_at)
+                    VALUES ($1, $2, 'settlement', $3, $4, $5, false, NOW())
+                    "#,
+                )
+                .bind(notification_id)
+                .bind(user_id)
+                .bind("Thanh toán đã được xác nhận".to_string())
+                .bind(format!("{} đã xác nhận thanh toán {} VND từ session '{}'", creditor_name, amount, session_name))
+                .bind(serde_json::json!({
+                    "debt_id": debt_id,
+                    "session_id": debt.session_id,
+                    "session_name": session_name,
+                    "creditor_name": creditor_name,
+                    "amount": amount.to_string()
+                }))
+                .execute(&state.pool)
+                .await?;
+            }
+        }
+    }
+
     Ok(ok(SettleResponse {
         debt_id: debt.id,
         status: debt.status,

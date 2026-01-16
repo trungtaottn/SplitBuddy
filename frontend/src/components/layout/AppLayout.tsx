@@ -67,11 +67,11 @@ export default function AppLayout() {
           <nav className="hidden items-center md:flex gap-4">
             {!isAdmin && (
               <>
-                <NavLink to="/" label="Dashboard" icon={Home} />
-                {showGroups && <NavLink to="/groups" label="Groups" icon={Users} />}
-                {showDebts && <NavLink to="/debts" label="Debts" icon={Wallet} />}
-                {showGames && <NavLink to="/games" label="Games" icon={Sparkles} />}
-                <NavLink to="/analytics" label="Stats" icon={TrendingUp} />
+                <NavLink to="/" label="Trang chủ" icon={Home} />
+                {showGroups && <NavLink to="/groups" label="Nhóm" icon={Users} />}
+                {showDebts && <NavLink to="/debts" label="Công nợ" icon={Wallet} />}
+                {showGames && <NavLink to="/games" label="Trò chơi" icon={Sparkles} />}
+                <NavLink to="/analytics" label="Thống kê" icon={TrendingUp} />
               </>
             )}
 

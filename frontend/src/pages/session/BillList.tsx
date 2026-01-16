@@ -65,11 +65,11 @@ export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesBy
 
     if (bills.length === 0) {
         return (
-            <Card>
+            <Card className="bg-zinc-900 border-white/5">
                 <CardContent className="py-12 text-center">
-                    <Banknote className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                    <p className="text-muted-foreground">Chưa có hoá đơn nào</p>
-                    <p className="text-sm text-gray-400">Thêm hoá đơn đầu tiên để bắt đầu chia tiền</p>
+                    <Banknote className="h-12 w-12 mx-auto mb-3 text-orange-500/50" />
+                    <p className="text-white font-medium">Chưa có hoá đơn nào</p>
+                    <p className="text-sm text-zinc-400 mt-1">Thêm hoá đơn đầu tiên để bắt đầu chia tiền</p>
                 </CardContent>
             </Card>
         )
@@ -121,14 +121,14 @@ export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesBy
                                 }
                                 onTouchEnd={cancelLongPress}
                             >
-                                <Card key={bill.id}>
+                                <Card className="bg-zinc-900 border-white/5 hover:border-orange-500/30 transition-all group">
                                     <CardContent className="p-4 space-y-3">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <span className="text-2xl">🧾</span>
                                                 <div>
-                                                    <p className="font-medium">{bill.description}</p>
-                                                    <p className="text-sm text-muted-foreground">
+                                                    <p className="font-medium text-white">{bill.description}</p>
+                                                    <p className="text-sm text-zinc-400">
                                                         {new Date(bill.created_at).toLocaleDateString('vi-VN')}
                                                     </p>
                                                     {bill.category_id && categoriesById[bill.category_id] && (
@@ -153,11 +153,11 @@ export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesBy
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <div className="text-right">
-                                                    <p className="text-lg font-bold text-primary">
+                                                    <p className="text-lg font-bold text-orange-500">
                                                         {formatCurrency(bill.amount, baseCurrency)}
                                                     </p>
                                                     {bill.currency_code && bill.currency_code !== baseCurrency && (
-                                                        <p className="text-xs text-muted-foreground">
+                                                        <p className="text-xs text-zinc-400">
                                                             {formatCurrency(bill.amount_original, bill.currency_code)}
                                                         </p>
                                                     )}
@@ -166,6 +166,7 @@ export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesBy
                                                     size="sm"
                                                     variant="ghost"
                                                     onClick={() => onEdit(bill)}
+                                                    className="hover:bg-orange-500/10 hover:text-orange-500"
                                                 >
                                                     ✏️
                                                 </Button>
@@ -192,7 +193,7 @@ export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesBy
                                                         size="sm"
                                                         variant="ghost"
                                                         onClick={() => onDelete(bill.id)}
-                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                        className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
@@ -226,8 +227,8 @@ export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesBy
                                         {/* Payer info */}
                                         {bill.payers && bill.payers.length > 0 && (
                                             <div className="flex items-center gap-2 text-sm">
-                                                <span className="text-green-600 flex items-center gap-1"><Banknote className="h-4 w-4" /> Người trả:</span>
-                                                <span className="font-medium">
+                                                <span className="text-emerald-500 flex items-center gap-1"><Banknote className="h-4 w-4" /> Người trả:</span>
+                                                <span className="font-medium text-white">
                                                     {bill.payers.map(p => p.name).join(', ')}
                                                 </span>
                                             </div>
@@ -236,8 +237,8 @@ export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesBy
                                         {/* Participants info */}
                                         {bill.participants && bill.participants.length > 0 && (
                                             <div className="flex flex-wrap items-center gap-2 text-sm">
-                                                <span className="text-blue-600 flex items-center gap-1"><Users className="h-4 w-4" /> Chia cho:</span>
-                                                <span className="font-medium">
+                                                <span className="text-blue-400 flex items-center gap-1"><Users className="h-4 w-4" /> Chia cho:</span>
+                                                <span className="font-medium text-zinc-300">
                                                     {bill.participants.map(p => p.name).join(', ')}
                                                 </span>
                                             </div>

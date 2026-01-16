@@ -135,7 +135,7 @@ export function SessionOverview({
                     {session.participants.map((p) => (
                         <div
                             key={p.id}
-                            className={`flex items-center gap-2 rounded-full px-3 py-2 ${p.role === 'owner' ? 'bg-primary/10 text-primary' : 'bg-gray-100 dark:bg-gray-800'
+                            className={`flex items-center gap-2 rounded-full px-3 py-2 ${p.role === 'owner' ? 'bg-primary/10 text-primary' : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
                                 }`}
                         >
                             {editingParticipant?.id === p.id ? (

@@ -1,4 +1,5 @@
 import { useEffect, useRef, ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -65,7 +66,7 @@ export function ResponsiveModal({
 
   if (!isOpen) return null
 
-  return (
+  const modalContent = (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => {
@@ -77,7 +78,7 @@ export function ResponsiveModal({
         ref={modalRef}
         tabIndex={-1}
         className={cn(
-          'w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in-0 zoom-in-95 duration-200',
+          'w-full max-w-xl max-h-[90vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-200',
           className,
           desktopClassName
         )}
@@ -100,10 +101,12 @@ export function ResponsiveModal({
             </Button>
           </CardHeader>
         )}
-        <CardContent className={cn('flex-1 overflow-y-auto', title ? 'pt-0' : '')}>
+        <CardContent className="flex-1 overflow-y-auto py-4 min-h-0">
           {children}
         </CardContent>
       </Card>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

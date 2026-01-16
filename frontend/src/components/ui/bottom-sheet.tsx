@@ -79,7 +79,7 @@ export function BottomSheet({
         ref={sheetRef}
         className={cn(
           'fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-[24px]',
-          'max-h-[90vh] overflow-hidden flex flex-col',
+          'max-h-[90vh] flex flex-col',
           'animate-in slide-in-from-bottom duration-300',
           'transition-transform shadow-xl border-t border-border/50',
           className

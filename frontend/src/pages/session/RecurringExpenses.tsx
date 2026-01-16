@@ -117,7 +117,7 @@ function RecurringExpenseCard({
   const isSkipping = skipRecurring.isPending && skipRecurring.variables === item.id
 
   return (
-    <Card>
+    <Card className="bg-zinc-900 border-white/5 hover:border-orange-500/30 transition-all group">
       <CardContent className="p-4 space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -251,19 +251,19 @@ export function RecurringExpenses({
     return <div className="text-center py-8">Đang tải lịch định kỳ...</div>
   }
 
-  if (recurring.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <div className="text-3xl mb-3">📅</div>
-          <p className="text-muted-foreground">Chưa có chi tiêu định kỳ</p>
-          <p className="text-sm text-gray-400">
-            Tạo lịch định kỳ để tự động ghi nhận các khoản chi lặp lại
-          </p>
-        </CardContent>
-      </Card>
-    )
-  }
+    if (recurring.length === 0) {
+        return (
+            <Card className="bg-zinc-900 border-white/5">
+                <CardContent className="py-12 text-center">
+                    <div className="text-4xl mb-3">📅</div>
+                    <p className="text-white font-medium">Chưa có chi tiêu định kỳ</p>
+                    <p className="text-sm text-zinc-400 mt-1">
+                        Tạo lịch định kỳ để tự động ghi nhận các khoản chi lặp lại
+                    </p>
+                </CardContent>
+            </Card>
+        )
+    }
 
   const actionsDisabled = !isOwner || isArchived || isClosed
 

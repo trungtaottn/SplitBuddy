@@ -8,7 +8,8 @@ import {
   Volume2, 
   VolumeX,
   Disc,
-  Music2
+  Music2,
+  Shuffle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -32,7 +33,9 @@ export function MusicPlayer() {
     nextTrack, 
     prevTrack,
     tracks,
-    selectTrack
+    selectTrack,
+    isShuffled,
+    toggleShuffle
   } = useMusic()
   
   const [isExpanded, setIsExpanded] = useState(false)
@@ -161,6 +164,18 @@ export function MusicPlayer() {
               onClick={nextTrack}
             >
               <SkipForward className="h-4 w-4" />
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={cn(
+                "h-8 w-8 transition-colors",
+                isShuffled ? "text-primary hover:text-primary/80" : "text-muted-foreground hover:text-white hover:bg-white/10"
+              )}
+              onClick={toggleShuffle}
+            >
+              <Shuffle className="h-4 w-4" />
             </Button>
           </div>
 

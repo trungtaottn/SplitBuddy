@@ -428,7 +428,7 @@ export function BillInput({
                   <button
                     key={i}
                     type="button"
-                    className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm"
+                    className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-gray-100"
                     onClick={() => {
                       setDescription(s.label)
                       setShowSuggestions(false)
@@ -585,7 +585,7 @@ export function BillInput({
                     "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
                     selectedPayer === p.id
                       ? "bg-primary text-white shadow-md scale-105"
-                      : "bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600"
                   )}
                 >
                   {p.user_id ? '' : '👻'} {p.display_name}
