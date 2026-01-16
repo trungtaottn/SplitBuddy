@@ -6,7 +6,7 @@ CREATE TYPE recurring_frequency AS ENUM ('DAILY', 'WEEKLY', 'MONTHLY');
 
 -- Main recurring expenses table
 CREATE TABLE recurring_expenses (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
@@ -32,7 +32,7 @@ CREATE TABLE recurring_expenses (
 
 -- Snapshot table to store split configuration at execution time
 CREATE TABLE recurring_expense_snapshots (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     recurring_expense_id UUID NOT NULL REFERENCES recurring_expenses(id) ON DELETE CASCADE,
     -- Store participant weights, custom splits, etc. at the time of bill creation
     snapshot_data JSONB NOT NULL,
@@ -48,23 +48,6 @@ CREATE INDEX idx_recurring_expenses_scheduler ON recurring_expenses(next_run, is
 CREATE INDEX idx_recurring_expense_snapshots_recurring_id ON recurring_expense_snapshots(recurring_expense_id);
 
 -- Add audit log action for recurring expenses
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_type t
-        JOIN pg_enum e ON t.oid = e.enumtypid
-        WHERE t.typname = 'audit_action' AND e.enumlabel = 'RecurringExpenseCreate'
-    ) THEN
-        ALTER TYPE audit_action ADD VALUE 'RecurringExpenseCreate';
-        ALTER TYPE audit_action ADD VALUE 'RecurringExpenseUpdate';
-        ALTER TYPE audit_action ADD VALUE 'RecurringExpenseDelete';
-        ALTER TYPE audit_action ADD VALUE 'RecurringExpenseExecute';
-        ALTER TYPE audit_action ADD VALUE 'RecurringExpensePause';
-        ALTER TYPE audit_action ADD VALUE 'RecurringExpenseResume';
-        ALTER TYPE audit_action ADD VALUE 'RecurringExpenseSkip';
-    END IF;
-END;
-$$;
 
 -- Comment documentation
 COMMENT ON TABLE recurring_expenses IS 'Stores recurring expense configurations that automatically create bills';

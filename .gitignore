@@ -29,3 +29,4 @@ build/
 
 # Cursor
 .cursor
+.codex/

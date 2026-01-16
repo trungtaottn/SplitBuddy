@@ -1,7 +1,7 @@
 -- Recurring expense exceptions (skip specific dates)
 
 CREATE TABLE IF NOT EXISTS recurring_expense_exceptions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     recurring_expense_id UUID NOT NULL REFERENCES recurring_expenses(id) ON DELETE CASCADE,
     exception_date DATE NOT NULL,
     reason TEXT,
