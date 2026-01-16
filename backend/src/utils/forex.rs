@@ -171,3 +171,25 @@ async fn store_rate(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_currency_trims_and_uppercases() {
+        let code = normalize_currency(" vnd ").unwrap();
+        assert_eq!(code, "VND");
+    }
+
+    #[test]
+    fn test_normalize_currency_invalid_length() {
+        let err = normalize_currency("usd1").err().unwrap();
+        match err {
+            AppError::Validation { field, .. } => {
+                assert_eq!(field, "currency_code");
+            }
+            _ => panic!("Expected validation error"),
+        }
+    }
+}

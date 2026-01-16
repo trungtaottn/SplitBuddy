@@ -31,6 +31,12 @@ User Login → Tạo Session → Thêm Participants → Thêm Bill(s)
 | **Mở rộng** | Monolithic Modular, REST API chuẩn cho mobile |
 | **Logging** | `tracing` với structured JSON format |
 
+### 1.4 Multi-currency notes
+- `sessions.base_currency` la dong tien goc, tinh cong no theo dong nay.
+- `bills.amount` luu gia tri da quy doi sang base currency.
+- `bills.amount_original` luu so tien goc, `exchange_rate` va `rate_source` luu ty gia/nguon.
+- Khi `currency_code` khac base, can co `exchange_rate > 0`.
+
 ---
 
 ## II. PHÂN TÍCH & HOÀN THIỆN YÊU CẦU
@@ -77,8 +83,8 @@ User Login → Tạo Session → Thêm Participants → Thêm Bill(s)
 | Entity | Thuộc tính chính |
 |--------|-----------------|
 | `User` | id, email, password_hash, full_name, avatar_url |
-| `Session` | id, name, location, status(active/closed), created_by, created_at |
-| `SessionParticipant` | session_id, user_id(nullable), guest_name, role(owner/member) |
+| `Session` | id, name, location, status(active/closed), base_currency, minimize_debts, timezone, archived_at, created_by, created_at |
+| `SessionParticipant` | session_id, user_id(nullable), guest_name, role(owner/member), default_weight, is_active |
 | `Bill` | id, session_id, description, amount, created_at, created_by |
 | `BillPayer` | bill_id, participant_id, amount_paid |
 | `BillSplit` | bill_id, participant_id, amount_owed |
@@ -185,6 +191,9 @@ backend/
 | POST | `/api/sessions` | Tạo session mới |
 | GET | `/api/sessions/{id}` | Chi tiết session |
 | POST | `/api/sessions/{id}/participants` | Thêm participant |
+| PUT | `/api/sessions/{id}/participants/{pid}` | Cập nhật participant (weight, active, guest name) |
+| POST | `/api/sessions/{id}/archive` | Lưu trữ session |
+| POST | `/api/sessions/{id}/restore` | Khôi phục session |
 
 #### Bills
 | Method | Endpoint | Description |

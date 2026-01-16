@@ -3,14 +3,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Check, X, Pencil, Trash2, Users, Ghost, UserPlus } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
-import type { SessionDetail, GroupDetail } from '@/types/api'
+import type { SessionDetail, GroupDetail, WhoPaysNextResponse } from '@/types/api'
 import { useState } from 'react'
 
 interface SessionOverviewProps {
     session: SessionDetail
     groupDetail?: GroupDetail | null
     // Mutation handlers passed from parent
-    onUpdateParticipant: (participantId: string, guestName: string) => void
+    onUpdateParticipant: (participantId: string, updates: { guest_name?: string; default_weight?: number; is_active?: boolean }) => void
     onDeleteParticipant: (participantId: string) => void
     onAddParticipant: (data: { user_id?: string; guest_name?: string }) => void
     // Loading states
@@ -20,6 +20,8 @@ interface SessionOverviewProps {
     onUpdateDebtStrategy: (minimizeDebts: boolean) => void
     isUpdatingDebtStrategy: boolean
     isOwner: boolean
+    whoPaysNext?: WhoPaysNextResponse
+    onQuickCreate: () => void
 }
 
 export function SessionOverview({
@@ -34,8 +36,10 @@ export function SessionOverview({
     onUpdateDebtStrategy,
     isUpdatingDebtStrategy,
     isOwner,
+    whoPaysNext,
+    onQuickCreate,
 }: SessionOverviewProps) {
-    const [editingParticipant, setEditingParticipant] = useState<{ id: string; name: string } | null>(null)
+    const [editingParticipant, setEditingParticipant] = useState<{ id: string; name: string; weight: number; active: boolean } | null>(null)
     const [deletingParticipantId, setDeletingParticipantId] = useState<string | null>(null)
     const [showAddParticipant, setShowAddParticipant] = useState(false)
     const [addMode, setAddMode] = useState<'guest' | 'member'>('guest')
@@ -49,6 +53,27 @@ export function SessionOverview({
 
     return (
         <div className="space-y-6">
+            {whoPaysNext?.suggested && (
+                <Card>
+                    <CardContent className="p-6 space-y-2">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <p className="text-sm text-muted-foreground">Ai nên trả tiếp</p>
+                                <p className="text-lg font-semibold">{whoPaysNext.suggested.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    Chênh lệch: {formatCurrency(whoPaysNext.suggested.balance, session.base_currency)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    Gợi ý dựa trên chênh lệch trả/nhận hiện tại, bạn có thể chọn người khác.
+                                </p>
+                            </div>
+                            <Button size="sm" onClick={onQuickCreate}>
+                                Tạo hóa đơn
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
             <Card>
                 <CardContent className="p-6">
                     <div className="grid gap-4 md:grid-cols-2">
@@ -81,6 +106,7 @@ export function SessionOverview({
                                     variant={session.minimize_debts ? 'default' : 'outline'}
                                     onClick={() => onUpdateDebtStrategy(true)}
                                     disabled={!isOwner || isArchived || isUpdatingDebtStrategy}
+                                    title="Cấn trừ để giảm số lần chuyển tiền"
                                 >
                                     Cấn trừ
                                 </Button>
@@ -89,15 +115,17 @@ export function SessionOverview({
                                     variant={!session.minimize_debts ? 'default' : 'outline'}
                                     onClick={() => onUpdateDebtStrategy(false)}
                                     disabled={!isOwner || isArchived || isUpdatingDebtStrategy}
+                                    title="Trực tiếp giữ nguyên người trả theo hóa đơn"
                                 >
                                     Trực tiếp
                                 </Button>
                             </div>
                         </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                        Cấn trừ giúp giảm số lần chuyển tiền. Trực tiếp sẽ giữ đúng người trả ban đầu.
-                    </p>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                        <p>Cấn trừ: hệ thống gộp trả/nhận để giảm số giao dịch, tổng cuối mỗi người không đổi.</p>
+                        <p>Trực tiếp: giữ nguyên ai trả theo từng hóa đơn, số giao dịch có thể nhiều hơn.</p>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -123,7 +151,7 @@ export function SessionOverview({
                                         variant="ghost"
                                         className="h-6 w-6 p-0"
                                         onClick={() => {
-                                            onUpdateParticipant(p.id, editingParticipant.name)
+                                            onUpdateParticipant(p.id, { guest_name: editingParticipant.name })
                                             setEditingParticipant(null)
                                         }}
                                         disabled={isUpdatingParticipant}
@@ -175,7 +203,7 @@ export function SessionOverview({
                                             size="sm"
                                             variant="ghost"
                                             className="h-5 w-5 p-0 opacity-50 hover:opacity-100"
-                                            onClick={() => setEditingParticipant({ id: p.id, name: p.guest_name || p.display_name })}
+                                            onClick={() => setEditingParticipant({ id: p.id, name: p.guest_name || p.display_name, weight: p.default_weight, active: p.is_active })}
                                         >
                                             <Pencil className="h-3 w-3" />
                                         </Button>

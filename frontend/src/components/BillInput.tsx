@@ -8,8 +8,9 @@ import { formatCurrency } from '@/utils/formatCurrency'
 import { CURRENCY_OPTIONS } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/axios'
+import { api as apiWrapper } from '@/lib/api'
 import { toast } from '@/components/ui/toaster'
-import type { ApiResponse, ExpenseCategory, Participant, PayerInput, SplitDetailInput, Bill } from '@/types/api'
+import type { ApiResponse, ExpenseCategory, Participant, PayerInput, SplitDetailInput, Bill, RateHistoryEntry } from '@/types/api'
 
 // Common bill descriptions for autocomplete
 const BILL_SUGGESTIONS = [
@@ -36,6 +37,7 @@ const QUICK_AMOUNTS = [
 interface BillInputProps {
   participants: Participant[]
   baseCurrency: string
+  defaultPayerId?: string
   onSubmit: (data: {
     description: string
     total_amount: string
@@ -57,6 +59,7 @@ interface BillInputProps {
 export function BillInput({
   participants,
   baseCurrency,
+  defaultPayerId,
   onSubmit,
   onCancel,
   isSubmitting = false,
@@ -66,12 +69,17 @@ export function BillInput({
 }: BillInputProps) {
   const [description, setDescription] = useState(initialData?.description || '')
   const [amount, setAmount] = useState(initialData?.amount_original?.toString() || initialData?.amount?.toString() || '')
-  const [selectedPayer, setSelectedPayer] = useState(initialData?.payers?.[0]?.participant_id || '')
+  const [selectedPayer, setSelectedPayer] = useState(
+    initialData?.payers?.[0]?.participant_id || defaultPayerId || ''
+  )
   const [currencyCode, setCurrencyCode] = useState(initialData?.currency_code || baseCurrency)
   const [exchangeRate, setExchangeRate] = useState(initialData?.exchange_rate || '')
+  const [rateHistory, setRateHistory] = useState<RateHistoryEntry[]>([])
+  const [rateHistoryLoading, setRateHistoryLoading] = useState(false)
   // Determine split mode from initialData
-  const [splitMode, setSplitMode] = useState<'EQUAL' | 'CUSTOM'>(
-    initialData?.split_strategy === 'CUSTOM' ? 'CUSTOM' : 'EQUAL'
+  const [splitMode, setSplitMode] = useState<'EQUAL' | 'WEIGHTED' | 'CUSTOM'>(
+    initialData?.split_strategy === 'CUSTOM' ? 'CUSTOM' : 
+    initialData?.split_strategy === 'WEIGHTED' ? 'WEIGHTED' : 'EQUAL'
   )
 
   // Setup initial split participants
@@ -128,11 +136,45 @@ export function BillInput({
       setSelectedCategoryId('')
       setReceiptUrl(null)
     }
-  }, [initialData, participants, baseCurrency])
+    if (!initialData && defaultPayerId) {
+      setSelectedPayer(defaultPayerId)
+    }
+  }, [initialData, participants, baseCurrency, defaultPayerId])
 
   useEffect(() => {
     if (currencyCode === baseCurrency) {
       setExchangeRate('')
+    }
+  }, [currencyCode, baseCurrency])
+
+  useEffect(() => {
+    let isMounted = true
+
+    if (currencyCode && baseCurrency && currencyCode !== baseCurrency) {
+      setRateHistoryLoading(true)
+      apiWrapper.fx
+        .rateHistory(currencyCode, baseCurrency, 7)
+        .then((data) => {
+          if (isMounted) {
+            setRateHistory(data || [])
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setRateHistory([])
+          }
+        })
+        .finally(() => {
+          if (isMounted) {
+            setRateHistoryLoading(false)
+          }
+        })
+    } else {
+      setRateHistory([])
+    }
+
+    return () => {
+      isMounted = false
     }
   }, [currencyCode, baseCurrency])
 
@@ -222,6 +264,28 @@ export function BillInput({
           amount: perPerson,
         }
       })
+    } else if (splitMode === 'WEIGHTED') {
+      // Calculate weighted split based on participant weights
+      const activeParticipants = selectedSplitParticipants
+        .map(pid => participants.find(x => x.id === pid))
+        .filter(p => p && p.is_active)
+      
+      const totalWeight = activeParticipants.reduce((sum, p) => sum + (p?.default_weight || 1), 0)
+      if (totalWeight === 0) return null
+
+      return activeParticipants.map(p => {
+        if (!p) return { id: '', name: 'Unknown', amount: 0 }
+        const weightRatio = p.default_weight / totalWeight
+        const weightedAmount = numAmount * weightRatio
+        const amount = isZeroDecimalCurrency
+          ? Math.round(weightedAmount)
+          : parseFloat(weightedAmount.toFixed(2))
+        return {
+          id: p.id,
+          name: p.display_name,
+          amount,
+        }
+      })
     } else {
       return Object.entries(customSplits)
         .filter(([, amt]) => parseFloat(amt) > 0)
@@ -234,7 +298,7 @@ export function BillInput({
           }
         })
     }
-  }, [amount, selectedSplitParticipants, splitMode, customSplits, participants])
+  }, [amount, selectedSplitParticipants, splitMode, customSplits, participants, isZeroDecimalCurrency])
 
   // Custom split total
   const customSplitTotal = useMemo(() => {
@@ -254,6 +318,10 @@ export function BillInput({
         participant_id: pid,
         amount: perPerson,
       }))
+    } else if (splitMode === 'WEIGHTED') {
+      // For weighted mode, backend calculates split based on participant weights
+      // No need to send split_details
+      split_details = undefined
     } else {
       split_details = Object.entries(customSplits)
         .filter(([, amt]) => parseFloat(amt) > 0)
@@ -451,6 +519,34 @@ export function BillInput({
                   Ước tính: {formatCurrency((parseFloat(amount) * parseFloat(exchangeRate)).toFixed(2), baseCurrency)}
                 </p>
               )}
+
+              <div className="rounded-md border border-dashed p-2 text-xs text-muted-foreground">
+                <div className="flex items-center justify-between">
+                  <span>Tỷ giá gần đây</span>
+                  {rateHistoryLoading && <span>Đang tải...</span>}
+                </div>
+                {rateHistory.length > 0 ? (
+                  <div className="mt-2 space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {rateHistory.slice(0, 3).map((entry) => (
+                        <button
+                          key={`${entry.rate_date}-${entry.rate_source}`}
+                          type="button"
+                          className="rounded-full border px-2 py-1 text-[11px] hover:border-primary hover:text-primary"
+                          onClick={() => setExchangeRate(entry.rate)}
+                        >
+                          {entry.rate} ({new Date(entry.rate_date).toLocaleDateString('vi-VN')})
+                        </button>
+                      ))}
+                    </div>
+                    <div className="text-[10px]">
+                      Nguồn: {rateHistory[0].rate_source} • Mới nhất: {rateHistory[0].rate_date}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-2 text-[11px]">Chưa có lịch sử tỷ giá.</div>
+                )}
+              </div>
             </div>
           )}
 
@@ -660,6 +756,16 @@ export function BillInput({
                 </Button>
                 <Button
                   type="button"
+                  variant={splitMode === 'WEIGHTED' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSplitMode('WEIGHTED')}
+                  className="flex-1"
+                  title="Chia theo trọng số (weight) của từng người"
+                >
+                  Theo tỷ lệ
+                </Button>
+                <Button
+                  type="button"
                   variant={splitMode === 'CUSTOM' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => {
@@ -710,6 +816,33 @@ export function BillInput({
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Weighted split view */}
+              {splitMode === 'WEIGHTED' && (
+                <div className="space-y-2">
+                  <Label className="text-sm">
+                    Chia theo tỷ lệ (weight) - Chỉ người active tham gia
+                  </Label>
+                  <div className="space-y-1">
+                    {participants.filter(p => p.is_active).map((p) => {
+                      const totalWeight = participants.filter(x => x.is_active).reduce((sum, x) => sum + x.default_weight, 0)
+                      const weightRatio = totalWeight > 0 ? (p.default_weight / totalWeight * 100).toFixed(1) : 0
+                      return (
+                        <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800">
+                          <span className="text-sm font-medium">{p.display_name}</span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>Weight: {p.default_weight}</span>
+                            <span>({weightRatio}%)</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    💡 Người không active sẽ không được chia tiền. Cập nhật weight trong trang chi tiết session.
+                  </p>
                 </div>
               )}
 

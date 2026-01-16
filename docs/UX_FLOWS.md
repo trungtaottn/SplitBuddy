@@ -564,7 +564,37 @@ Kết quả reveal với flash effect
 
 ---
 
-## 10. Empty States
+## 10. Quick Actions (Long-press)
+
+### User Flow
+```
+User ở tab Hoá đơn
+    ↓
+Long-press trên card hoá đơn (mobile) hoặc right‑click (desktop)
+    ↓
+Bottom sheet "Thao tác nhanh" xuất hiện
+    ↓
+Các lựa chọn:
+  - ✏️ Sửa hoá đơn
+  - 🧾 Xem ảnh hoá đơn (nếu có)
+  - 🗑️ Xoá hoá đơn (confirm)
+    ↓
+Chạm ra ngoài để đóng
+```
+
+### Micro‑Interactions
+- Haptic nhẹ khi mở sheet (mobile)
+- Swipe actions: kéo trái để Xoá, kéo phải để Sửa
+- Trạng thái xoá 2 bước: chọn → xác nhận
+
+### Design Notes
+- Ưu tiên thao tác 1 tay, nút đủ lớn (>= 44px)
+- Bottom sheet dùng tiêu đề ngắn, rõ hành động
+- Không chặn thao tác click nút bên trong card
+
+---
+
+## 11. Empty States
 
 ### Các trường hợp
 1. **Chưa có sessions** - Dashboard trống

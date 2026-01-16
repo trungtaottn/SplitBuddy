@@ -25,6 +25,9 @@ pub enum AppError {
     #[error("Game content not found for type: {game_type}")]
     GameContentNotFound { game_type: String },
 
+    #[error("Not found: {0}")]
+    NotFound(String),
+
     #[error("Invalid bill amount: {amount}. Must be greater than 0")]
     InvalidBillAmount { amount: Decimal },
 
@@ -83,6 +86,7 @@ impl AppError {
             AppError::SessionNotFound { .. } => "E_SESSION_NOT_FOUND",
             AppError::BillNotFound { .. } => "E_BILL_NOT_FOUND",
             AppError::GameContentNotFound { .. } => "E_GAME_CONTENT_NOT_FOUND",
+            AppError::NotFound(_) => "E_NOT_FOUND",
             AppError::InvalidBillAmount { .. } => "E_BILL_INVALID_AMOUNT",
             AppError::Unauthorized { .. } => "E_AUTH_UNAUTHORIZED",
             AppError::Forbidden { .. } => "E_AUTH_FORBIDDEN",
@@ -103,6 +107,7 @@ impl AppError {
             AppError::SessionNotFound { .. } => StatusCode::NOT_FOUND,
             AppError::BillNotFound { .. } => StatusCode::NOT_FOUND,
             AppError::GameContentNotFound { .. } => StatusCode::NOT_FOUND,
+            AppError::NotFound(_) => StatusCode::NOT_FOUND,
             AppError::InvalidBillAmount { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             AppError::Unauthorized { .. } => StatusCode::UNAUTHORIZED,
             AppError::Forbidden { .. } => StatusCode::FORBIDDEN,

@@ -28,6 +28,8 @@ pub struct AddParticipantRequest {
 #[derive(Deserialize)]
 pub struct UpdateParticipantRequest {
     pub guest_name: Option<String>,
+    pub default_weight: Option<i32>,
+    pub is_active: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -77,10 +79,20 @@ pub async fn update_participant(
     // Verify user is session owner
     repo.verify_owner(params.id, auth_user.user_id).await?;
 
-    // Update participant (only guest_name can be updated)
+    // Update participant (guest_name, default_weight, is_active)
     let participant = repo
-        .update_participant(params.pid, payload.guest_name)
+        .update_participant(
+            params.pid,
+            payload.guest_name,
+            payload.default_weight,
+            payload.is_active,
+        )
         .await?;
+
+    // Invalidate cache if weights or active status changed (affects debt calculation)
+    if payload.default_weight.is_some() || payload.is_active.is_some() {
+        state.cache.invalidate_session(params.id).await;
+    }
 
     Ok(ok(participant))
 }

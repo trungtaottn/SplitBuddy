@@ -14,6 +14,7 @@ use crate::domain::debt::DebtStatus;
 use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::repository::debt_repo::DebtRepository;
+use crate::repository::session_repo::SessionRepository;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -142,6 +143,10 @@ async fn confirm_settle(
 
     let debt = repo.confirm_settlement(debt_id, auth_user.user_id).await?;
 
+    auto_archive_if_settled(&state.pool, debt.session_id)
+        .await
+        .ok();
+
     // Broadcast WebSocket event
     state
         .ws_manager
@@ -172,6 +177,10 @@ async fn settle_guest_debt(
 
     let debt = repo.settle_guest_debt(debt_id, auth_user.user_id).await?;
 
+    auto_archive_if_settled(&state.pool, debt.session_id)
+        .await
+        .ok();
+
     // Broadcast WebSocket event
     state
         .ws_manager
@@ -189,4 +198,31 @@ async fn settle_guest_debt(
         status: debt.status,
         message: "Guest debt has been settled.".to_string(),
     }))
+}
+
+async fn auto_archive_if_settled(pool: &sqlx::PgPool, session_id: Uuid) -> Result<(), AppError> {
+    #[derive(sqlx::FromRow)]
+    struct DebtCountRow {
+        total: i64,
+        unsettled: i64,
+    }
+
+    let counts: DebtCountRow = sqlx::query_as(
+        r#"
+        SELECT COUNT(*) as total,
+               COUNT(*) FILTER (WHERE status != 'settled') as unsettled
+        FROM debts
+        WHERE session_id = $1
+        "#,
+    )
+    .bind(session_id)
+    .fetch_one(pool)
+    .await?;
+
+    if counts.total > 0 && counts.unsettled == 0 {
+        let repo = SessionRepository::new(pool.clone());
+        let _ = repo.set_archived(session_id, true).await?;
+    }
+
+    Ok(())
 }

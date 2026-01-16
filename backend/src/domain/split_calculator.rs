@@ -243,6 +243,28 @@ mod tests {
     }
 
     #[test]
+    fn test_weighted_split_zero_total_weight() {
+        let total = Decimal::new(100, 0);
+        let weights = vec![Decimal::ZERO, Decimal::ZERO, Decimal::ZERO];
+        let splits = SplitCalculator::calculate_weighted_split_with_scale(total, &weights, 2);
+
+        assert_eq!(splits.len(), 3);
+        assert!(splits.iter().all(|s| *s == Decimal::ZERO));
+    }
+
+    #[test]
+    fn test_weighted_split_with_fractional_weights() {
+        let total = Decimal::new(100, 0);
+        let weights = vec![Decimal::new(15, 1), Decimal::new(25, 1)]; // 1.5 and 2.5
+        let splits = SplitCalculator::calculate_weighted_split_with_scale(total, &weights, 2);
+
+        assert_eq!(splits.len(), 2);
+        let sum: Decimal = splits.iter().sum();
+        assert_eq!(sum, total);
+        assert!(splits[1] > splits[0]);
+    }
+
+    #[test]
     fn test_net_balances() {
         let user_a = Uuid::new_v4();
         let user_b = Uuid::new_v4();
@@ -302,5 +324,53 @@ mod tests {
         assert_eq!(debts.len(), 2);
         let total_debt: Decimal = debts.iter().map(|d| d.amount).sum();
         assert_eq!(total_debt, Decimal::new(200000, 0));
+    }
+
+    #[test]
+    fn test_simplify_debts_all_zero() {
+        let user_a = Uuid::new_v4();
+        let user_b = Uuid::new_v4();
+
+        let balances = vec![
+            ParticipantBalance {
+                participant_id: user_a,
+                balance: Decimal::ZERO,
+            },
+            ParticipantBalance {
+                participant_id: user_b,
+                balance: Decimal::ZERO,
+            },
+        ];
+
+        let debts = SplitCalculator::simplify_debts(balances);
+        assert!(debts.is_empty());
+    }
+
+    #[test]
+    fn test_simplify_debts_one_creditor_two_debtors() {
+        let creditor = Uuid::new_v4();
+        let debtor_a = Uuid::new_v4();
+        let debtor_b = Uuid::new_v4();
+
+        let balances = vec![
+            ParticipantBalance {
+                participant_id: creditor,
+                balance: Decimal::new(10, 0),
+            },
+            ParticipantBalance {
+                participant_id: debtor_a,
+                balance: Decimal::new(-5, 0),
+            },
+            ParticipantBalance {
+                participant_id: debtor_b,
+                balance: Decimal::new(-5, 0),
+            },
+        ];
+
+        let debts = SplitCalculator::simplify_debts(balances);
+        assert_eq!(debts.len(), 2);
+        let total_debt: Decimal = debts.iter().map(|d| d.amount).sum();
+        assert_eq!(total_debt, Decimal::new(10, 0));
+        assert!(debts.iter().all(|d| d.creditor_id == creditor));
     }
 }

@@ -12,12 +12,14 @@ pub mod auth;
 pub mod bills;
 pub mod categories;
 pub mod debts;
+pub mod fx;
 pub mod games;
 pub mod groups;
 pub mod health;
 pub mod notifications;
 pub mod payments;
 pub mod personas;
+pub mod recurring_expenses;
 pub mod response;
 pub mod sessions;
 pub mod templates;
@@ -64,6 +66,7 @@ pub fn routes() -> Router<AppState> {
         .nest("/groups", groups::routes())
         .nest("/sessions", sessions::routes())
         .nest("/debts", debts::routes())
+        .nest("/fx", fx::routes())
         .nest("/notifications", notifications::routes())
         .nest("/ai", ai::routes())
         .nest("/games", games::routes())
@@ -74,6 +77,7 @@ pub fn routes() -> Router<AppState> {
         .nest("/categories", categories::routes())
         .nest("/templates", templates::routes())
         .nest("/analytics", analytics::routes())
+        .nest("/recurring-expenses", recurring_expenses::routes())
         .nest("/health", health::routes())
         .nest("/ws", ws::routes())
 }

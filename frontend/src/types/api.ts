@@ -98,6 +98,8 @@ export interface Participant {
   display_name: string
   role: ParticipantRole
   joined_at: string
+  default_weight: number
+  is_active: boolean
 }
 
 export interface Bill {
@@ -184,6 +186,38 @@ export interface PayerInput {
 export interface SplitDetailInput {
   participant_id: string
   amount: string
+}
+
+export type RecurringFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY'
+
+export interface RecurringExpense {
+  id: string
+  session_id: string
+  name: string
+  description?: string | null
+  amount: number
+  currency_code: string
+  category_id?: string | null
+  split_strategy: string
+  frequency: RecurringFrequency
+  interval_count: number
+  start_date: string
+  end_date?: string | null
+  next_run: string
+  last_run?: string | null
+  timezone: string
+  is_active: boolean
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface RecurringException {
+  id: string
+  recurring_expense_id: string
+  date: string
+  reason?: string | null
+  created_at: string
 }
 
 export interface CreateBillDto {
@@ -518,6 +552,53 @@ export interface UpdateNotificationPreferencesDto {
   session_invites?: boolean
   bill_updates?: boolean
   game_events?: boolean
+}
+
+export interface ImportRowError {
+  row: number
+  field: string
+  message: string
+}
+
+export interface ImportPreviewRow {
+  row: number
+  description: string
+  amount: string
+  currency_code: string
+  split_strategy: string
+  payers: string[]
+  participants: string[]
+}
+
+export interface ImportPreviewResponse {
+  total_rows: number
+  valid_rows: number
+  errors: ImportRowError[]
+  rows: ImportPreviewRow[]
+}
+
+export interface ImportResultResponse {
+  created_count: number
+  errors: ImportRowError[]
+}
+
+export interface ParticipantBalance {
+  participant_id: string
+  name: string
+  total_paid: string
+  total_owed: string
+  balance: string
+}
+
+export interface WhoPaysNextResponse {
+  suggested: ParticipantBalance | null
+  balances: ParticipantBalance[]
+}
+
+export interface RateHistoryEntry {
+  rate_date: string
+  rate: string
+  rate_source: string
 }
 
 export interface PushSubscriptionDto {

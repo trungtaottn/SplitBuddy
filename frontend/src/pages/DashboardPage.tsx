@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
+import { api as apiWrapper } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -84,6 +85,17 @@ export default function DashboardPage() {
   const sessions = sessionsData?.data
   const pagination = sessionsData?.meta
 
+  const settledSessionIds = useMemo(() => {
+    if (!sessions) return []
+    return sessions
+      .filter((session) => {
+        const total = Number(session.total_amount) || 0
+        const settled = Number(session.settled_amount) || 0
+        return total > 0 && settled >= total && !session.archived_at
+      })
+      .map((session) => session.id)
+  }, [sessions])
+
   const { data: debts } = useQuery({
     queryKey: ['debts', 'me'],
     queryFn: async () => {
@@ -131,6 +143,17 @@ export default function DashboardPage() {
     },
     onError: () => {
       toast.error('Có lỗi xảy ra. Vui lòng thử lại.')
+    },
+  })
+
+  const bulkArchiveSettled = useMutation({
+    mutationFn: () => apiWrapper.bulkArchiveSessions(settledSessionIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      toast.success('Đã lưu trữ các phiên đã tất toán')
+    },
+    onError: (error: any) => {
+      toast.error('Không thể lưu trữ: ' + (error.response?.data?.message || error.message))
     },
   })
 
@@ -232,6 +255,16 @@ export default function DashboardPage() {
           <Beer className="h-5 w-5 text-primary" /> Cuộc nhậu của tôi
         </h2>
         <div className="flex items-center gap-2">
+          {settledSessionIds.length > 0 && !includeArchived && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => bulkArchiveSettled.mutate()}
+              disabled={bulkArchiveSettled.isPending}
+            >
+              {bulkArchiveSettled.isPending ? 'Đang lưu trữ...' : 'Lưu trữ đã tất toán'}
+            </Button>
+          )}
           <Button
             variant="outline"
             className="gap-2"

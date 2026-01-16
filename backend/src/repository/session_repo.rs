@@ -787,22 +787,36 @@ impl SessionRepository {
             None => return Ok(None),
         };
 
-        let participants = sqlx::query!(
+        #[derive(sqlx::FromRow)]
+        struct ParticipantRow {
+            id: Uuid,
+            user_id: Option<Uuid>,
+            guest_name: Option<String>,
+            display_name: String,
+            role: ParticipantRole,
+            joined_at: chrono::DateTime<chrono::Utc>,
+            default_weight: i32,
+            is_active: bool,
+        }
+
+        let participants: Vec<ParticipantRow> = sqlx::query_as(
             r#"
             SELECT 
                 sp.id,
                 sp.user_id,
                 sp.guest_name,
-                COALESCE(u.full_name, sp.guest_name, 'Unknown') as "display_name!",
-                sp.role as "role: ParticipantRole",
-                sp.joined_at
+                COALESCE(u.full_name, sp.guest_name, 'Unknown') as display_name,
+                sp.role,
+                sp.joined_at,
+                sp.default_weight,
+                sp.is_active
             FROM session_participants sp
             LEFT JOIN users u ON sp.user_id = u.id
             WHERE sp.session_id = $1
             ORDER BY sp.joined_at
             "#,
-            session_id
         )
+        .bind(session_id)
         .fetch_all(&self.pool)
         .await?;
 
@@ -832,6 +846,8 @@ impl SessionRepository {
                     display_name: p.display_name,
                     role: p.role,
                     joined_at: p.joined_at,
+                    default_weight: p.default_weight,
+                    is_active: p.is_active,
                 })
                 .collect(),
         }))
@@ -1185,6 +1201,8 @@ impl SessionRepository {
             display_name,
             role: ParticipantRole::Member,
             joined_at: chrono::Utc::now(),
+            default_weight: 1, // Default weight
+            is_active: true,   // Active by default
         })
     }
 
@@ -1192,17 +1210,45 @@ impl SessionRepository {
         &self,
         participant_id: Uuid,
         guest_name: Option<String>,
+        default_weight: Option<i32>,
+        is_active: Option<bool>,
     ) -> Result<ParticipantResponse, AppError> {
-        let participant = sqlx::query!(
+        // Validate weight if provided
+        if let Some(weight) = default_weight {
+            if weight <= 0 {
+                return Err(AppError::Validation {
+                    field: "default_weight".to_string(),
+                    message: "Weight must be greater than 0".to_string(),
+                });
+            }
+        }
+
+        #[derive(sqlx::FromRow)]
+        struct UpdatedParticipant {
+            id: Uuid,
+            session_id: Uuid,
+            user_id: Option<Uuid>,
+            guest_name: Option<String>,
+            role: String,
+            joined_at: chrono::DateTime<chrono::Utc>,
+            default_weight: i32,
+            is_active: bool,
+        }
+
+        let participant: UpdatedParticipant = sqlx::query_as(
             r#"
             UPDATE session_participants
-            SET guest_name = COALESCE($1, guest_name)
-            WHERE id = $2
-            RETURNING id, session_id, user_id, guest_name, role::text as "role!", joined_at
+            SET guest_name = COALESCE($1, guest_name),
+                default_weight = COALESCE($2, default_weight),
+                is_active = COALESCE($3, is_active)
+            WHERE id = $4
+            RETURNING id, session_id, user_id, guest_name, role::text, joined_at, default_weight, is_active
             "#,
-            guest_name,
-            participant_id
         )
+        .bind(guest_name)
+        .bind(default_weight)
+        .bind(is_active)
+        .bind(participant_id)
         .fetch_optional(&self.pool)
         .await?
         .ok_or(AppError::Validation {
@@ -1233,6 +1279,8 @@ impl SessionRepository {
                 ParticipantRole::Member
             },
             joined_at: participant.joined_at,
+            default_weight: participant.default_weight,
+            is_active: participant.is_active,
         })
     }
 
@@ -1374,6 +1422,9 @@ impl SessionRepository {
                     .await?;
                 }
             }
+        } else if split_strategy.to_uppercase() == "WEIGHTED" {
+            // For WEIGHTED split, use participant weights
+            Self::split_weighted_among_participants(&mut tx, bill_id, session_id, amount).await?;
         } else {
             // For EQUAL split, use split_details if provided (selected participants only)
             // Otherwise fall back to all participants
@@ -1463,6 +1514,63 @@ impl SessionRepository {
                 .await?;
             }
         }
+        Ok(())
+    }
+
+    async fn split_weighted_among_participants(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        bill_id: Uuid,
+        session_id: Uuid,
+        amount: Decimal,
+    ) -> Result<(), AppError> {
+        #[derive(sqlx::FromRow)]
+        struct ParticipantWeight {
+            id: Uuid,
+            default_weight: i32,
+        }
+
+        let participants: Vec<ParticipantWeight> = sqlx::query_as(
+            r#"
+            SELECT id, default_weight
+            FROM session_participants
+            WHERE session_id = $1 AND is_active = true
+            ORDER BY joined_at ASC, id ASC
+            "#,
+        )
+        .bind(session_id)
+        .fetch_all(&mut **tx)
+        .await?;
+
+        if participants.is_empty() {
+            return Ok(());
+        }
+
+        // Convert weights to Decimal for calculation
+        let weights: Vec<Decimal> = participants
+            .iter()
+            .map(|p| Decimal::from(p.default_weight))
+            .collect();
+
+        // Calculate weighted split amounts
+        let split_amounts =
+            SplitCalculator::calculate_weighted_split_with_scale(amount, &weights, 2);
+
+        // Insert bill splits
+        for (participant, split_amount) in participants.into_iter().zip(split_amounts.into_iter()) {
+            sqlx::query(
+                r#"
+                INSERT INTO bill_splits (id, bill_id, participant_id, amount_owed)
+                VALUES ($1, $2, $3, $4)
+                "#,
+            )
+            .bind(Uuid::new_v4())
+            .bind(bill_id)
+            .bind(participant.id)
+            .bind(split_amount)
+            .execute(&mut **tx)
+            .await?;
+        }
+
         Ok(())
     }
 

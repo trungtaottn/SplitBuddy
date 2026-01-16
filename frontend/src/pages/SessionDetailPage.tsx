@@ -5,7 +5,7 @@ import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft, Plus, Upload } from 'lucide-react'
 import type {
   Bill,
   ExpenseCategory,
@@ -18,6 +18,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { SessionOverview } from './session/SessionOverview'
 import { BillList } from './session/BillList'
 import { DebtBreakdown } from './session/DebtBreakdown'
+import { RecurringExpenses } from './session/RecurringExpenses'
+import { ImportExportModal } from './session/ImportExportModal'
 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -27,6 +29,8 @@ export default function SessionDetailPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showBillInput, setShowBillInput] = useState(false)
   const [editingBill, setEditingBill] = useState<Bill | null>(null)
+  const [showImportExport, setShowImportExport] = useState(false)
+  const [defaultPayerId, setDefaultPayerId] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deletingBillId, setDeletingBillId] = useState<string | null>(null)
 
@@ -52,6 +56,12 @@ export default function SessionDetailPage() {
   const { data: categories = [] } = useQuery<ExpenseCategory[]>({
     queryKey: ['categories'],
     queryFn: api.inputs.getCategories,
+  })
+
+  const { data: whoPaysNext } = useQuery({
+    queryKey: ['who-pays-next', id],
+    queryFn: () => api.whoPaysNext(id!),
+    enabled: !!id,
   })
 
   const categoriesById = categories.reduce((acc, cat) => {
@@ -146,8 +156,8 @@ export default function SessionDetailPage() {
   })
 
   const updateParticipant = useMutation({
-    mutationFn: ({ pid, guestName }: { pid: string; guestName: string }) =>
-      api.updateParticipant(id!, pid, { guest_name: guestName }),
+    mutationFn: ({ pid, guest_name, default_weight, is_active }: { pid: string; guest_name?: string; default_weight?: number; is_active?: boolean }) =>
+      api.updateParticipant(id!, pid, { guest_name, default_weight, is_active }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['session', id] })
       toast.success('Cập nhật thành công')
@@ -166,8 +176,8 @@ export default function SessionDetailPage() {
   })
 
   // Handlers for Overview
-  const handleUpdateParticipant = (pid: string, guestName: string) => {
-    updateParticipant.mutate({ pid, guestName })
+  const handleUpdateParticipant = (pid: string, updates: { guest_name?: string; default_weight?: number; is_active?: boolean }) => {
+    updateParticipant.mutate({ pid, ...updates })
   }
 
   const handleDeleteParticipant = (pid: string) => {
@@ -224,10 +234,11 @@ export default function SessionDetailPage() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           <TabsTrigger value="bills">Hoá đơn</TabsTrigger>
           <TabsTrigger value="debts">Chia tiền</TabsTrigger>
+          <TabsTrigger value="recurring">Định kỳ</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -243,6 +254,13 @@ export default function SessionDetailPage() {
             onUpdateDebtStrategy={updateDebtStrategy.mutate}
             isUpdatingDebtStrategy={updateDebtStrategy.isPending}
             isOwner={isOwner}
+            whoPaysNext={whoPaysNext}
+            onQuickCreate={() => {
+              const suggestedId = whoPaysNext?.suggested?.participant_id
+              setDefaultPayerId(suggestedId || null)
+              setEditingBill(null)
+              setShowBillInput(true)
+            }}
           />
 
           <div className="mt-6 flex flex-col gap-3">
@@ -298,11 +316,12 @@ export default function SessionDetailPage() {
         </TabsContent>
 
         <TabsContent value="bills">
-          <div className="mb-4">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row">
             <Button
               className="w-full gap-2"
               size="lg"
               onClick={() => {
+                setDefaultPayerId(null)
                 setEditingBill(null)
                 setShowBillInput(true)
               }}
@@ -310,6 +329,15 @@ export default function SessionDetailPage() {
             >
               <Plus className="h-5 w-5" />
               Thêm hoá đơn
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              size="lg"
+              onClick={() => setShowImportExport(true)}
+            >
+              <Upload className="h-5 w-5" />
+              Import/Export CSV
             </Button>
           </div>
 
@@ -345,6 +373,16 @@ export default function SessionDetailPage() {
         <TabsContent value="debts">
           <DebtBreakdown session={session} bills={bills || []} />
         </TabsContent>
+
+        <TabsContent value="recurring">
+          <RecurringExpenses
+            sessionId={session.id}
+            baseCurrency={session.base_currency}
+            isOwner={isOwner}
+            isArchived={!!session.archived_at}
+            isClosed={session.status === 'closed'}
+          />
+        </TabsContent>
       </Tabs>
 
       {/* Bill Input Modal (Create + Edit) */}
@@ -359,6 +397,7 @@ export default function SessionDetailPage() {
         <BillInput
           participants={session.participants}
           baseCurrency={session.base_currency}
+          defaultPayerId={defaultPayerId || undefined}
           onSubmit={(data) => {
             if (editingBill) {
               updateBill.mutate({ ...data, billId: editingBill.id })
@@ -375,6 +414,16 @@ export default function SessionDetailPage() {
           categories={categories}
         />
       </ResponsiveModal>
+
+      <ImportExportModal
+        isOpen={showImportExport}
+        onClose={() => setShowImportExport(false)}
+        sessionId={session.id}
+        onImported={() => {
+          queryClient.invalidateQueries({ queryKey: ['session-bills', id] })
+          queryClient.invalidateQueries({ queryKey: ['session', id] })
+        }}
+      />
 
       {/* Delete Confirmation Modal */}
       <ResponsiveModal
