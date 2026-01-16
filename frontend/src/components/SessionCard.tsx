@@ -37,15 +37,15 @@ interface SessionCardProps {
 // Vintage Status Badges
 const STATUS_CONFIG = {
   active: {
-    label: 'ACTIVE',
+    label: 'ĐANG MỞ',
     className: 'badge-stamp text-success border-success rotate-[-2deg]',
   },
   settled: {
-    label: 'DONE',
+    label: 'ĐÃ CHỐT',
     className: 'badge-stamp text-muted-foreground border-muted-foreground rotate-[1deg]',
   },
   pending: {
-    label: 'PENDING',
+    label: 'CHỜ XỬ LÝ',
     className: 'badge-stamp text-warning border-warning rotate-[-1deg]',
   },
 }
@@ -140,7 +140,7 @@ export function SessionCard({
             </span>
             {isArchived && (
               <span className="badge-stamp text-muted-foreground border-muted-foreground rotate-[2deg] text-[9px]">
-                ARCHIVED
+                ĐÃ LƯU TRỮ
               </span>
             )}
           </div>
@@ -161,7 +161,7 @@ export function SessionCard({
         {total_amount > 0 && status !== 'settled' && (
           <div className="space-y-1.5">
             <div className="flex justify-between text-[10px] text-muted-foreground uppercase tracking-wider">
-              <span>Progress</span>
+              <span>Tiến độ</span>
               <span>{settlementProgress}%</span>
             </div>
             <div className="h-1.5 bg-secondary rounded-none overflow-hidden border border-border">
@@ -201,7 +201,7 @@ export function SessionCard({
         {/* Footer - Total */}
         <div className="flex justify-between items-center pt-3 border-t-2 border-double border-border mt-auto">
           <div>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Total</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Tổng chi tiêu</span>
             <span className="font-bold text-lg text-foreground">
               {formatCurrency(total_amount, base_currency)}
             </span>

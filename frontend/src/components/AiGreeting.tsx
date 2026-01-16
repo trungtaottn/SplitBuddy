@@ -118,34 +118,34 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
 
   return (
     <Card className="card-paper">
-      <CardContent className="p-5">
+      <CardContent className="p-6">
         {/* Slogan - Vintage Typewriter Style */}
-        <div className="text-center mb-4 pb-4 border-b-2 border-dotted border-border">
-          <p className="text-lg md:text-xl italic text-primary font-semibold">
+        <div className="text-center mb-6 pb-4 border-b-2 border-dotted border-border">
+          <p className="text-2xl md:text-3xl italic text-primary font-heading font-bold tracking-tight">
             "{currentSlogan}"
           </p>
         </div>
 
         {showMoodSelector ? (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="text-center">
-              <p className="text-base font-medium">
+              <p className="text-xl font-medium">
                 Chào <span className="text-primary font-bold">{firstName}</span>!
               </p>
-              <p className="text-sm text-muted-foreground mt-1 italic">
+              <p className="text-base text-muted-foreground mt-1 italic">
                 Hôm nay tâm trạng thế nào?
               </p>
             </div>
             
             {/* Mood Selection - Vintage Button Style */}
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="flex flex-wrap justify-center gap-3">
               {MOODS.map((moodItem) => (
                 <button
                   key={moodItem.id}
                   onClick={() => handleMoodSelect(moodItem.id)}
                   disabled={greetingMutation.isPending}
                   className={`
-                    flex flex-col items-center gap-1 rounded-sm px-4 py-2.5 
+                    flex flex-col items-center gap-2 rounded-lg px-5 py-4
                     border-2 transition-all duration-200
                     hover:scale-105 active:scale-95
                     ${mood === moodItem.id
@@ -154,8 +154,8 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
                     }
                   `}
                 >
-                  <moodItem.icon className="h-5 w-5" strokeWidth={1.5} />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider">
+                  <moodItem.icon className="h-6 w-6" strokeWidth={2} />
+                  <span className="text-xs font-bold uppercase tracking-wider">
                     {moodItem.label}
                   </span>
                 </button>
@@ -164,16 +164,16 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
             
             {greetingMutation.isPending && (
               <p className="text-center text-sm text-muted-foreground italic cursor-blink">
-                Đang suy nghĩ
+                Đang suy nghĩ...
               </p>
             )}
           </div>
         ) : greeting ? (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <span className="text-xl">{MOOD_CONFIGS[mood].emoji}</span>
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <span className="text-3xl">{MOOD_CONFIGS[mood].emoji}</span>
+                <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
                   {MOOD_CONFIGS[mood].nameVi}
                 </span>
                 <button
@@ -181,16 +181,16 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
                     setShowMoodSelector(true)
                     setGreeting(null)
                   }}
-                  className="p-1 rounded-sm hover:bg-secondary transition-colors border border-transparent hover:border-border"
+                  className="p-1.5 rounded-sm hover:bg-secondary transition-colors border border-transparent hover:border-border"
                   title="Đổi tâm trạng"
                 >
-                  <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
+                  <RefreshCw className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
                 </button>
               </div>
-              <p className="text-sm leading-relaxed">{greeting.message}</p>
+              <p className="text-lg leading-relaxed font-body">{greeting.message}</p>
               
               {greeting.suggestion && (
-                <p className="mt-2 text-sm font-medium text-primary italic">
+                <p className="mt-3 text-base font-medium text-primary italic">
                   {greeting.suggestion}
                 </p>
               )}
@@ -198,7 +198,7 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
             
             {greeting.action && (
               <div className="flex justify-center pt-2">
-                <Button onClick={handleAction} variant="stamp" className="gap-2">
+                <Button onClick={handleAction} variant="default" size="lg" className="gap-2 font-bold uppercase tracking-wider px-8">
                   {greeting.action === 'create_session' && 'Nhậu ngay đê!'}
                   {greeting.action === 'view_debts' && 'Xem công nợ'}
                 </Button>

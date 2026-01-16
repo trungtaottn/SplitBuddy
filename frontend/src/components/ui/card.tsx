@@ -2,46 +2,64 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 /**
- * Card - Vintage Paper Style
+ * Card - Dark Luxury Style
  * Features:
- * - Paper stack shadow effect
- * - Corner fold decoration
- * - Aged paper aesthetic
- * - JetBrains Mono typewriter typography
+ * - Geometric/Modular layout
+ * - Dark background (#141414)
+ * - Very subtle borders
  */
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'paper' | 'note' | 'receipt' | 'document'
+  variant?: 'default' | 'glass' | 'outline' | 'interactive'
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant = 'default', ...props }, ref) => {
     const variants = {
+      // Default - Modular Grid Card
       default: [
-        'rounded-sm bg-card text-card-foreground',
-        'border border-border',
-        'shadow-paper hover:shadow-lifted transition-all duration-200',
+        'bg-card text-card-foreground',
+        'border border-white/10',
+        'shadow-xl shadow-black/20',
+        'relative overflow-hidden',
+        // Top highlight for 3D feel
+        'before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent',
       ],
-      paper: [
-        'card-paper',
+      // Glass - Subtly transparent for overlays
+      glass: [
+        'bg-card/80 backdrop-blur-md',
+        'border border-white/10',
       ],
-      note: [
-        'card-note',
+      // Outline - No background
+      outline: [
+        'bg-transparent text-foreground',
+        'border border-white/10',
       ],
-      receipt: [
-        'card-receipt',
+      // Interactive - Highlight on Hover
+      interactive: [
+        'bg-card border border-white/5 transition-all duration-300',
+        'hover:border-primary/50 hover:bg-card/80',
+        'cursor-pointer',
       ],
-      document: [
-        'card-document',
-      ],
+      // Legacy Mappings
+      neon: ['bg-card border border-white/5'],
+      yellow: ['bg-card border-l-2 border-l-yellow-500'],
+      red: ['bg-card border-l-2 border-l-red-500'],
+      black: ['bg-black border border-white/20'],
+      paper: ['bg-card border border-white/5'],
+      note: ['bg-card border border-white/5'],
+      receipt: ['bg-card border border-white/5'],
+      document: ['bg-card border border-white/5'],
+      elevated: ['bg-card border border-white/5 shadow-xl'],
+      gradient: ['bg-gradient-to-br from-card to-background border border-white/5'],
     }
 
     return (
       <div
         ref={ref}
         className={cn(
-          variants[variant],
-          'relative',
+          'rounded-[4px]', // Nearly sharp corners for modular look
+          variants[variant as keyof typeof variants] || variants.default,
           className
         )}
         {...props}
@@ -56,8 +74,7 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
     <div 
       ref={ref} 
       className={cn(
-        'flex flex-col space-y-1.5 p-5 sm:p-6',
-        'border-b-2 border-dotted border-border/50',
+        'flex flex-col space-y-2 p-6',
         className
       )} 
       {...props} 
@@ -66,16 +83,12 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 )
 CardHeader.displayName = 'CardHeader'
 
-/**
- * CardTitle - Typewriter heading style
- */
 const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
     <h3 
       ref={ref} 
       className={cn(
-        'text-lg sm:text-xl font-semibold leading-tight',
-        'tracking-tight uppercase',
+        'text-3xl font-bold font-heading leading-tight tracking-tight text-white',
         className
       )} 
       {...props} 
@@ -89,8 +102,7 @@ const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttribu
     <p 
       ref={ref} 
       className={cn(
-        'text-sm text-muted-foreground',
-        'italic',
+        'text-sm text-muted-foreground font-body leading-relaxed',
         className
       )} 
       {...props} 
@@ -101,7 +113,7 @@ CardDescription.displayName = 'CardDescription'
 
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('p-5 sm:p-6 pt-4', className)} {...props} />
+    <div ref={ref} className={cn('p-6 pt-0', className)} {...props} />
   )
 )
 CardContent.displayName = 'CardContent'
@@ -111,8 +123,7 @@ const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
     <div 
       ref={ref} 
       className={cn(
-        'flex items-center p-5 sm:p-6 pt-0',
-        'border-t border-dashed border-border/30 mt-4',
+        'flex items-center p-6 pt-0',
         className
       )} 
       {...props} 

@@ -3,67 +3,68 @@ import { cn } from '@/lib/utils'
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   hasError?: boolean
+  variant?: 'default' | 'underline' | 'glass'
 }
 
 /**
- * Input - Vintage Typewriter Style
+ * Input - Dark Luxury Style
  * Features:
- * - Underline style (no box border)
- * - Paper background
- * - Clear focus states with underline draw animation
- * - Label float animation
+ * - Minimalist Underline
+ * - Clean Typography
+ * - Orange focus state
  */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, hasError, ...props }, ref) => {
-    const [isFocused, setIsFocused] = React.useState(false)
+  ({ className, type, hasError, variant = 'default', ...props }, ref) => {
+    const variants = {
+      // Default: Minimalist Underline
+      default: [
+        'flex h-14 w-full',
+        'bg-transparent',
+        'border-0 border-b border-white/20',
+        'hover:border-white/40', // Hover state
+        'rounded-none',
+        'px-0 py-4',
+        'text-lg text-foreground font-body',
+        'placeholder:text-muted-foreground/40 placeholder:text-base',
+        'focus-visible:outline-none focus-visible:border-primary focus-visible:bg-white/5', // Focus bg
+        'transition-all duration-300',
+        'disabled:cursor-not-allowed disabled:opacity-50',
+      ],
+      // Same as default
+      underline: [
+        'flex h-14 w-full',
+        'bg-transparent',
+        'border-0 border-b border-white/20',
+        'rounded-none',
+        'px-0 py-4',
+        'text-lg text-foreground font-body',
+        'placeholder:text-muted-foreground/40',
+        'focus-visible:outline-none focus-visible:border-primary',
+        'transition-colors duration-300',
+      ],
+      // Glass: Soft box
+      glass: [
+        'flex h-12 w-full rounded-md',
+        'bg-white/5 border border-white/10',
+        'px-4 py-3',
+        'text-base text-foreground font-body',
+        'placeholder:text-muted-foreground/50',
+        'focus-visible:outline-none focus-visible:border-primary/50 focus-visible:bg-white/10',
+        'transition-all duration-300',
+      ]
+    }
 
     return (
-      <div className="relative">
-        <input
-          type={type}
-          className={cn(
-            // Base styles - Underline style
-            'flex h-10 w-full rounded-none border-0 border-b-2 border-border/60',
-            'bg-transparent px-1 py-2',
-            'text-sm text-foreground',
-            // Placeholder - italic typewriter
-            'placeholder:text-muted-foreground/50 placeholder:italic',
-            // Focus state with underline draw
-            'focus-visible:outline-none focus-visible:border-primary',
-            'relative',
-            // Transitions
-            'transition-all duration-300',
-            // File input
-            'file:border-0 file:bg-transparent file:text-sm file:font-medium',
-            // Disabled
-            'disabled:cursor-not-allowed disabled:opacity-50',
-            // Hover
-            'hover:border-foreground/40',
-            // Error state
-            hasError && 'animate-input-shake border-destructive',
-            className
-          )}
-          ref={ref}
-          onFocus={(e) => {
-            setIsFocused(true)
-            props.onFocus?.(e)
-          }}
-          onBlur={(e) => {
-            setIsFocused(false)
-            props.onBlur?.(e)
-          }}
-          {...props}
-        />
-        {/* Animated underline on focus */}
-        {isFocused && (
-          <div 
-            className="absolute bottom-0 left-0 h-0.5 bg-primary animate-underline-draw"
-            style={{
-              animation: 'underlineDraw 0.4s ease-out forwards',
-            }}
-          />
+      <input
+        type={type}
+        className={cn(
+          variants[variant === 'glass' ? 'glass' : 'default'],
+          hasError && 'border-destructive focus-visible:border-destructive animate-shake',
+          className
         )}
-      </div>
+        ref={ref}
+        {...props}
+      />
     )
   }
 )

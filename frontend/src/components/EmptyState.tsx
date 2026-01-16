@@ -37,47 +37,47 @@ const EMPTY_STATES: Record<EmptyStateType, {
 }> = {
   sessions: {
     icon: <Beer className="h-5 w-5" strokeWidth={1.5} />,
-    title: 'No Sessions Yet',
-    description: 'Create your first session to start splitting bills with friends.',
+    title: 'Chưa có cuộc nhậu nào',
+    description: 'Tạo cuộc nhậu mới để bắt đầu chia tiền với bạn bè.',
     illustration: (
       <div className="relative">
         <div className="text-5xl">📋</div>
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-xs text-muted-foreground">
-          ~ empty ~
+          ~ trống trơn ~
         </div>
       </div>
     ),
   },
   bills: {
     icon: <Receipt className="h-5 w-5" strokeWidth={1.5} />,
-    title: 'No Bills Yet',
-    description: 'Add your first bill using the + button above.',
+    title: 'Chưa có hóa đơn nào',
+    description: 'Thêm hóa đơn đầu tiên bằng nút + ở trên.',
     illustration: (
       <div className="relative">
         <div className="text-5xl">🧾</div>
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-xs text-muted-foreground">
-          ~ empty ~
+          ~ trống ~
         </div>
       </div>
     ),
   },
   debts: {
     icon: <Wallet className="h-5 w-5" strokeWidth={1.5} />,
-    title: 'All Clear!',
-    description: 'No debts to settle. You\'re all good!',
+    title: 'Sạch nợ!',
+    description: 'Không có khoản nợ nào cần thanh toán. Tuyệt vời!',
     illustration: (
       <div className="relative">
         <div className="text-5xl">✓</div>
         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-xs text-success">
-          ~ settled ~
+          ~ xong xuôi ~
         </div>
       </div>
     ),
   },
   groups: {
     icon: <Users className="h-5 w-5" strokeWidth={1.5} />,
-    title: 'No Groups Yet',
-    description: 'Create a group to manage your drinking buddies.',
+    title: 'Chưa có nhóm nào',
+    description: 'Tạo nhóm để quản lý các thành viên dễ dàng hơn.',
     illustration: (
       <div className="relative flex gap-1">
         <span className="text-4xl opacity-30"></span>
@@ -88,8 +88,8 @@ const EMPTY_STATES: Record<EmptyStateType, {
   },
   search: {
     icon: <Search className="h-5 w-5" strokeWidth={1.5} />,
-    title: 'No Results Found',
-    description: 'Try a different search term.',
+    title: 'Không tìm thấy kết quả',
+    description: 'Thử tìm kiếm với từ khóa khác xem sao.',
     illustration: (
       <div className="relative">
         <div className="text-5xl opacity-50">🔍</div>
@@ -98,8 +98,8 @@ const EMPTY_STATES: Record<EmptyStateType, {
   },
   games: {
     icon: <Sparkles className="h-5 w-5" strokeWidth={1.5} />,
-    title: 'Ready to Play!',
-    description: 'Pick a game to get the party started.',
+    title: 'Sẵn sàng chơi!',
+    description: 'Chọn một trò chơi để bắt đầu cuộc vui.',
     illustration: (
       <div className="relative flex gap-2">
         <span className="text-3xl">🎲</span>
@@ -121,7 +121,7 @@ export function EmptyState({
 }: EmptyStateProps) {
   const config = EMPTY_STATES[type]
   const displayTitle = searchTerm 
-    ? `No results for "${searchTerm}"`
+    ? `Không tìm thấy kết quả cho "${searchTerm}"`
     : (title || config.title)
   const displayDescription = description || config.description
 
@@ -160,7 +160,7 @@ export function EmptyState({
             <>
               {action && (
                 <span className="text-xs text-muted-foreground self-center hidden sm:block">
-                  — or —
+                  — hoặc —
                 </span>
               )}
               <Button variant="outline" onClick={secondaryAction.onClick} className="gap-2">
@@ -180,7 +180,7 @@ export function SearchEmptyState({ searchTerm, onClear }: { searchTerm: string; 
       type="search"
       searchTerm={searchTerm}
       action={onClear ? {
-        label: 'Clear Search',
+        label: 'Xóa tìm kiếm',
         onClick: onClear,
       } : undefined}
     />

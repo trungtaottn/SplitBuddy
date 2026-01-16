@@ -17,6 +17,10 @@ export function NotificationBell() {
       return res.data.data
     },
     refetchInterval: 30000,
+    retry: (failureCount, error: any) => {
+        if (error?.response?.status === 429) return false
+        return failureCount < 2
+    },
   })
 
   const unread = data?.count || 0

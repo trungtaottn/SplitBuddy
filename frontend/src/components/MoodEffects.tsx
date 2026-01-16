@@ -1,13 +1,14 @@
 import { useMood, MoodType } from '@/contexts/MoodContext'
 
 // More visible mood effects with soft gradients and floating shapes
+// Dark Luxury compatible mood effects (Subtle, dark glows)
 const MOOD_COLORS: Record<MoodType, { gradient: string; shapes: string; glow: string }> = {
-  happy: { gradient: 'from-amber-100/40 via-orange-50/30 to-yellow-100/20', shapes: 'bg-amber-400', glow: 'shadow-amber-300/50' },
-  sad: { gradient: 'from-blue-100/40 via-slate-100/30 to-indigo-50/20', shapes: 'bg-blue-400', glow: 'shadow-blue-300/50' },
-  tired: { gradient: 'from-violet-100/40 via-purple-50/30 to-indigo-100/20', shapes: 'bg-violet-400', glow: 'shadow-violet-300/50' },
-  stressed: { gradient: 'from-emerald-100/40 via-teal-50/30 to-cyan-100/20', shapes: 'bg-emerald-400', glow: 'shadow-emerald-300/50' },
-  excited: { gradient: 'from-pink-100/40 via-rose-50/30 to-red-100/20', shapes: 'bg-pink-400', glow: 'shadow-pink-300/50' },
-  neutral: { gradient: 'from-gray-50/20 to-transparent', shapes: 'bg-gray-300', glow: '' },
+  happy: { gradient: 'from-amber-900/10 via-orange-900/5 to-transparent', shapes: 'bg-amber-600', glow: 'shadow-amber-500/20' },
+  sad: { gradient: 'from-blue-900/10 via-slate-900/5 to-transparent', shapes: 'bg-blue-600', glow: 'shadow-blue-500/20' },
+  tired: { gradient: 'from-violet-900/10 via-purple-900/5 to-transparent', shapes: 'bg-violet-600', glow: 'shadow-violet-500/20' },
+  stressed: { gradient: 'from-emerald-900/10 via-teal-900/5 to-transparent', shapes: 'bg-emerald-600', glow: 'shadow-emerald-500/20' },
+  excited: { gradient: 'from-pink-900/10 via-rose-900/5 to-transparent', shapes: 'bg-pink-600', glow: 'shadow-pink-500/20' },
+  neutral: { gradient: 'from-transparent to-transparent', shapes: 'bg-gray-800', glow: '' },
 }
 
 export function MoodEffects() {

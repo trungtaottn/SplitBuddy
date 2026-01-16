@@ -30,3 +30,5 @@ build/
 # Cursor
 .cursor
 .codex/
+.shared/
+.agent/

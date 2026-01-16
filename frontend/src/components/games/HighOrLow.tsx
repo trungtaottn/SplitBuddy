@@ -16,8 +16,8 @@ const SUIT_SYMBOLS: Record<string, string> = {
 }
 
 const SUIT_COLORS: Record<string, string> = {
-  hearts: 'text-red-500', diamonds: 'text-red-500',
-  clubs: 'text-gray-800', spades: 'text-gray-800'
+  hearts: 'text-red-600', diamonds: 'text-red-600',
+  clubs: 'text-zinc-900', spades: 'text-zinc-900'
 }
 
 interface CardType {
@@ -111,10 +111,10 @@ export function HighOrLow({ onClose }: HighOrLowProps) {
     if (!card) return null
     
     return (
-      <div className={`w-24 h-36 bg-card rounded-xl shadow-xl border-2 p-2 flex flex-col transition-all ${
-        isNext && result === 'correct' ? 'border-success ring-4 ring-success/20' :
-        isNext && result === 'wrong' ? 'border-destructive ring-4 ring-destructive/20' :
-        'border-border'
+      <div className={`w-24 h-36 bg-white rounded-xl shadow-xl border-2 p-2 flex flex-col transition-all ${
+        isNext && result === 'correct' ? 'border-green-500 ring-4 ring-green-500/20' :
+        isNext && result === 'wrong' ? 'border-red-500 ring-4 ring-red-500/20' :
+        'border-zinc-200'
       }`}>
         <div className={`text-lg font-bold ${SUIT_COLORS[card.suit]}`}>
           {card.value}{SUIT_SYMBOLS[card.suit]}
@@ -185,20 +185,20 @@ export function HighOrLow({ onClose }: HighOrLowProps) {
 
         {/* Result Message */}
         {result && (
-          <div className={`text-center p-3 rounded-lg ${
+          <div className={`text-center p-3 rounded-lg border ${
             result === 'correct' 
-              ? 'bg-green-50 border border-green-200' 
-              : 'bg-red-50 border border-red-200'
+              ? 'bg-green-500/10 border-green-500/30' 
+              : 'bg-red-500/10 border-red-500/30'
           }`}>
             {result === 'correct' ? (
               <div className="flex items-center justify-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <p className="text-green-700 font-bold">Đúng rồi! Streak +1</p>
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                <p className="text-green-500 font-bold">Đúng rồi! Streak +1</p>
               </div>
             ) : (
               <div className="flex items-center justify-center gap-2">
-                <XCircle className="h-5 w-5 text-red-600" />
-                <p className="text-red-700 font-bold">
+                <XCircle className="h-5 w-5 text-red-500" />
+                <p className="text-red-500 font-bold">
                   Sai! Uống {Math.max(1, streak)} ly!
                 </p>
               </div>
@@ -238,16 +238,16 @@ export function HighOrLow({ onClose }: HighOrLowProps) {
 
         {/* Streak Bonus Info */}
         {streak >= 3 && (
-          <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-            <p className="text-sm text-yellow-700">
+          <div className="p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center">
+            <p className="text-sm text-yellow-500">
               🔥 Streak {streak}! Sai = uống {streak} ly!
             </p>
           </div>
         )}
 
         {/* Rules */}
-        <div className="p-3 bg-gray-50 border rounded-lg text-xs text-muted-foreground">
-          <p className="font-medium mb-1">Luật chơi:</p>
+        <div className="p-3 bg-zinc-900 border border-white/5 rounded-lg text-xs text-zinc-400">
+          <p className="font-bold text-white mb-1">Luật chơi:</p>
           <ul className="space-y-0.5">
             <li>• Đoán lá tiếp cao hơn hay thấp hơn</li>
             <li>• Đoán đúng: Streak +1</li>

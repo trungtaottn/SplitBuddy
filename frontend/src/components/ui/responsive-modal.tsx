@@ -8,6 +8,7 @@ interface ResponsiveModalProps {
   isOpen: boolean
   onClose: () => void
   title?: string
+  description?: string | null
   children: ReactNode
   className?: string
   /** @deprecated use className instead */
@@ -27,6 +28,7 @@ export function ResponsiveModal({
   isOpen,
   onClose,
   title,
+  description,
   children,
   className,
   desktopClassName,
@@ -81,14 +83,17 @@ export function ResponsiveModal({
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        {title && (
+        {(title || description) && (
           <CardHeader className="flex-shrink-0 flex flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle className="text-lg">{title}</CardTitle>
+             <div className="flex flex-col gap-1">
+              {title && <CardTitle className="text-lg">{title}</CardTitle>}
+              {description && <p className="text-sm text-muted-foreground">{description}</p>}
+            </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="h-8 w-8"
+              className="h-8 w-8 -mt-2 -mr-2"
               aria-label="Đóng"
             >
               <X className="h-4 w-4" />

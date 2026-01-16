@@ -10,6 +10,7 @@ import { SpendingChart } from '@/components/analytics/SpendingChart'
 import { CategoryBreakdown } from '@/components/analytics/CategoryBreakdown'
 import { MonthlyTrendsChart, YearlyTrendsChart } from '@/components/analytics/TrendsChart'
 import type { ApiResponse, SpendingAnalyticsResponse, SpendingTrendsResponse, CategorySpending } from '@/types/api'
+import { Filter, Calendar, PieChart, TrendingUp, ArrowUpRight, ArrowDownLeft, Wallet, Loader2 } from 'lucide-react'
 
 type Tab = 'overview' | 'categories' | 'trends'
 
@@ -58,145 +59,254 @@ export default function AnalyticsPage() {
   })
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
+    <div className="space-y-8 max-w-7xl mx-auto pb-12">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Analytics</h1>
-          <p className="text-sm text-muted-foreground">Tổng quan chi tiêu và xu hướng</p>
+          <h1 className="text-3xl font-heading font-bold text-white tracking-tight flex items-center gap-3">
+            Analytics
+          </h1>
+          <p className="text-zinc-400 font-medium mt-1 ml-1">Tổng quan chi tiêu và xu hướng tài chính</p>
+        </div>
+        
+        {/* Tab Selection Pill */}
+        <div className="bg-zinc-900 border border-white/5 p-1 rounded-full flex gap-1">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => setTab('overview')}
+            className={cn(
+              "rounded-full px-4 text-xs font-bold transition-all",
+              tab === 'overview' 
+                ? "bg-white text-zinc-900 shadow-md transform scale-105" 
+                : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+            )}
+          >
+            Tổng quan
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => setTab('categories')}
+            className={cn(
+              "rounded-full px-4 text-xs font-bold transition-all",
+              tab === 'categories' 
+                ? "bg-white text-zinc-900 shadow-md transform scale-105" 
+                : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+            )}
+          >
+            Danh mục
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => setTab('trends')}
+            className={cn(
+              "rounded-full px-4 text-xs font-bold transition-all",
+              tab === 'trends' 
+                ? "bg-white text-zinc-900 shadow-md transform scale-105" 
+                : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+            )}
+          >
+            Xu hướng
+          </Button>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Bộ lọc</CardTitle>
+      <Card className="bg-zinc-900 border-white/5 overflow-hidden">
+        <div className="h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-50" />
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-white font-heading text-lg">
+            <Filter className="h-4 w-4 text-indigo-400" />
+            Bộ lọc thời gian
+          </CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3 md:flex-row md:items-end">
-          <div className="flex-1 space-y-2">
-            <Label>Từ ngày</Label>
-            <input
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
-          </div>
-          <div className="flex-1 space-y-2">
-            <Label>Đến ngày</Label>
-            <input
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button variant={tab === 'overview' ? 'default' : 'outline'} onClick={() => setTab('overview')}>
-              Overview
-            </Button>
-            <Button variant={tab === 'categories' ? 'default' : 'outline'} onClick={() => setTab('categories')}>
-              Categories
-            </Button>
-            <Button variant={tab === 'trends' ? 'default' : 'outline'} onClick={() => setTab('trends')}>
-              Trends
-            </Button>
+        <CardContent>
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            <div className="space-y-2">
+              <Label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Từ ngày</Label>
+              <div className="relative group">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 group-hover:text-indigo-400 transition-colors" />
+                <input
+                  type="date"
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                  className="w-full h-11 pl-10 pr-4 rounded-xl bg-zinc-800/50 border border-white/5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all cursor-pointer font-mono"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-zinc-400 text-xs font-bold uppercase tracking-wider">Đến ngày</Label>
+              <div className="relative group">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 group-hover:text-indigo-400 transition-colors" />
+                <input
+                  type="date"
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  className="w-full h-11 pl-10 pr-4 rounded-xl bg-zinc-800/50 border border-white/5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all cursor-pointer font-mono"
+                />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {spendingLoading ? (
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">Đang tải...</CardContent>
+        <Card className="bg-zinc-900 border-white/5 h-64 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2 text-zinc-500">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="text-sm font-medium">Đang tải dữ liệu...</p>
+          </div>
         </Card>
       ) : !spending ? (
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            Không có dữ liệu. Vui lòng thử lại.
-          </CardContent>
+         <Card className="bg-zinc-900 border-white/5 h-64 flex items-center justify-center">
+          <p className="text-zinc-500">Không có dữ liệu. Vui lòng thay đổi bộ lọc.</p>
         </Card>
       ) : (
-        <>
-          {/* Summary */}
-          <div className="grid gap-3 md:grid-cols-3">
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-sm text-muted-foreground">Tổng đã trả</p>
-                <p className="text-2xl font-bold text-primary">{formatCurrency(spending.total_spent)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-sm text-muted-foreground">Tổng được nhận</p>
-                <p className="text-2xl font-bold text-success">{formatCurrency(spending.total_received)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-sm text-muted-foreground">Cân bằng</p>
-                <p
-                  className={cn(
-                    'text-2xl font-bold',
-                    Number(spending.net_balance) >= 0 ? 'text-success' : 'text-destructive',
-                  )}
-                >
-                  {formatCurrency(spending.net_balance)}
-                </p>
-              </CardContent>
-            </Card>
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* Summary Cards */}
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* Total Spent */}
+            <div className="relative overflow-hidden rounded-2xl bg-zinc-900 border border-white/5 p-6 group hover:border-red-500/30 transition-all">
+               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <ArrowDownLeft className="h-20 w-20 text-red-500" />
+               </div>
+               <div className="flex flex-col h-full justify-between relative z-10">
+                  <div className="mb-4">
+                     <p className="text-zinc-400 text-sm font-bold uppercase tracking-wider mb-1">Tổng chi tiêu</p>
+                     <h3 className="text-3xl font-heading font-bold text-white tracking-tight">{formatCurrency(spending.total_spent)}</h3>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-medium text-red-400 bg-red-500/10 px-2 py-1 rounded w-fit">
+                    <ArrowDownLeft className="h-3 w-3" />
+                    Đã thanh toán
+                  </div>
+               </div>
+            </div>
+
+            {/* Total Received */}
+             <div className="relative overflow-hidden rounded-2xl bg-zinc-900 border border-white/5 p-6 group hover:border-emerald-500/30 transition-all">
+               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <ArrowUpRight className="h-20 w-20 text-emerald-500" />
+               </div>
+               <div className="flex flex-col h-full justify-between relative z-10">
+                  <div className="mb-4">
+                     <p className="text-zinc-400 text-sm font-bold uppercase tracking-wider mb-1">Tổng thu về</p>
+                     <h3 className="text-3xl font-heading font-bold text-white tracking-tight">{formatCurrency(spending.total_received)}</h3>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded w-fit">
+                    <ArrowUpRight className="h-3 w-3" />
+                    Được nhận
+                  </div>
+               </div>
+            </div>
+
+            {/* Net Balance */}
+            <div className="relative overflow-hidden rounded-2xl bg-zinc-900 border border-white/5 p-6 group hover:border-indigo-500/30 transition-all">
+               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <Wallet className="h-20 w-20 text-indigo-500" />
+               </div>
+               <div className="flex flex-col h-full justify-between relative z-10">
+                  <div className="mb-4">
+                     <p className="text-zinc-400 text-sm font-bold uppercase tracking-wider mb-1">Số dư ròng</p>
+                     <p
+                       className={cn(
+                        "text-3xl font-heading font-bold tracking-tight",
+                         Number(spending.net_balance) >= 0 ? 'text-emerald-400' : 'text-red-400',
+                       )}
+                     >
+                       {Number(spending.net_balance) > 0 ? '+' : ''}{formatCurrency(spending.net_balance)}
+                     </p>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-medium text-zinc-400 bg-zinc-800 px-2 py-1 rounded w-fit">
+                    <Wallet className="h-3 w-3" />
+                    Hiện tại
+                  </div>
+               </div>
+            </div>
           </div>
 
-          {tab === 'overview' && (
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Xu hướng theo tháng</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <SpendingChart data={trends?.monthly || []} />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Top categories</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CategoryBreakdown data={spending.category_breakdown || []} />
-                </CardContent>
-              </Card>
-            </div>
-          )}
+          {/* Charts Area */}
+          <div className="min-h-[400px]">
+            {tab === 'overview' && (
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card className="bg-zinc-900 border-white/5 shadow-xl">
+                  <CardHeader>
+                    <CardTitle className="text-white font-heading flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-indigo-500" />
+                      Xu hướng theo tháng
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px] w-full mt-2">
+                      <SpendingChart data={trends?.monthly || []} />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-zinc-900 border-white/5 shadow-xl">
+                  <CardHeader>
+                    <CardTitle className="text-white font-heading flex items-center gap-2">
+                      <PieChart className="h-5 w-5 text-pink-500" />
+                      Top Danh mục
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                     <div className="h-[300px] w-full mt-2">
+                       <CategoryBreakdown data={spending.category_breakdown || []} />
+                     </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-          {tab === 'categories' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Phân bổ theo danh mục</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CategoryBreakdown data={categoryBreakdown || spending.category_breakdown || []} />
-              </CardContent>
-            </Card>
-          )}
+            {tab === 'categories' && (
+              <Card className="bg-zinc-900 border-white/5 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-white font-heading flex items-center gap-2">
+                    <div className="p-1.5 bg-orange-500/10 rounded-lg">
+                      <PieChart className="h-4 w-4 text-orange-500" />
+                    </div>
+                    Chi tiết phân bổ danh mục
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                   <div className="h-[400px] w-full mt-2">
+                     <CategoryBreakdown data={categoryBreakdown || spending.category_breakdown || []} />
+                   </div>
+                </CardContent>
+              </Card>
+            )}
 
-          {tab === 'trends' && (
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Monthly</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <MonthlyTrendsChart data={trends?.monthly || []} />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Yearly</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <YearlyTrendsChart data={trends?.yearly || []} />
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </>
+            {tab === 'trends' && (
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card className="bg-zinc-900 border-white/5 shadow-xl">
+                  <CardHeader>
+                    <CardTitle className="text-white font-heading flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-blue-500" />
+                      Theo tháng
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px] w-full mt-2">
+                      <MonthlyTrendsChart data={trends?.monthly || []} />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-zinc-900 border-white/5 shadow-xl">
+                  <CardHeader>
+                    <CardTitle className="text-white font-heading flex items-center gap-2">
+                       <Calendar className="h-5 w-5 text-green-500" />
+                      Theo năm
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px] w-full mt-2">
+                      <YearlyTrendsChart data={trends?.yearly || []} />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )

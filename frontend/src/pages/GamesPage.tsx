@@ -357,228 +357,310 @@ export default function GamesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center relative">
+    <div className="space-y-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 relative">
+        {/* Header */}
+        <div className="text-left">
+          <h1 className="text-3xl font-heading font-bold text-white flex items-center gap-3 tracking-tight">
+            Trò chơi nhậu
+          </h1>
+          <p className="text-zinc-400 font-medium mt-2 max-w-md">
+            Bộ sưu tập các trò chơi "hủy diệt" tình bạn.
+            <br />
+            <span className="text-orange-500 font-bold">Uống có trách nhiệm!</span>
+          </p>
+        </div>
+
         {/* Sound & Filter Controls */}
-        <div className="absolute right-0 top-0 flex items-center gap-2">
+        <div className="flex items-center gap-3 bg-zinc-900/80 p-1.5 rounded-2xl border border-white/5 backdrop-blur-sm">
           <Button
             variant="ghost"
             size="sm"
             onClick={toggleSound}
-            className="gap-1"
+            className="h-9 w-9 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white"
             title={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
           >
-            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
+            {soundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
           </Button>
+          
+          <div className="h-6 w-px bg-white/10" />
+
           <select
             value={selectedDifficulty || ''}
             onChange={(e) => setSelectedDifficulty(e.target.value || null)}
-            className="text-xs border-2 border-border/60 rounded-lg px-2 py-1.5 bg-background text-foreground font-body transition-all hover:border-border focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+            className="h-9 bg-transparent text-sm font-medium text-zinc-300 border-none focus:ring-0 cursor-pointer hover:text-white transition-colors"
           >
-            <option value="">Tất cả độ khó</option>
-            <option value="easy">Dễ</option>
-            <option value="medium">Trung bình</option>
-            <option value="hard">Khó</option>
-            <option value="extreme">Cực khó</option>
+            <option value="" className="bg-zinc-900 text-zinc-300">Mọi cấp độ</option>
+            <option value="easy" className="bg-zinc-900 text-zinc-300">Dễ thở</option>
+            <option value="medium" className="bg-zinc-900 text-zinc-300">Vừa vừa</option>
+            <option value="hard" className="bg-zinc-900 text-zinc-300">Căng cực</option>
+            <option value="extreme" className="bg-zinc-900 text-zinc-300">Hủy diệt</option>
           </select>
+
           <button
             onClick={() => adultContentEnabled ? setAdultContentEnabled(false) : setShowAdultWarning(true)}
-            className={`text-xs px-2 py-1.5 rounded-lg border-2 transition-all font-body ${
+            className={`h-9 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${
               adultContentEnabled 
-                ? 'bg-primary/10 border-primary/30 text-primary' 
-                : 'bg-secondary border-border/60 text-muted-foreground hover:border-border'
+                ? 'bg-red-500/10 border-red-500/20 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]' 
+                : 'bg-zinc-800 border-transparent text-zinc-500 hover:text-zinc-300'
             }`}
             title={adultContentEnabled ? 'Tắt nội dung 18+' : 'Bật nội dung 18+'}
           >
             18+
           </button>
         </div>
-
-        {/* Header - Retro Typography */}
-        <h1 className="text-3xl font-heading font-bold text-foreground flex items-center justify-center gap-2">
-          <Sparkles className="h-8 w-8 text-warning animate-pulse" />
-          Trò chơi nhậu
-        </h1>
-        <p className="text-muted-foreground mt-2 font-body">Chọn một trò chơi để bắt đầu cuộc vui!</p>
-        <p className="text-xs text-primary mt-1 font-body italic">Uống có trách nhiệm - Đã uống không lái xe</p>
       </div>
 
       {/* Game Selection */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Truth or Dare */}
         <Card 
-          className="card-interactive cursor-pointer border-2 hover:border-primary/50 group"
+          className="group relative overflow-hidden bg-zinc-900 border-white/5 hover:border-orange-500/30 transition-all hover:shadow-xl cursor-pointer hover:-translate-y-1"
           onClick={() => handleGameSelect('truth_or_dare')}
         >
-          <CardContent className="p-6 text-center relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardContent className="p-6 relative z-10 flex flex-col h-full">
             <button
-              className="absolute top-2 right-2 p-1 rounded-full hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-4 right-4 text-zinc-600 hover:text-white transition-colors"
               onClick={(e) => { e.stopPropagation(); setShowRules('truth_or_dare') }}
             >
-              <HelpCircle className="h-4 w-4 text-primary" />
+              <HelpCircle className="h-5 w-5" />
             </button>
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-primary/30">
-              <MessageCircleQuestion className="h-8 w-8 text-primary" />
+            
+            <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 border border-white/5 flex items-center justify-center mb-6 group-hover:bg-orange-500/20 group-hover:border-orange-500/30 transition-all duration-300">
+              <MessageCircleQuestion className="h-8 w-8 text-zinc-400 group-hover:text-orange-500 transition-colors" />
             </div>
-            <h3 className="font-heading font-bold text-lg">Sự thật hay Thách thức</h3>
-            <p className="text-sm text-muted-foreground mt-1 font-body">55 câu hỏi & thử thách</p>
-            <div className="flex justify-center gap-1 mt-2">
-              <span className="text-xs px-2 py-0.5 bg-success/10 text-success rounded-full font-body">Dễ</span>
-              <span className="text-xs px-2 py-0.5 bg-destructive/10 text-destructive rounded-full font-body">Khó</span>
-              <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full font-body">18+</span>
+            
+            <h3 className="font-heading font-bold text-xl text-white mb-2 leading-tight">Sự thật hay Thách thức</h3>
+            <p className="text-sm text-zinc-400 font-medium mb-6 flex-grow">55 câu hỏi & thử thách</p>
+            
+            <div className="flex flex-wrap gap-2 mt-auto">
+              <span className="text-[10px] uppercase font-bold px-2.5 py-1 bg-zinc-800 text-zinc-400 rounded-full border border-white/5">Cổ điển</span>
+              <span className="text-[10px] uppercase font-bold px-2.5 py-1 bg-orange-500/10 text-orange-500 rounded-full border border-orange-500/20">Hot</span>
             </div>
           </CardContent>
         </Card>
 
+        {/* Never Have I Ever */}
         <Card 
-          className="card-interactive cursor-pointer border-2 hover:border-primary/50 group"
+          className="group relative overflow-hidden bg-zinc-900 border-white/5 hover:border-orange-500/30 transition-all hover:shadow-xl cursor-pointer hover:-translate-y-1"
           onClick={() => handleGameSelect('never_have_i_ever')}
         >
-          <CardContent className="p-6 text-center relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardContent className="p-6 relative z-10 flex flex-col h-full">
             <button
-              className="absolute top-2 right-2 p-1 rounded-full hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-4 right-4 text-zinc-600 hover:text-white transition-colors"
               onClick={(e) => { e.stopPropagation(); setShowRules('never_have_i_ever') }}
             >
-              <HelpCircle className="h-4 w-4 text-primary" />
+              <HelpCircle className="h-5 w-5" />
             </button>
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-primary/30">
-              <Hand className="h-8 w-8 text-primary" />
+            
+            <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 border border-white/5 flex items-center justify-center mb-6 group-hover:bg-orange-500/20 group-hover:border-orange-500/30 transition-all duration-300">
+              <Hand className="h-8 w-8 text-zinc-400 group-hover:text-orange-500 transition-colors" />
             </div>
-            <h3 className="font-heading font-bold text-lg">Tôi chưa bao giờ</h3>
-            <p className="text-sm text-muted-foreground mt-1 font-body">30 câu hỏi thú vị</p>
-            <div className="flex justify-center gap-1 mt-2 items-center">
-              <BeerIcon size={16} className="text-warning" />
-              <span className="text-xs text-warning font-body">Ai đã làm = Uống!</span>
+            
+            <h3 className="font-heading font-bold text-xl text-white mb-2 leading-tight">Tôi chưa bao giờ</h3>
+            <p className="text-sm text-zinc-400 font-medium mb-6 flex-grow">30 câu hỏi thú vị</p>
+            
+            <div className="flex items-center gap-2 mt-auto text-xs font-bold text-zinc-400 bg-zinc-800/50 px-3 py-1.5 rounded-lg border border-white/5 w-fit group-hover:text-orange-400 group-hover:bg-orange-500/10 group-hover:border-orange-500/20 transition-all">
+              <BeerIcon size={14} />
+              <span>Đã làm = Uống!</span>
             </div>
           </CardContent>
         </Card>
 
+        {/* Challenge */}
         <Card 
-          className="card-interactive cursor-pointer border-2 hover:border-warning/50 group"
+          className="group relative overflow-hidden bg-zinc-900 border-white/5 hover:border-orange-500/30 transition-all hover:shadow-xl cursor-pointer hover:-translate-y-1"
           onClick={() => handleGameSelect('challenge')}
         >
-          <CardContent className="p-6 text-center relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardContent className="p-6 relative z-10 flex flex-col h-full">
             <button
-              className="absolute top-2 right-2 p-1 rounded-full hover:bg-warning/10 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-4 right-4 text-zinc-600 hover:text-white transition-colors"
               onClick={(e) => { e.stopPropagation(); setShowRules('challenge') }}
             >
-              <HelpCircle className="h-4 w-4 text-warning" />
+              <HelpCircle className="h-5 w-5" />
             </button>
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-warning/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-warning/30">
-              <Flame className="h-8 w-8 text-warning group-hover:animate-pulse" />
+            
+            <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 border border-white/5 flex items-center justify-center mb-6 group-hover:bg-orange-500/20 group-hover:border-orange-500/30 transition-all duration-300">
+              <Flame className="h-8 w-8 text-zinc-400 group-hover:text-orange-500 transition-colors" />
             </div>
-            <h3 className="font-heading font-bold text-lg">Thử thách</h3>
-            <p className="text-sm text-muted-foreground mt-1 font-body">25 thử thách điên rồ</p>
-            <div className="flex justify-center gap-1 mt-2 items-center">
-              <Skull className="h-4 w-4 text-destructive" />
-              <span className="text-xs text-destructive font-body">Thất bại = Phạt!</span>
+            
+            <h3 className="font-heading font-bold text-xl text-white mb-2 leading-tight">Thử thách</h3>
+            <p className="text-sm text-zinc-400 font-medium mb-6 flex-grow">25 thử thách điên rồ</p>
+            
+            <div className="flex items-center gap-2 mt-auto text-xs font-bold text-zinc-400 bg-zinc-800/50 px-3 py-1.5 rounded-lg border border-white/5 w-fit group-hover:text-orange-400 group-hover:bg-orange-500/10 group-hover:border-orange-500/20 transition-all">
+              <Skull className="h-3.5 w-3.5" />
+              <span>Thua = Phạt nặng</span>
             </div>
           </CardContent>
         </Card>
 
+        {/* Dice */}
         <Card 
-          className="card-interactive cursor-pointer border-2 hover:border-primary/50 group"
+          className="group relative overflow-hidden bg-zinc-900 border-white/5 hover:border-orange-500/30 transition-all hover:shadow-xl cursor-pointer hover:-translate-y-1"
           onClick={() => handleGameSelect('dice')}
         >
-          <CardContent className="p-6 text-center relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardContent className="p-6 relative z-10 flex flex-col h-full">
             <button
-              className="absolute top-2 right-2 p-1 rounded-full hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-4 right-4 text-zinc-600 hover:text-white transition-colors"
               onClick={(e) => { e.stopPropagation(); setShowRules('dice') }}
             >
-              <HelpCircle className="h-4 w-4 text-primary" />
+              <HelpCircle className="h-5 w-5" />
             </button>
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-primary/30">
-              <Dices className={`h-8 w-8 text-primary ${isSpinning ? 'animate-bounce' : ''}`} />
+            
+            <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 border border-white/5 flex items-center justify-center mb-6 group-hover:bg-orange-500/20 group-hover:border-orange-500/30 transition-all duration-300">
+              <Dices className={`h-8 w-8 text-zinc-400 group-hover:text-orange-500 transition-colors ${isSpinning ? 'animate-bounce' : ''}`} />
             </div>
-            <h3 className="font-heading font-bold text-lg">Tung xúc xắc</h3>
-            <p className="text-sm text-muted-foreground mt-1 font-body">May rủi quyết định!</p>
-            <div className="flex justify-center gap-1 mt-2 items-center">
-              <Zap className="h-4 w-4 text-warning" />
-              <span className="text-xs text-primary font-body">Đôi = Chọn người!</span>
+            
+            <h3 className="font-heading font-bold text-xl text-white mb-2 leading-tight">Tung xúc xắc</h3>
+            <p className="text-sm text-zinc-400 font-medium mb-6 flex-grow">May rủi quyết định!</p>
+            
+            <div className="flex items-center gap-2 mt-auto text-xs font-bold text-zinc-400 bg-zinc-800/50 px-3 py-1.5 rounded-lg border border-white/5 w-fit group-hover:text-orange-400 group-hover:bg-orange-500/10 group-hover:border-orange-500/20 transition-all">
+              <Zap className="h-3.5 w-3.5" />
+              <span>Đôi = Quyền lực</span>
             </div>
           </CardContent>
         </Card>
 
+        {/* Lucky Wheel */}
         <Card 
-          className="card-interactive cursor-pointer border-2 hover:border-primary/50 group"
+          className="group relative overflow-hidden bg-zinc-900 border-white/5 hover:border-orange-500/30 transition-all hover:shadow-xl cursor-pointer hover:-translate-y-1"
           onClick={() => setShowWheel(true)}
         >
-          <CardContent className="p-6 text-center relative">
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-success/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-success/30">
-              <CircleDot className="h-8 w-8 text-success group-hover:animate-spin" />
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardContent className="p-6 relative z-10 flex flex-col h-full">
+            <button
+              className="absolute top-4 right-4 text-zinc-600 hover:text-white transition-colors"
+              onClick={(e) => { e.stopPropagation(); }}
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+            
+            <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 border border-white/5 flex items-center justify-center mb-6 group-hover:bg-orange-500/20 group-hover:border-orange-500/30 transition-all duration-300">
+              <CircleDot className="h-8 w-8 text-zinc-400 group-hover:text-orange-500 transition-colors group-hover:animate-spin" />
             </div>
-            <h3 className="font-heading font-bold text-lg">Vòng quay may mắn</h3>
-            <p className="text-sm text-muted-foreground mt-1 font-body">Quay để chọn người!</p>
-            <div className="flex justify-center gap-1 mt-2 items-center">
-              <Users className="h-4 w-4 text-success" />
-              <span className="text-xs text-success font-body">Chọn người ngẫu nhiên</span>
+            
+            <h3 className="font-heading font-bold text-xl text-white mb-2 leading-tight">Vòng quay</h3>
+            <p className="text-sm text-zinc-400 font-medium mb-6 flex-grow">Quay để chọn người!</p>
+            
+            <div className="flex items-center gap-2 mt-auto text-xs font-bold text-zinc-400 bg-zinc-800/50 px-3 py-1.5 rounded-lg border border-white/5 w-fit group-hover:text-orange-400 group-hover:bg-orange-500/10 group-hover:border-orange-500/20 transition-all">
+              <Users className="h-3.5 w-3.5" />
+              <span>Random</span>
             </div>
           </CardContent>
         </Card>
 
+        {/* King's Cup */}
         <Card 
-          className="card-interactive cursor-pointer border-2 hover:border-warning/50 group"
+          className="group relative overflow-hidden bg-zinc-900 border-white/5 hover:border-orange-500/30 transition-all hover:shadow-xl cursor-pointer hover:-translate-y-1"
           onClick={() => setShowKingsCup(true)}
         >
-          <CardContent className="p-6 text-center relative">
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-warning/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-warning/30">
-              <Crown className="h-8 w-8 text-warning" />
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardContent className="p-6 relative z-10 flex flex-col h-full">
+            <button
+              className="absolute top-4 right-4 text-zinc-600 hover:text-white transition-colors"
+              onClick={(e) => { e.stopPropagation(); }}
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+            
+            <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 border border-white/5 flex items-center justify-center mb-6 group-hover:bg-orange-500/20 group-hover:border-orange-500/30 transition-all duration-300">
+              <Crown className="h-8 w-8 text-zinc-400 group-hover:text-orange-500 transition-colors" />
             </div>
-            <h3 className="font-heading font-bold text-lg">King's Cup</h3>
-            <p className="text-sm text-muted-foreground mt-1 font-body">Mỗi lá bài 1 luật</p>
-            <div className="flex justify-center gap-1 mt-2 items-center">
-              <BeerIcon size={16} className="text-warning" />
-              <span className="text-xs text-warning font-body">Bốc K thứ 4 = Uống!</span>
+            
+            <h3 className="font-heading font-bold text-xl text-white mb-2 leading-tight">King's Cup</h3>
+            <p className="text-sm text-zinc-400 font-medium mb-6 flex-grow">Mỗi lá bài 1 luật</p>
+            
+            <div className="flex items-center gap-2 mt-auto text-xs font-bold text-zinc-400 bg-zinc-800/50 px-3 py-1.5 rounded-lg border border-white/5 w-fit group-hover:text-orange-400 group-hover:bg-orange-500/10 group-hover:border-orange-500/20 transition-all">
+              <BeerIcon size={14} />
+              <span>K cuối = CHẾT!</span>
             </div>
           </CardContent>
         </Card>
 
+        {/* Most Likely To */}
         <Card 
-          className="card-interactive cursor-pointer border-2 hover:border-primary/50 group"
+          className="group relative overflow-hidden bg-zinc-900 border-white/5 hover:border-orange-500/30 transition-all hover:shadow-xl cursor-pointer hover:-translate-y-1"
           onClick={() => setShowMostLikelyTo(true)}
         >
-          <CardContent className="p-6 text-center relative">
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-primary/30">
-              <ThumbsUp className="h-8 w-8 text-primary" />
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardContent className="p-6 relative z-10 flex flex-col h-full">
+            <button
+              className="absolute top-4 right-4 text-zinc-600 hover:text-white transition-colors"
+              onClick={(e) => { e.stopPropagation(); }}
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+            
+            <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 border border-white/5 flex items-center justify-center mb-6 group-hover:bg-orange-500/20 group-hover:border-orange-500/30 transition-all duration-300">
+              <ThumbsUp className="h-8 w-8 text-zinc-400 group-hover:text-orange-500 transition-colors" />
             </div>
-            <h3 className="font-heading font-bold text-lg">Ai có khả năng nhất?</h3>
-            <p className="text-sm text-muted-foreground mt-1 font-body">Đếm 3-2-1 rồi chỉ!</p>
-            <div className="flex justify-center gap-1 mt-2 items-center">
-              <BeerIcon size={16} className="text-primary" />
-              <span className="text-xs text-primary font-body">Bị chỉ nhiều = Uống!</span>
+            
+            <h3 className="font-heading font-bold text-xl text-white mb-2 leading-tight">Ai có khả năng?</h3>
+            <p className="text-sm text-zinc-400 font-medium mb-6 flex-grow">Đếm 3-2-1 rồi chỉ!</p>
+            
+            <div className="flex items-center gap-2 mt-auto text-xs font-bold text-zinc-400 bg-zinc-800/50 px-3 py-1.5 rounded-lg border border-white/5 w-fit group-hover:text-orange-400 group-hover:bg-orange-500/10 group-hover:border-orange-500/20 transition-all">
+              <Target className="h-3.5 w-3.5" />
+              <span>Bị chỉ = Uống</span>
             </div>
           </CardContent>
         </Card>
 
+        {/* Categories */}
         <Card 
-          className="card-interactive cursor-pointer border-2 hover:border-success/50 group"
+          className="group relative overflow-hidden bg-zinc-900 border-white/5 hover:border-orange-500/30 transition-all hover:shadow-xl cursor-pointer hover:-translate-y-1"
           onClick={() => setShowCategories(true)}
         >
-          <CardContent className="p-6 text-center relative">
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-success/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-success/30">
-              <List className="h-8 w-8 text-success" />
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardContent className="p-6 relative z-10 flex flex-col h-full">
+            <button
+              className="absolute top-4 right-4 text-zinc-600 hover:text-white transition-colors"
+              onClick={(e) => { e.stopPropagation(); }}
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+            
+            <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 border border-white/5 flex items-center justify-center mb-6 group-hover:bg-orange-500/20 group-hover:border-orange-500/30 transition-all duration-300">
+              <List className="h-8 w-8 text-zinc-400 group-hover:text-orange-500 transition-colors" />
             </div>
-            <h3 className="font-heading font-bold text-lg">Categories</h3>
-            <p className="text-sm text-muted-foreground mt-1 font-body">Kể tên theo chủ đề</p>
-            <div className="flex justify-center gap-1 mt-2 items-center">
-              <BeerIcon size={16} className="text-success" />
-              <span className="text-xs text-success font-body">Hết ý = Uống!</span>
+            
+            <h3 className="font-heading font-bold text-xl text-white mb-2 leading-tight">Categories</h3>
+            <p className="text-sm text-zinc-400 font-medium mb-6 flex-grow">Kể tên theo chủ đề</p>
+            
+            <div className="flex items-center gap-2 mt-auto text-xs font-bold text-zinc-400 bg-zinc-800/50 px-3 py-1.5 rounded-lg border border-white/5 w-fit group-hover:text-orange-400 group-hover:bg-orange-500/10 group-hover:border-orange-500/20 transition-all">
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>Bí = Uống!</span>
             </div>
           </CardContent>
         </Card>
 
+        {/* High or Low */}
         <Card 
-          className="card-interactive cursor-pointer border-2 hover:border-destructive/50 group"
+          className="group relative overflow-hidden bg-zinc-900 border-white/5 hover:border-orange-500/30 transition-all hover:shadow-xl cursor-pointer hover:-translate-y-1"
           onClick={() => setShowHighOrLow(true)}
         >
-          <CardContent className="p-6 text-center relative">
-            <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center group-hover:scale-110 transition-transform border-2 border-destructive/30">
-              <TrendingUp className="h-8 w-8 text-destructive" />
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <CardContent className="p-6 relative z-10 flex flex-col h-full">
+            <button
+              className="absolute top-4 right-4 text-zinc-600 hover:text-white transition-colors"
+              onClick={(e) => { e.stopPropagation(); }}
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+            
+            <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 border border-white/5 flex items-center justify-center mb-6 group-hover:bg-orange-500/20 group-hover:border-orange-500/30 transition-all duration-300">
+              <TrendingUp className="h-8 w-8 text-zinc-400 group-hover:text-orange-500 transition-colors" />
             </div>
-            <h3 className="font-heading font-bold text-lg">Cao hay Thấp?</h3>
-            <p className="text-sm text-muted-foreground mt-1 font-body">Đoán lá bài tiếp theo</p>
-            <div className="flex justify-center gap-1 mt-2 items-center">
-              <Zap className="h-4 w-4 text-destructive" />
-              <span className="text-xs text-destructive font-body">Streak = số ly phạt!</span>
+            
+            <h3 className="font-heading font-bold text-xl text-white mb-2 leading-tight">Cao hay Thấp?</h3>
+            <p className="text-sm text-zinc-400 font-medium mb-6 flex-grow">Đoán lá bài tiếp theo</p>
+            
+            <div className="flex items-center gap-2 mt-auto text-xs font-bold text-zinc-400 bg-zinc-800/50 px-3 py-1.5 rounded-lg border border-white/5 w-fit group-hover:text-orange-400 group-hover:bg-orange-500/10 group-hover:border-orange-500/20 transition-all">
+              <Zap className="h-3.5 w-3.5" />
+              <span>Sai = Uống cả dây</span>
             </div>
           </CardContent>
         </Card>
@@ -753,7 +835,7 @@ export default function GamesPage() {
         <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-3">
           <Button
             onClick={() => setShowPlayerRotation(true)}
-            variant="stamp"
+            variant="default"
             className="rounded-full h-16 w-16 shadow-lg p-0 flex items-center justify-center"
             title="Quản lý lượt chơi"
           >
@@ -761,7 +843,7 @@ export default function GamesPage() {
           </Button>
           <Button
             onClick={() => setShowDrinkingCounter(true)}
-            variant="stamp"
+            variant="default"
             className="rounded-full h-16 w-16 shadow-lg p-0 flex items-center justify-center"
             title="Đếm số ly"
           >

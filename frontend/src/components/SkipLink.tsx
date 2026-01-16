@@ -1,37 +1,5 @@
 import { useRef, useEffect } from 'react'
 
-interface SkipLinkProps {
-  targetId?: string
-  label?: string
-}
-
-export function SkipLink({ 
-  targetId = 'main-content', 
-  label = 'Bỏ qua đến nội dung chính' 
-}: SkipLinkProps) {
-  const linkRef = useRef<HTMLAnchorElement>(null)
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault()
-    const target = document.getElementById(targetId)
-    if (target) {
-      target.focus()
-      target.scrollIntoView({ behavior: 'smooth' })
-    }
-  }
-
-  return (
-    <a
-      ref={linkRef}
-      href={`#${targetId}`}
-      onClick={handleClick}
-      className="skip-link"
-    >
-      {label}
-    </a>
-  )
-}
-
 // Hook for managing focus
 export function useFocusManagement() {
   const setFocus = (elementId: string) => {

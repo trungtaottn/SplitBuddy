@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -8,12 +9,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, TrendingDown, TrendingUp, Beer, Search, ChevronLeft, ChevronRight, LayoutTemplate } from 'lucide-react'
+import { Plus, ArrowUpRight, ArrowDownLeft, Search, ChevronLeft, ChevronRight, LayoutTemplate } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { CURRENCY_OPTIONS } from '@/utils/currency'
 import { toast } from '@/components/ui/toaster'
 import AiGreeting from '@/components/AiGreeting'
-import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
 import { SessionCard } from '@/components/SessionCard'
 import { EmptyState } from '@/components/EmptyState'
 import { SessionListSkeleton } from '@/components/ui/skeleton'
@@ -21,6 +21,14 @@ import { useOnboarding } from '@/components/Onboarding'
 import { staggerContainer, staggerItem } from '@/components/PageTransition'
 import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupDetail, PaginatedResponse } from '@/types/api'
+
+/**
+ * DashboardPage - Dark Luxury / Modular Style
+ * Features:
+ * - Geometric/Bento Grid Layout
+ * - High Contrast Typography
+ * - Orange/Red Accent Gradients
+ */
 
 export default function DashboardPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -48,7 +56,6 @@ export default function DashboardPage() {
     const hasSeenOnboarding = localStorage.getItem('splitbuddy-onboarding-shown')
 
     if (!hasCompletedOnboarding && !hasSeenOnboarding) {
-      // Delay to let the page load first
       const timer = setTimeout(() => {
         localStorage.setItem('splitbuddy-onboarding-shown', 'true')
         startOnboarding()
@@ -80,6 +87,10 @@ export default function DashboardPage() {
       const res = await api.get<PaginatedResponse<Session[]>>(`/sessions?${params.toString()}`)
       return res.data
     },
+    retry: (failureCount, error: any) => {
+        if (error?.response?.status === 429) return false
+        return failureCount < 2
+    },
   })
 
   const sessions = sessionsData?.data
@@ -102,6 +113,10 @@ export default function DashboardPage() {
       const res = await api.get<ApiResponse<DebtSummary>>('/debts/me')
       return res.data.data
     },
+    retry: (failureCount, error: any) => {
+        if (error?.response?.status === 429) return false
+        return failureCount < 2
+    },
   })
 
   const { data: groups } = useQuery({
@@ -109,6 +124,10 @@ export default function DashboardPage() {
     queryFn: async () => {
       const res = await api.get<ApiResponse<Group[]>>('/groups')
       return res.data.data
+    },
+    retry: (failureCount, error: any) => {
+        if (error?.response?.status === 429) return false
+        return failureCount < 2
     },
   })
 
@@ -139,10 +158,10 @@ export default function DashboardPage() {
       setGuestNames([])
       setNewGuestName('')
       setNewSessionCurrency('VND')
-      toast.success('Tạo cuộc nhậu thành công!')
+      toast.success('Session Created.')
     },
     onError: () => {
-      toast.error('Có lỗi xảy ra. Vui lòng thử lại.')
+      toast.error('Error creating session.')
     },
   })
 
@@ -150,14 +169,13 @@ export default function DashboardPage() {
     mutationFn: () => apiWrapper.bulkArchiveSessions(settledSessionIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] })
-      toast.success('Đã lưu trữ các phiên đã tất toán')
+      toast.success('Sessions Archived.')
     },
     onError: (error: any) => {
-      toast.error('Không thể lưu trữ: ' + (error.response?.data?.message || error.message))
+      toast.error('Archive failed: ' + (error.response?.data?.message || error.message))
     },
   })
 
-  // Prevent race condition: disable submit when loading group members
   const isSubmitDisabled = createSession.isPending || (!!selectedGroupId && isGroupDetailLoading)
 
   const handleCreateSession = (e: React.FormEvent) => {
@@ -199,205 +217,187 @@ export default function DashboardPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="space-y-6">
-      {/* AI Greeting */}
-      <AiGreeting
-        onCreateSession={() => setShowCreateModal(true)}
-        onViewDebts={() => navigate('/debts')}
-      />
+    <div className="space-y-12">
+      {/* AI Greeting - Top priority for mood setting */}
+      <div className="-mt-4">
+         <AiGreeting
+          onCreateSession={() => setShowCreateModal(true)}
+          onViewDebts={() => navigate('/debts')}
+        />
+      </div>
 
-      {/* Debt Summary Cards - Minimalist Retro */}
+      {/* Financial Overview - Compact & Horizontal */}
       <motion.div
-        className="grid gap-4 md:grid-cols-2"
+        className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch"
         variants={staggerContainer}
         initial="hidden"
         animate="show"
       >
+        {/* Debt Owed Card */}
         <motion.div variants={staggerItem}>
-          <FunTooltip messages={FUN_MESSAGES.debtOwed}>
-            <Card className="card-interactive cursor-pointer animate-card-lift">
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10">
-                  <TrendingDown className="h-6 w-6 text-destructive" />
-                </div>
+            <Card variant="default" className="bg-card hover:bg-card/80 transition-colors border-l-4 border-l-orange-500 rounded-[4px]">
+              <CardContent className="p-6 flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground font-body">Bạn đang nợ</p>
-                  <p className="text-2xl font-bold text-destructive font-mono">
+                   <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Bạn cần trả</h3>
+                   <p className="text-3xl font-heading font-bold text-white tracking-tight">
                     {debts ? formatCurrency(debts.total_i_owe) : '0đ'}
-                  </p>
+                   </p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center">
+                   <ArrowUpRight className="h-6 w-6 text-orange-500" />
                 </div>
               </CardContent>
             </Card>
-          </FunTooltip>
         </motion.div>
+
+        {/* Debt Owing Card */}
         <motion.div variants={staggerItem}>
-          <FunTooltip messages={FUN_MESSAGES.debtOwing}>
-            <Card className="card-interactive cursor-pointer animate-card-lift">
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success/10">
-                  <TrendingUp className="h-6 w-6 text-success" />
-                </div>
+            <Card variant="default" className="bg-card hover:bg-card/80 transition-colors border-l-4 border-l-green-500 rounded-[4px]">
+              <CardContent className="p-6 flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground font-body">Bạn được nợ</p>
-                  <p className="text-2xl font-bold text-success font-mono">
+                   <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Cần trả bạn</h3>
+                   <p className="text-3xl font-heading font-bold text-white tracking-tight">
                     {debts ? formatCurrency(debts.total_owed_to_me) : '0đ'}
-                  </p>
+                   </p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
+                   <ArrowDownLeft className="h-6 w-6 text-green-500" />
                 </div>
               </CardContent>
             </Card>
-          </FunTooltip>
         </motion.div>
       </motion.div>
 
-      {/* Section Header - Retro Typography */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-heading font-semibold text-foreground flex items-center gap-2">
-          <Beer className="h-5 w-5 text-primary" /> Cuộc nhậu của tôi
-        </h2>
-        <div className="flex items-center gap-2">
-          {settledSessionIds.length > 0 && !includeArchived && (
+      {/* Recent Sessions Filter Bar */}
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-white/5 pb-4">
+           <h2 className="text-xl font-bold font-heading text-white tracking-tight">CUỘC NHẬU GẦN ĐÂY</h2>
+           
+           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+             <div className="relative flex-1 md:w-64">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  variant="default" // Underline
+                  className="pl-9 h-10 text-sm"
+                  placeholder="Tìm kiếm..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+             </div>
+             
+             <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-transparent text-sm font-bold uppercase tracking-widest text-muted-foreground focus:outline-none cursor-pointer hover:text-white transition-colors"
+             >
+                <option value="">Tất cả</option>
+                <option value="active">Đang mở</option>
+                <option value="closed">Đã chốt</option>
+             </select>
+             
+             <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-white cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  checked={includeArchived}
+                  onChange={(e) => setIncludeArchived(e.target.checked)}
+                  className="rounded border-white/20 bg-transparent text-primary focus:ring-primary h-4 w-4"
+                />
+                Lưu trữ
+             </label>
+           </div>
+        </div>
+
+        {settledSessionIds.length > 0 && !includeArchived && (
+           <div className="flex justify-end">
+             <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground hover:text-white"
+                onClick={() => bulkArchiveSettled.mutate()}
+                disabled={bulkArchiveSettled.isPending}
+              >
+                {bulkArchiveSettled.isPending ? 'ĐANG LƯU TRỮ...' : 'LƯU TRỮ CÁC KHOẢN ĐÃ XONG'}
+              </Button>
+           </div>
+        )}
+
+        {/* Sessions Grid */}
+        {sessionsLoading ? (
+            <SessionListSkeleton count={3} />
+        ) : sessions?.length === 0 ? (
+            debouncedSearch ? (
+              <EmptyState
+                type="search"
+                searchTerm={debouncedSearch}
+                action={{
+                  label: 'Xóa tìm kiếm',
+                  onClick: () => setSearchTerm(''),
+                }}
+              />
+            ) : (
+              <EmptyState
+                type="sessions"
+                action={{
+                  label: 'Thêm cuộc nhậu',
+                  onClick: () => setShowCreateModal(true),
+                }}
+                secondaryAction={{
+                  label: 'Quản lý nhóm',
+                  onClick: () => navigate('/groups'),
+                }}
+              />
+            )
+        ) : (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {sessions?.map((session) => (
+                    <SessionCard
+                      key={session.id}
+                      id={session.id}
+                      name={session.name}
+                      location={session.location}
+                      date={session.session_date}
+                      status={session.status === 'closed' ? 'settled' : 'active'}
+                      total_amount={Number(session.total_amount) || 0}
+                      base_currency={session.base_currency}
+                      participants={session.participants || []}
+                      user_debt={Number(session.my_debt) || 0}
+                      user_owed={Number(session.my_owed) || 0}
+                      settled_amount={Number(session.settled_amount) || 0}
+                      archived_at={session.archived_at}
+                    />
+              ))}
+            </div>
+        )}
+
+        {/* Pagination */}
+        {pagination && pagination.total_pages > 1 && (
+          <div className="flex items-center justify-center gap-4 pt-8 border-t border-white/5">
             <Button
               variant="outline"
-              className="gap-2"
-              onClick={() => bulkArchiveSettled.mutate()}
-              disabled={bulkArchiveSettled.isPending}
+              size="icon"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="rounded-full w-10 h-10"
             >
-              {bulkArchiveSettled.isPending ? 'Đang lưu trữ...' : 'Lưu trữ đã tất toán'}
+              <ChevronLeft className="h-4 w-4" />
             </Button>
-          )}
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => navigate('/templates')}
-          >
-            <LayoutTemplate className="h-4 w-4" strokeWidth={1.5} />
-            Templates
-          </Button>
-          <FunTooltip messages={FUN_MESSAGES.createSession}>
+            <span className="text-sm font-bold font-mono">
+              {currentPage} / {pagination.total_pages}
+            </span>
             <Button
-              onClick={() => setShowCreateModal(true)}
-              variant="stamp"
-              className="gap-2"
-              data-onboarding="create-session"
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage(p => Math.min(pagination.total_pages, p + 1))}
+              disabled={currentPage === pagination.total_pages}
+              className="rounded-full w-10 h-10"
             >
-              <Plus className="h-4 w-4" strokeWidth={1.5} />
-              Nhậu đê...
+              <ChevronRight className="h-4 w-4" />
             </Button>
-          </FunTooltip>
-        </div>
-      </div>
-
-      {/* Search & Filter - Retro Style */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Tìm kiếm cuộc nhậu..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-10 rounded-sm border-0 border-b-2 border-border bg-transparent px-2 py-2 text-sm transition-all hover:border-foreground/40 focus:border-primary focus:outline-none uppercase tracking-wide"
-          >
-            <option value="">Tất cả</option>
-            <option value="active">Đang diễn ra</option>
-            <option value="closed">Đã xong</option>
-          </select>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={includeArchived}
-              onChange={(e) => setIncludeArchived(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300"
-            />
-            Hiện lưu trữ
-          </label>
-        </div>
-        {pagination && (
-          <div className="flex items-center gap-1 text-sm text-muted-foreground font-body">
-            <span>{pagination.total} kết quả</span>
           </div>
         )}
       </div>
 
-      {sessionsLoading ? (
-        <SessionListSkeleton count={3} />
-      ) : sessions?.length === 0 ? (
-        debouncedSearch ? (
-          <EmptyState
-            type="search"
-            searchTerm={debouncedSearch}
-            action={{
-              label: 'Xóa tìm kiếm',
-              onClick: () => setSearchTerm(''),
-            }}
-          />
-        ) : (
-          <EmptyState
-            type="sessions"
-            action={{
-              label: 'Book lịch nhậu đi chứ',
-              onClick: () => setShowCreateModal(true),
-            }}
-            secondaryAction={{
-              label: 'Tìm anh em cùng nhau nhậu',
-              onClick: () => navigate('/groups'),
-            }}
-          />
-        )
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sessions?.map((session) => (
-            <FunTooltip key={session.id} messages={FUN_MESSAGES.sessionCard}>
-                <SessionCard
-                  id={session.id}
-                  name={session.name}
-                  location={session.location}
-                  date={session.session_date}
-                  status={session.status === 'closed' ? 'settled' : 'active'}
-                  total_amount={Number(session.total_amount) || 0}
-                  base_currency={session.base_currency}
-                  participants={session.participants || []}
-                  user_debt={Number(session.my_debt) || 0}
-                  user_owed={Number(session.my_owed) || 0}
-                  settled_amount={Number(session.settled_amount) || 0}
-                  archived_at={session.archived_at}
-                />
-            </FunTooltip>
-          ))}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {pagination && pagination.total_pages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm">
-            Trang {currentPage} / {pagination.total_pages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(p => Math.min(pagination.total_pages, p + 1))}
-            disabled={currentPage === pagination.total_pages}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-
+      {/* Creation Modal */}
       <ResponsiveModal
         isOpen={showCreateModal}
         onClose={() => {
@@ -405,50 +405,55 @@ export default function DashboardPage() {
           setSelectedGroupId('')
           setSelectedParticipants([])
         }}
-        title="Tạo cuộc nhậu mới"
-        desktopClassName="max-w-md"
+        title="TẠO CUỘC NHẬU"
+        desktopClassName="max-w-md border border-white/10 bg-black/90 backdrop-blur-xl"
       >
-        <form onSubmit={handleCreateSession} className="space-y-4">
+        <form onSubmit={handleCreateSession} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="name">Tên cuộc nhậu</Label>
+            <Label htmlFor="name" className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Tên cuộc nhậu</Label>
             <Input
               id="name"
-              placeholder="VD: Nhậu tất niên"
+              placeholder="Ví dụ: Nhậu cuối tuần"
               value={newSessionName}
               onChange={(e) => setNewSessionName(e.target.value)}
               required
+              variant="glass"
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="location">Địa điểm (tuỳ chọn)</Label>
-            <Input
-              id="location"
-              placeholder="VD: Quán Ốc 123"
-              value={newSessionLocation}
-              onChange={(e) => setNewSessionLocation(e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-4">
+             <div className="space-y-2">
+                <Label htmlFor="location" className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Địa điểm</Label>
+                <Input
+                  id="location"
+                  placeholder="Ở đâu?"
+                  value={newSessionLocation}
+                  onChange={(e) => setNewSessionLocation(e.target.value)}
+                  variant="glass"
+                />
+             </div>
+             <div className="space-y-2">
+                <Label htmlFor="session_date" className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Ngày</Label>
+                <Input
+                  id="session_date"
+                  type="date"
+                  value={newSessionDate}
+                  onChange={(e) => setNewSessionDate(e.target.value)}
+                  variant="glass"
+                  className="justify-center"
+                />
+             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="session_date">Ngày nhậu</Label>
-            <Input
-              id="session_date"
-              type="date"
-              value={newSessionDate}
-              onChange={(e) => setNewSessionDate(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="base_currency">Tiền tệ gốc</Label>
+            <Label htmlFor="base_currency" className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Đơn vị tiền tệ</Label>
             <select
               id="base_currency"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               value={newSessionCurrency}
               onChange={(e) => setNewSessionCurrency(e.target.value)}
             >
               {CURRENCY_OPTIONS.map((option) => (
-                <option key={option.code} value={option.code}>
+                <option key={option.code} value={option.code} className="bg-black">
                   {option.label}
                 </option>
               ))}
@@ -458,20 +463,20 @@ export default function DashboardPage() {
           {/* Group Selection */}
           {groups && groups.length > 0 && (
             <div className="space-y-2">
-              <Label htmlFor="group">Chọn nhóm (tuỳ chọn)</Label>
+              <Label htmlFor="group" className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Chọn nhóm (Tùy chọn)</Label>
               <select
                 id="group"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                 value={selectedGroupId}
                 onChange={(e) => {
                   setSelectedGroupId(e.target.value)
                   setSelectedParticipants([])
                 }}
               >
-                <option value="">-- Không chọn nhóm --</option>
+                <option value="" className="bg-black">-- Chọn nhóm --</option>
                 {groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name} ({g.member_count} người)
+                  <option key={g.id} value={g.id} className="bg-black">
+                    {g.name} ({g.member_count} thành viên)
                   </option>
                 ))}
               </select>
@@ -480,46 +485,44 @@ export default function DashboardPage() {
 
           {/* Participant Selection */}
           {selectedGroupId && groupDetail && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Chọn thành viên tham gia</Label>
+            <div className="space-y-2 bg-white/5 p-4 rounded-md border border-white/5">
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-xs uppercase tracking-widest font-bold">Thành viên tham gia</Label>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={selectAllParticipants}
+                  className="text-primary hover:text-primary/80 h-auto p-0 text-xs"
                 >
                   Chọn tất cả
                 </Button>
               </div>
-              <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border p-3">
+              <div className="max-h-40 space-y-2 overflow-y-auto pr-2 custom-scrollbar">
                 {groupDetail.members.map((member) => (
                   <label
                     key={member.user_id}
-                    className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-white/5 transition-colors"
                   >
                     <input
                       type="checkbox"
                       checked={selectedParticipants.includes(member.user_id)}
                       onChange={() => toggleParticipant(member.user_id)}
-                      className="h-4 w-4 rounded border-gray-300"
+                      className="h-4 w-4 rounded border-white/20 bg-transparent text-primary focus:ring-primary"
                     />
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm text-primary">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-xs text-primary font-bold">
                       {member.full_name.charAt(0)}
                     </div>
-                    <span className="text-sm">{member.full_name}</span>
+                    <span className="text-sm font-medium">{member.full_name}</span>
                   </label>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Đã chọn {selectedParticipants.length} người
-              </p>
             </div>
           )}
 
           {/* Guest Input */}
           <div className="space-y-2">
-            <Label>Thêm khách (không có trong nhóm)</Label>
+            <Label className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Thêm khách ngoài</Label>
             <div className="flex gap-2">
               <Input
                 placeholder="Tên khách..."
@@ -531,25 +534,26 @@ export default function DashboardPage() {
                     addGuest()
                   }
                 }}
+                variant="glass"
               />
-              <Button type="button" variant="outline" onClick={addGuest}>
+              <Button type="button" variant="secondary" onClick={addGuest}>
                 Thêm
               </Button>
             </div>
             {guestNames.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mt-2">
                 {guestNames.map((name, index) => (
                   <div
                     key={index}
-                    className="flex items-center gap-1 rounded-sm bg-secondary border border-border px-2.5 py-1 text-xs font-medium text-foreground"
+                    className="flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-bold text-primary"
                   >
-                    <span> {name}</span>
+                    <span>{name}</span>
                     <button
                       type="button"
                       onClick={() => removeGuest(index)}
-                      className="ml-1 text-muted-foreground hover:text-destructive"
+                      className="ml-1 hover:text-white transition-colors"
                     >
-                      ✕
+                      ×
                     </button>
                   </div>
                 ))}
@@ -557,7 +561,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-4 pt-4">
             <Button
               type="button"
               variant="outline"
@@ -568,14 +572,38 @@ export default function DashboardPage() {
                 setSelectedParticipants([])
               }}
             >
-              Huỷ
+              Hủy
             </Button>
-            <Button type="submit" className="flex-1" disabled={isSubmitDisabled}>
-              {createSession.isPending ? 'Đang tạo...' : isGroupDetailLoading ? 'Đang tải...' : 'Tạo'}
+            <Button type="submit" className="flex-1" disabled={isSubmitDisabled} variant="default">
+              {createSession.isPending ? 'Đang tạo...' : isGroupDetailLoading ? 'Đang tải...' : 'Tạo cuộc nhậu'}
             </Button>
           </div>
         </form>
       </ResponsiveModal>
+
+      {/* Floating Action Buttons - Rendered via Portal */}
+      {typeof document !== 'undefined' && createPortal(
+        <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-3">
+          <Button
+            onClick={() => navigate('/templates')}
+            variant="outline"
+            className="rounded-full h-14 w-14 shadow-lg p-0 flex items-center justify-center bg-black/80 backdrop-blur-sm border-white/20 hover:border-primary/50"
+            title="Mẫu có sẵn"
+          >
+            <LayoutTemplate className="h-6 w-6 text-white" />
+          </Button>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            variant="default"
+            className="rounded-full h-16 w-16 shadow-lg shadow-primary/20 p-0 flex items-center justify-center animate-bounce-subtle"
+            title="Tạo cuộc nhậu"
+            data-onboarding="create-session"
+          >
+            <Plus className="h-8 w-8 text-white" />
+          </Button>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

@@ -36,7 +36,7 @@ export function SessionDrinkingStats({ sessionId }: DrinkingStatsProps) {
         <CardContent>
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 bg-gray-100 animate-pulse rounded-lg" />
+              <div key={i} className="h-12 bg-zinc-800 animate-pulse rounded-lg" />
             ))}
           </div>
         </CardContent>
@@ -80,7 +80,7 @@ export function SessionDrinkingStats({ sessionId }: DrinkingStatsProps) {
             <div
               key={stat.participant_id}
               className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                index === 0 ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200' : 'bg-gray-50'
+                index === 0 ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-500/30' : 'bg-zinc-900 border border-white/5'
               }`}
             >
               <div className="w-6 flex justify-center">
@@ -132,7 +132,7 @@ export function GlobalLeaderboard() {
         <CardContent>
           <div className="space-y-2">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-12 bg-gray-100 animate-pulse rounded-lg" />
+              <div key={i} className="h-12 bg-zinc-800 animate-pulse rounded-lg" />
             ))}
           </div>
         </CardContent>
@@ -173,12 +173,12 @@ export function GlobalLeaderboard() {
               key={entry.participant_id}
               className={`flex items-center gap-3 p-3 rounded-lg transition-all hover:scale-[1.02] ${
                 index === 0
-                  ? 'bg-gradient-to-r from-yellow-100 to-amber-100 border-2 border-yellow-300 shadow-md'
+                  ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-2 border-yellow-500/40 shadow-md'
                   : index === 1
-                  ? 'bg-gradient-to-r from-gray-100 to-gray-200 border border-gray-300'
+                  ? 'bg-gradient-to-r from-zinc-800 to-zinc-700 border border-zinc-600'
                   : index === 2
-                  ? 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200'
-                  : 'bg-gray-50'
+                  ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20'
+                  : 'bg-zinc-900/50'
               }`}
             >
               <div className="w-8 h-8 flex items-center justify-center rounded-full bg-white shadow">

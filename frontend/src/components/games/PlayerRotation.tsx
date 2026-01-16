@@ -117,7 +117,7 @@ export function PlayerRotation({ onClose, onPlayerSelected }: PlayerRotationProp
       <CardContent className="space-y-4">
         {/* Current player display */}
         {currentPlayer && (
-          <div className={`text-center p-6 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl border-2 border-blue-200 transition-all ${isAnimating ? 'scale-105' : ''}`}>
+          <div className={`text-center p-6 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-xl border-2 border-blue-500/30 transition-all ${isAnimating ? 'scale-105' : ''}`}>
             <p className="text-sm text-blue-600 mb-1">Lượt của</p>
             <div className="flex items-center justify-center gap-2">
               <Crown className="h-6 w-6 text-yellow-500" />
@@ -131,7 +131,7 @@ export function PlayerRotation({ onClose, onPlayerSelected }: PlayerRotationProp
 
         {/* Round complete notification */}
         {roundComplete && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+          <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-center">
             <p className="text-sm text-green-700 font-medium">
               🎉 Hoàn thành 1 vòng! Bấm reset để bắt đầu vòng mới.
             </p>
@@ -199,8 +199,8 @@ export function PlayerRotation({ onClose, onPlayerSelected }: PlayerRotationProp
                     i === currentIndex 
                       ? 'bg-blue-500 text-white font-bold scale-110' 
                       : p.played > 0 
-                        ? 'bg-gray-200 text-gray-500'
-                        : 'bg-gray-100 text-gray-700'
+                        ? 'bg-zinc-800 text-zinc-500'
+                        : 'bg-zinc-900 text-zinc-300 border border-white/10'
                   }`}
                 >
                   {i === currentIndex && <Crown className="h-3 w-3" />}

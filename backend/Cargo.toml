@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["SplitBuddy Team"]
 description = "Backend API for SplitBuddy - Bill splitting application"
+default-run = "splitbuddy"
 
 [dependencies]
 # Web Framework

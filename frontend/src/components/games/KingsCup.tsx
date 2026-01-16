@@ -40,10 +40,10 @@ const SUIT_SYMBOLS: Record<string, string> = {
 }
 
 const SUIT_COLORS: Record<string, string> = {
-  hearts: 'text-red-500',
-  diamonds: 'text-red-500',
-  clubs: 'text-gray-800',
-  spades: 'text-gray-800'
+  hearts: 'text-red-600',
+  diamonds: 'text-red-600',
+  clubs: 'text-zinc-900',
+  spades: 'text-zinc-900'
 }
 
 interface KingsCupProps {
@@ -192,8 +192,8 @@ export function KingsCup({ onClose }: KingsCupProps) {
           {/* Current Card */}
           {currentCard && (
             <div className={`absolute transition-all duration-500 ${isFlipping ? 'rotate-y-180 opacity-0' : ''}`}>
-              <div className={`w-32 h-48 bg-card rounded-xl shadow-xl border-2 p-3 flex flex-col ${
-                currentCard.value === 'K' ? 'border-warning ring-4 ring-warning/20' : 'border-border'
+              <div className={`w-32 h-48 bg-white rounded-xl shadow-xl border-2 p-3 flex flex-col ${
+                currentCard.value === 'K' ? 'border-yellow-500 ring-4 ring-yellow-500/20' : 'border-zinc-200'
               }`}>
                 {/* Card Value Top */}
                 <div className={`text-2xl font-bold ${SUIT_COLORS[currentCard.suit]}`}>
@@ -246,10 +246,10 @@ export function KingsCup({ onClose }: KingsCupProps) {
 
         {/* Current Rule Display */}
         {currentCard && !gameOver && (
-          <div className={`p-4 rounded-xl border-2 ${
+          <div className={`p-4 rounded-xl border ${
             currentCard.value === 'K' 
-              ? 'bg-yellow-50 border-yellow-300' 
-              : 'bg-blue-50 border-blue-200'
+              ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500' 
+              : 'bg-blue-500/10 border-blue-500/30 text-blue-400'
           }`}>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-2xl font-bold">{currentCard.rule}</span>
@@ -269,8 +269,8 @@ export function KingsCup({ onClose }: KingsCupProps) {
 
         {/* Quick Rules Reference */}
         {!currentCard && !gameOver && deck.length === 52 && (
-          <div className="text-xs text-muted-foreground space-y-1 p-3 bg-gray-50 rounded-lg">
-            <p className="font-medium mb-2">Luật nhanh:</p>
+          <div className="text-xs text-zinc-400 space-y-1 p-3 bg-zinc-900 border border-white/5 rounded-lg">
+            <p className="font-bold text-white mb-2">Luật nhanh:</p>
             <div className="grid grid-cols-2 gap-1">
               <span>A: Waterfall</span>
               <span>2: Chọn người</span>
@@ -284,7 +284,7 @@ export function KingsCup({ onClose }: KingsCupProps) {
               <span>10: Chủ đề</span>
               <span>J: Tạo luật</span>
               <span>Q: Hỏi</span>
-              <span className="col-span-2 font-bold text-yellow-600">K: Ly King (4 = uống!)</span>
+              <span className="col-span-2 font-bold text-yellow-500">K: Ly King (4 = uống!)</span>
             </div>
           </div>
         )}

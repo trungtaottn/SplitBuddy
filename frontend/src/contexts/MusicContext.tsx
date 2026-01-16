@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { isYouTubeUrl, extractYouTubeVideoId, loadYouTubeAPI, YTPlayer, YTPlayerState } from '@/lib/youtube'
 import { api } from '@/lib/axios'
 import type { ApiResponse, PaginationMeta } from '@/types/api'
@@ -32,7 +33,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [tracks, setTracks] = useState<Track[]>([])
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
+  // const [isLoading, setIsLoading] = useState(true) // Removed unused state
   const [volume, setVolumeState] = useState(() => {
     const saved = localStorage.getItem('musicVolume')
     return saved ? parseFloat(saved) : 0.3
@@ -48,36 +49,33 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const currentTrack = tracks.length > 0 ? tracks[currentTrackIndex] : null
 
-  // Load tracks from API
-  const refreshTracks = async () => {
-    try {
-      setIsLoading(true)
-      // Response shape giống với AdminPage: ApiResponse<{ data: Track[], pagination: PaginationMeta }>
+  const { data: paginatedData, isFetching: isLoading, refetch } = useQuery({
+    queryKey: ['music-tracks'],
+    queryFn: async () => {
       const res = await api.get<ApiResponse<{ data: Track[]; pagination: PaginationMeta }>>('/admin/music')
-      const paginated = res.data.data
-
-      if (paginated && Array.isArray(paginated.data)) {
-        // Đánh dấu track là YouTube hay không
-        const tracksWithType = paginated.data.map((t: Track) => ({
-            ...t,
-          isYouTube: isYouTubeUrl(t.src),
-          }))
-          setTracks(tracksWithType)
-      } else {
-        setTracks([])
-      }
-    } catch (error) {
-      console.warn('Failed to load music tracks:', error)
-      setTracks([])
-    } finally {
-      setIsLoading(false)
+      return res.data.data
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: (failureCount, error: any) => {
+       if (error?.response?.status === 429) return false
+       return failureCount < 2
     }
-  }
+  })
 
-  // Load tracks on mount
+  // Sync state with query data
   useEffect(() => {
-    refreshTracks()
-  }, [])
+    if (paginatedData && Array.isArray(paginatedData.data)) {
+      const tracksWithType = paginatedData.data.map((t: Track) => ({
+        ...t,
+        isYouTube: isYouTubeUrl(t.src),
+      }))
+      setTracks(tracksWithType)
+    }
+  }, [paginatedData])
+
+  const refreshTracks = async () => {
+     await refetch()
+  }
 
   // Initialize YouTube API
   useEffect(() => {
