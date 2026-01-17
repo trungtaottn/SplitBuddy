@@ -139,9 +139,25 @@ async fn confirm_settle(
     auth_user: AuthUser,
     Path(debt_id): Path<Uuid>,
 ) -> Result<Json<ApiResponse<SettleResponse>>, AppError> {
+    tracing::info!(
+        "Confirm settlement request: debt_id={}, user_id={}",
+        debt_id,
+        auth_user.user_id
+    );
     let repo = DebtRepository::new(state.pool.clone());
 
-    let debt = repo.confirm_settlement(debt_id, auth_user.user_id).await?;
+    let debt = match repo.confirm_settlement(debt_id, auth_user.user_id).await {
+        Ok(d) => d,
+        Err(e) => {
+            tracing::error!(
+                "Failed to confirm settlement: debt_id={}, user_id={}, error={:?}",
+                debt_id,
+                auth_user.user_id,
+                e
+            );
+            return Err(e);
+        }
+    };
 
     auto_archive_if_settled(&state.pool, debt.session_id)
         .await
@@ -207,7 +223,7 @@ async fn confirm_settle(
                 sqlx::query(
                     r#"
                     INSERT INTO notifications (id, user_id, type, title, message, data, is_read, created_at)
-                    VALUES ($1, $2, 'settlement', $3, $4, $5, false, NOW())
+                    VALUES ($1, $2, 'settlement_confirmed', $3, $4, $5, false, NOW())
                     "#,
                 )
                 .bind(notification_id)

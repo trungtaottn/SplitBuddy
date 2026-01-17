@@ -1,228 +1,261 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
-import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { toast } from 'sonner'
-import { ArrowLeft, Plus, Upload } from 'lucide-react'
-import type {
-  Bill,
-  ExpenseCategory,
-} from '@/types/api'
-import { ResponsiveModal } from '@/components/ui/responsive-modal'
-import { BillInput } from '@/components/BillInput'
-import { useAuth } from '@/contexts/AuthContext'
+import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { ArrowLeft, Plus, Upload } from "lucide-react";
+import type { Bill, ExpenseCategory } from "@/types/api";
+import { ResponsiveModal } from "@/components/ui/responsive-modal";
+import { BillInput } from "@/components/BillInput";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Sub-components
-import { SessionOverview } from './session/SessionOverview'
-import { BillList } from './session/BillList'
-import { DebtBreakdown } from './session/DebtBreakdown'
-import { RecurringExpenses } from './session/RecurringExpenses'
-import { ImportExportModal } from './session/ImportExportModal'
+import { SessionOverview } from "./session/SessionOverview";
+import { BillList } from "./session/BillList";
+import { DebtBreakdown } from "./session/DebtBreakdown";
+import { RecurringExpenses } from "./session/RecurringExpenses";
+import { ImportExportModal } from "./session/ImportExportModal";
 
 export default function SessionDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('overview')
-  const [showBillInput, setShowBillInput] = useState(false)
-  const [editingBill, setEditingBill] = useState<Bill | null>(null)
-  const [showImportExport, setShowImportExport] = useState(false)
-  const [defaultPayerId, setDefaultPayerId] = useState<string | null>(null)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deletingBillId, setDeletingBillId] = useState<string | null>(null)
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("overview");
+  const [showBillInput, setShowBillInput] = useState(false);
+  const [editingBill, setEditingBill] = useState<Bill | null>(null);
+  const [showImportExport, setShowImportExport] = useState(false);
+  const [defaultPayerId, setDefaultPayerId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
 
   // Queries
   const { data: session, isLoading: isSessionLoading } = useQuery({
-    queryKey: ['session', id],
+    queryKey: ["session", id],
     queryFn: () => api.getSession(id!),
     enabled: !!id,
-  })
+  });
 
   const { data: bills, isLoading: isBillsLoading } = useQuery({
-    queryKey: ['session-bills', id],
+    queryKey: ["session-bills", id],
     queryFn: () => api.inputs.listBills(id!),
     enabled: !!id,
-  })
+  });
 
   const { data: groupDetail } = useQuery({
-    queryKey: ['group', session?.group_id],
+    queryKey: ["group", session?.group_id],
     queryFn: () => api.groups.get(session!.group_id!),
     enabled: !!session?.group_id,
-  })
+  });
 
   const { data: categories = [] } = useQuery<ExpenseCategory[]>({
-    queryKey: ['categories'],
+    queryKey: ["categories"],
     queryFn: api.inputs.getCategories,
-  })
+  });
 
   const { data: whoPaysNext } = useQuery({
-    queryKey: ['who-pays-next', id],
+    queryKey: ["who-pays-next", id],
     queryFn: () => api.whoPaysNext(id!),
     enabled: !!id,
-  })
+  });
 
-  const categoriesById = categories.reduce((acc, cat) => {
-    acc[cat.id] = cat
-    return acc
-  }, {} as Record<string, ExpenseCategory>)
-
-  // Invalidate sessions query on unmount to refresh dashboard
-  useEffect(() => {
-    return () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] })
-    }
-  }, [queryClient])
+  const categoriesById = categories.reduce(
+    (acc, cat) => {
+      acc[cat.id] = cat;
+      return acc;
+    },
+    {} as Record<string, ExpenseCategory>
+  );
 
   // Mutations
   const updateSessionStatus = useMutation({
-    mutationFn: (status: 'active' | 'closed') =>
-      status === 'closed' ? api.closeSession(id!) : api.reopenSession(id!),
+    mutationFn: (status: "active" | "closed") =>
+      status === "closed" ? api.closeSession(id!) : api.reopenSession(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session', id] })
-      toast.success('Cập nhật trạng thái thành công')
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      toast.success("Cập nhật trạng thái thành công");
     },
-  })
+  });
 
   const updateDebtStrategy = useMutation({
-    mutationFn: (minimizeDebts: boolean) => api.updateMinimizeDebts(id!, minimizeDebts),
+    mutationFn: (minimizeDebts: boolean) =>
+      api.updateMinimizeDebts(id!, minimizeDebts),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session', id] })
-      queryClient.invalidateQueries({ queryKey: ['debts'] })
-      toast.success('Cập nhật cách tính công nợ')
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["debts"] });
+      toast.success("Cập nhật cách tính công nợ");
     },
-  })
+  });
 
   const archiveSession = useMutation({
     mutationFn: () => api.archiveSession(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session', id] })
-      queryClient.invalidateQueries({ queryKey: ['sessions'] })
-      toast.success('Đã lưu trữ cuộc nhậu')
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      toast.success("Đã lưu trữ cuộc nhậu");
     },
-  })
+  });
 
   const restoreSession = useMutation({
     mutationFn: () => api.restoreSession(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session', id] })
-      queryClient.invalidateQueries({ queryKey: ['sessions'] })
-      toast.success('Đã khôi phục cuộc nhậu')
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      toast.success("Đã khôi phục cuộc nhậu");
     },
-  })
+  });
 
   const deleteSession = useMutation({
     mutationFn: () => api.deleteSession(id!),
     onSuccess: () => {
-      toast.success('Đã xóa phiên nhậu')
-      navigate('/')
+      toast.success("Đã xóa phiên nhậu");
+      navigate("/");
     },
-  })
+  });
 
   const createBill = useMutation({
     mutationFn: (data: any) => api.inputs.createBill(id!, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session-bills', id] })
-      queryClient.invalidateQueries({ queryKey: ['session', id] })
-      setShowBillInput(false)
+      queryClient.invalidateQueries({ queryKey: ["session-bills", id] });
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["debts"] });
+      setShowBillInput(false);
     },
     onError: (error: any) => {
-      toast.error('Lỗi khi tạo hóa đơn: ' + (error.response?.data?.message || error.message))
-    }
-  })
+      toast.error(
+        "Lỗi khi tạo hóa đơn: " +
+          (error.response?.data?.message || error.message)
+      );
+    },
+  });
 
   const updateBill = useMutation({
     mutationFn: (data: any) => api.inputs.updateBill(id!, data.billId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session-bills', id] })
-      queryClient.invalidateQueries({ queryKey: ['session', id] })
-      setEditingBill(null)
-      toast.success('Đã cập nhật hóa đơn')
+      queryClient.invalidateQueries({ queryKey: ["session-bills", id] });
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["debts"] });
+      setEditingBill(null);
+      toast.success("Đã cập nhật hóa đơn");
     },
-  })
+  });
 
   const deleteBill = useMutation({
     mutationFn: (billId: string) => api.inputs.deleteBill(id!, billId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session-bills', id] })
-      queryClient.invalidateQueries({ queryKey: ['session', id] })
-      setDeletingBillId(null)
-      toast.success('Đã xóa hóa đơn')
+      queryClient.invalidateQueries({ queryKey: ["session-bills", id] });
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["debts"] });
+      setDeletingBillId(null);
+      toast.success("Đã xóa hóa đơn");
     },
-  })
+  });
 
   const addParticipant = useMutation({
     mutationFn: (data: { user_id?: string; guest_name?: string }) =>
       api.addParticipant(id!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['session', id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
       toast.success('Thêm thành viên thành công')
     },
-  })
+  });
 
   const updateParticipant = useMutation({
-    mutationFn: ({ pid, guest_name, default_weight, is_active }: { pid: string; guest_name?: string; default_weight?: number; is_active?: boolean }) =>
-      api.updateParticipant(id!, pid, { guest_name, default_weight, is_active }),
+    mutationFn: ({
+      pid,
+      guest_name,
+      default_weight,
+      is_active,
+    }: {
+      pid: string;
+      guest_name?: string;
+      default_weight?: number;
+      is_active?: boolean;
+    }) =>
+      api.updateParticipant(id!, pid, {
+        guest_name,
+        default_weight,
+        is_active,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['session', id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
       toast.success('Cập nhật thành công')
     },
-  })
+  });
 
   const deleteParticipant = useMutation({
     mutationFn: (pid: string) => api.deleteParticipant(id!, pid),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['session', id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
       toast.success('Xóa thành viên thành công')
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Không thể xóa thành viên')
+      toast.error(error.response?.data?.message || "Không thể xóa thành viên");
     },
-  })
+  });
 
   // Handlers for Overview
-  const handleUpdateParticipant = (pid: string, updates: { guest_name?: string; default_weight?: number; is_active?: boolean }) => {
-    updateParticipant.mutate({ pid, ...updates })
-  }
+  const handleUpdateParticipant = (
+    pid: string,
+    updates: {
+      guest_name?: string;
+      default_weight?: number;
+      is_active?: boolean;
+    }
+  ) => {
+    updateParticipant.mutate({ pid, ...updates });
+  };
 
   const handleDeleteParticipant = (pid: string) => {
-    deleteParticipant.mutate(pid)
-  }
+    deleteParticipant.mutate(pid);
+  };
 
-  const handleAddParticipant = (data: { user_id?: string; guest_name?: string }) => {
-    addParticipant.mutate(data)
-  }
+  const handleAddParticipant = (data: {
+    user_id?: string;
+    guest_name?: string;
+  }) => {
+    addParticipant.mutate(data);
+  };
 
   // Handlers for BillList
   const handleDeleteBill = (billId: string) => {
     if (!billId) {
-      setDeletingBillId(null)
+      setDeletingBillId(null);
       return;
     }
     if (deletingBillId === billId) {
-      deleteBill.mutate(billId)
+      deleteBill.mutate(billId);
     } else {
-      setDeletingBillId(billId)
+      setDeletingBillId(billId);
     }
-  }
+  };
 
   const handleEditBill = (bill: Bill) => {
-    setEditingBill(bill)
-    setShowBillInput(true) // Reuse BillInput modal/drawer logic or inline
-  }
-
+    setEditingBill(bill);
+    setShowBillInput(true); // Reuse BillInput modal/drawer logic or inline
+  };
 
   if (isSessionLoading || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
-    )
+    );
   }
 
-  const isOwner = session.created_by === user?.id
+  const isOwner = session.created_by === user?.id;
 
   return (
     <div className="container mx-auto max-w-2xl px-4 py-6 pb-24">
@@ -240,7 +273,11 @@ export default function SessionDetailPage() {
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           <TabsTrigger value="bills">Hoá đơn</TabsTrigger>
@@ -263,19 +300,19 @@ export default function SessionDetailPage() {
             isOwner={isOwner}
             whoPaysNext={whoPaysNext}
             onQuickCreate={() => {
-              const suggestedId = whoPaysNext?.suggested?.participant_id
-              setDefaultPayerId(suggestedId || null)
-              setEditingBill(null)
-              setShowBillInput(true)
+              const suggestedId = whoPaysNext?.suggested?.participant_id;
+              setDefaultPayerId(suggestedId || null);
+              setEditingBill(null);
+              setShowBillInput(true);
             }}
           />
 
           <div className="mt-6 flex flex-col gap-3">
-            {session.status === 'active' ? (
+            {session.status === "active" ? (
               <Button
                 variant="outline"
                 className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
-                onClick={() => updateSessionStatus.mutate('closed')}
+                onClick={() => updateSessionStatus.mutate("closed")}
                 disabled={!!session.archived_at}
               >
                 Kết thúc cuộc nhậu
@@ -284,7 +321,7 @@ export default function SessionDetailPage() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => updateSessionStatus.mutate('active')}
+                onClick={() => updateSessionStatus.mutate("active")}
                 disabled={!!session.archived_at}
               >
                 Mở lại cuộc nhậu
@@ -298,7 +335,9 @@ export default function SessionDetailPage() {
                 onClick={() => restoreSession.mutate()}
                 disabled={!isOwner || restoreSession.isPending}
               >
-                {restoreSession.isPending ? 'Đang khôi phục...' : 'Khôi phục cuộc nhậu'}
+                {restoreSession.isPending
+                  ? "Đang khôi phục..."
+                  : "Khôi phục cuộc nhậu"}
               </Button>
             ) : (
               <Button
@@ -307,7 +346,9 @@ export default function SessionDetailPage() {
                 onClick={() => archiveSession.mutate()}
                 disabled={!isOwner || archiveSession.isPending}
               >
-                {archiveSession.isPending ? 'Đang lưu trữ...' : 'Lưu trữ cuộc nhậu'}
+                {archiveSession.isPending
+                  ? "Đang lưu trữ..."
+                  : "Lưu trữ cuộc nhậu"}
               </Button>
             )}
 
@@ -328,11 +369,11 @@ export default function SessionDetailPage() {
               className="w-full gap-2"
               size="lg"
               onClick={() => {
-                setDefaultPayerId(null)
-                setEditingBill(null)
-                setShowBillInput(true)
+                setDefaultPayerId(null);
+                setEditingBill(null);
+                setShowBillInput(true);
               }}
-              disabled={session.status === 'closed' || !!session.archived_at}
+              disabled={session.status === "closed" || !!session.archived_at}
             >
               <Plus className="h-5 w-5" />
               Thêm hoá đơn
@@ -387,7 +428,7 @@ export default function SessionDetailPage() {
             baseCurrency={session.base_currency}
             isOwner={isOwner}
             isArchived={!!session.archived_at}
-            isClosed={session.status === 'closed'}
+            isClosed={session.status === "closed"}
           />
         </TabsContent>
       </Tabs>
@@ -396,8 +437,8 @@ export default function SessionDetailPage() {
       <ResponsiveModal
         isOpen={showBillInput}
         onClose={() => {
-          setShowBillInput(false)
-          setEditingBill(null)
+          setShowBillInput(false);
+          setEditingBill(null);
         }}
         title={editingBill ? "Sửa hóa đơn" : "Thêm hoá đơn"}
       >
@@ -407,14 +448,14 @@ export default function SessionDetailPage() {
           defaultPayerId={defaultPayerId || undefined}
           onSubmit={(data) => {
             if (editingBill) {
-              updateBill.mutate({ ...data, billId: editingBill.id })
+              updateBill.mutate({ ...data, billId: editingBill.id });
             } else {
-              createBill.mutate(data)
+              createBill.mutate(data);
             }
           }}
           onCancel={() => {
-            setShowBillInput(false)
-            setEditingBill(null)
+            setShowBillInput(false);
+            setEditingBill(null);
           }}
           isSubmitting={createBill.isPending || updateBill.isPending}
           initialData={editingBill}
@@ -427,8 +468,8 @@ export default function SessionDetailPage() {
         onClose={() => setShowImportExport(false)}
         sessionId={session.id}
         onImported={() => {
-          queryClient.invalidateQueries({ queryKey: ['session-bills', id] })
-          queryClient.invalidateQueries({ queryKey: ['session', id] })
+          queryClient.invalidateQueries({ queryKey: ["session-bills", id] });
+          queryClient.invalidateQueries({ queryKey: ["session", id] });
         }}
       />
 
@@ -442,11 +483,15 @@ export default function SessionDetailPage() {
       >
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Bạn có chắc muốn xóa buổi nhậu <strong>"{session?.name}"</strong>? Tất cả hoá đơn và công nợ liên quan sẽ bị
-            xóa vĩnh viễn.
+            Bạn có chắc muốn xóa buổi nhậu <strong>"{session?.name}"</strong>?
+            Tất cả hoá đơn và công nợ liên quan sẽ bị xóa vĩnh viễn.
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => setShowDeleteConfirm(false)}>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowDeleteConfirm(false)}
+            >
               Huỷ
             </Button>
             <Button
@@ -455,12 +500,11 @@ export default function SessionDetailPage() {
               onClick={() => deleteSession.mutate()}
               disabled={deleteSession.isPending}
             >
-              {deleteSession.isPending ? 'Đang xóa...' : 'Xóa'}
+              {deleteSession.isPending ? "Đang xóa..." : "Xóa"}
             </Button>
           </div>
         </div>
       </ResponsiveModal>
-
     </div>
-  )
+  );
 }

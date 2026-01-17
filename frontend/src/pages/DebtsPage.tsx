@@ -275,6 +275,7 @@ export default function DebtsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['debts'] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
       toast.success('Đã gửi yêu cầu xác nhận!')
     },
     onError: () => {
@@ -288,6 +289,7 @@ export default function DebtsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['debts'] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
       toast.success('Đã xác nhận thanh toán!')
     },
     onError: () => {
@@ -301,6 +303,7 @@ export default function DebtsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['debts'] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
       toast.success('Đã tất toán nợ từ khách!')
     },
     onError: (error: unknown) => {

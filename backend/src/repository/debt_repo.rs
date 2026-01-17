@@ -138,6 +138,12 @@ impl DebtRepository {
     }
 
     pub async fn confirm_settlement(&self, debt_id: Uuid, user_id: Uuid) -> Result<Debt, AppError> {
+        tracing::debug!(
+            "Fetching debt for confirmation: debt_id={}, user_id={}",
+            debt_id,
+            user_id
+        );
+
         let debt = sqlx::query_as!(
             Debt,
             r#"
@@ -159,14 +165,34 @@ impl DebtRepository {
         )
         .fetch_optional(&self.pool)
         .await?
-        .ok_or(AppError::Forbidden {
-            message: "You can only confirm settlement for debts owed to you".to_string(),
+        .ok_or_else(|| {
+            tracing::warn!(
+                "Debt not found or user is not the creditor: debt_id={}, user_id={}",
+                debt_id,
+                user_id
+            );
+            AppError::Forbidden {
+                message: "You can only confirm settlement for debts owed to you".to_string(),
+            }
         })?;
 
+        tracing::debug!(
+            "Debt found: id={}, status={:?}, debtor_id={}, creditor_id={}",
+            debt.id,
+            debt.status,
+            debt.debtor_id,
+            debt.creditor_id
+        );
+
         if debt.status != DebtStatus::SettlementRequested {
+            tracing::warn!("Invalid debt status for confirmation: debt_id={}, current_status={:?}, expected=SettlementRequested", 
+                debt_id, debt.status);
             return Err(AppError::Validation {
                 field: "status".to_string(),
-                message: "Settlement must be requested before it can be confirmed".to_string(),
+                message: format!(
+                    "Settlement must be requested before it can be confirmed. Current status: {:?}",
+                    debt.status
+                ),
             });
         }
 
