@@ -1,19 +1,18 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
-import { LogOut, User, Wallet, Home, Users, Shield, Sparkles } from 'lucide-react'
+import { LogOut, User, Wallet, Home, Users, Sparkles, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MusicPlayer } from '@/components/ui/MusicPlayer'
 import { AnimatedOutlet } from '@/components/PageTransition'
-import { SkipLink } from '@/components/SkipLink'
-import { BeerIcon } from '@/components/ui/BeerIcon'
+import { NotificationBell } from '@/components/NotificationBell'
 
 /**
- * AppLayout - Vintage Paper Style
+ * AppLayout - Dark Luxury / Portfolio Style
  * Features:
- * - Paper texture background
- * - Typewriter navigation
- * - Notebook-style header
+ * - Minimal header (Content focus)
+ * - Typography navigation
+ * - No heavy glass effects in nav
  */
 
 export default function AppLayout() {
@@ -23,8 +22,6 @@ export default function AppLayout() {
   const location = useLocation()
 
   const isAdmin = user?.role === 'admin'
-  
-  // Check feature flags
   const showGroups = isEnabled('groups')
   const showDebts = isEnabled('debts')
   const showGames = isEnabled('games')
@@ -36,229 +33,115 @@ export default function AppLayout() {
 
   const isActive = (path: string) => location.pathname === path
 
+  const NavLink = ({ to, label, icon: _Icon }: { to: string; label: string; icon: any }) => (
+
+    <Link 
+      to={to} 
+      className={`relative group flex items-center gap-2 px-4 py-2 text-sm font-bold uppercase tracking-widest transition-colors duration-300 ${
+        isActive(to) ? 'text-white' : 'text-muted-foreground hover:text-white'
+      }`}
+    >
+      <span>{label}</span>
+      {isActive(to) && (
+        <span className="absolute -bottom-1 left-0 w-full h-[2px] bg-gradient-to-r from-orange-500 to-red-500" />
+      )}
+    </Link>
+  )
+
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0 texture-paper">
-      {/* Aged paper vignette effect */}
-      <div className="fixed inset-0 pointer-events-none texture-aged" />
-      
-      {/* Accessibility: Skip to main content */}
-      <SkipLink />
-      
-      {/* Desktop Header - Letterhead Style */}
-      <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b-2 border-double border-border">
-        <div className="container mx-auto flex h-14 items-center justify-between px-4 md:h-16">
-          {/* Logo - Vintage style with beer icon */}
-          <Link 
-            to={isAdmin ? "/admin" : "/"} 
-            className="flex items-center gap-3 group"
-          >
-            <BeerIcon size={28} animated className="md:w-8 md:h-8" />
-            <div className="hidden sm:flex flex-col">
-              <span className="text-lg font-bold tracking-tight text-foreground">
-                Split Buddy
-              </span>
-              <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground -mt-1">
-                Bill Splitter
-              </span>
-            </div>
+    <div className="min-h-screen bg-transparent pb-24 md:pb-0">
+      {/* Desktop Header - Minimalist */}
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-white/5">
+        <div className="container mx-auto flex h-20 items-center justify-between px-6">
+          {/* Brand - Text Only */}
+          <Link to={isAdmin ? "/admin" : "/"} className="flex flex-col">
+            <span className="text-2xl font-black font-heading tracking-tighter text-white leading-none">
+              SPLIT
+            </span>
+            <span className="text-2xl font-black font-heading tracking-tighter text-white leading-none">
+              BUDDY
+            </span>
           </Link>
 
-          {/* Desktop Nav - Typewriter tabs */}
-          <nav className="hidden items-center gap-1 md:flex">
-            {isAdmin ? (
-              <Link to="/admin">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <Shield className="h-4 w-4" strokeWidth={1.5} />
-                  <span>Quản lý</span>
-                </Button>
-              </Link>
-            ) : (
+          {/* Desktop Nav - Editorial Links */}
+          <nav className="hidden items-center md:flex gap-4">
+            {!isAdmin && (
               <>
-                {showGroups && (
-                  <Link to="/groups">
-                    <Button 
-                      variant={isActive('/groups') ? 'outline' : 'ghost'} 
-                      size="sm" 
-                      className="gap-2"
-                    >
-                      <Users className="h-4 w-4" strokeWidth={1.5} />
-                      <span>Nhóm</span>
-                    </Button>
-                  </Link>
-                )}
-                {showDebts && (
-                  <Link to="/debts" data-onboarding="debts">
-                    <Button 
-                      variant={isActive('/debts') ? 'outline' : 'ghost'} 
-                      size="sm" 
-                      className="gap-2"
-                    >
-                      <Wallet className="h-4 w-4" strokeWidth={1.5} />
-                      <span>Công nợ</span>
-                    </Button>
-                  </Link>
-                )}
-                {showGames && (
-                  <Link to="/games" data-onboarding="games">
-                    <Button 
-                      variant={isActive('/games') ? 'outline' : 'ghost'} 
-                      size="sm" 
-                      className="gap-2"
-                    >
-                      <Sparkles className="h-4 w-4" strokeWidth={1.5} />
-                      <span>Trò chơi</span>
-                    </Button>
-                  </Link>
-                )}
+                <NavLink to="/" label="Trang chủ" icon={Home} />
+                {showGroups && <NavLink to="/groups" label="Nhóm" icon={Users} />}
+                {showDebts && <NavLink to="/debts" label="Công nợ" icon={Wallet} />}
+                {showGames && <NavLink to="/games" label="Trò chơi" icon={Sparkles} />}
+                <NavLink to="/analytics" label="Thống kê" icon={TrendingUp} />
               </>
             )}
 
-            {/* Divider */}
-            <div className="w-px h-6 bg-border mx-2" />
+            <div className="w-px h-6 bg-white/10 mx-4" />
 
-            {/* User section */}
-            <Link 
-              to="/profile" 
-              className="flex items-center gap-2 px-2 py-1 rounded-sm hover:bg-accent/30 transition-colors"
-            >
-              <div className="flex h-7 w-7 items-center justify-center rounded-sm border-2 border-primary/50 bg-primary/10 text-primary">
-                <User className="h-3.5 w-3.5" strokeWidth={1.5} />
-              </div>
-              <span className="text-sm font-medium max-w-[100px] truncate">
-                {user?.full_name}
-              </span>
-            </Link>
+            {/* User Actions */}
+            <div className="flex items-center gap-4">
+              {!isAdmin && <NotificationBell />}
+              
+              <Link to="/profile" className="flex items-center gap-3 group">
+                <div className="text-right hidden lg:block">
+                  <p className="text-xs font-bold text-white uppercase tracking-wider">{user?.full_name}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                   {isAdmin ? 'Director' : 'Member'}
+                  </p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-primary/50 transition-colors">
+                  <User className="h-5 w-5 text-white" />
+                </div>
+              </Link>
 
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={handleLogout}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <LogOut className="h-4 w-4" strokeWidth={1.5} />
-            </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleLogout}
+                className="text-muted-foreground hover:text-white"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </div>
           </nav>
 
-          {/* Mobile: User info */}
-          <div className="flex items-center gap-2 md:hidden">
-            <Link 
-              to="/profile" 
-              className="max-w-24 truncate text-sm font-medium text-foreground"
-            >
-              {user?.full_name}
-            </Link>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={handleLogout}
-              className="text-muted-foreground"
-            >
-              <LogOut className="h-4 w-4" strokeWidth={1.5} />
-            </Button>
+          {/* Mobile Menu Toggle (Simplified) */}
+          <div className="md:hidden flex items-center gap-4">
+             {/* Mobile User/Menu would go here */}
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main 
-        id="main-content" 
-        tabIndex={-1} 
-        className="container mx-auto px-4 py-6 md:py-8 focus:outline-none relative z-10"
-      >
+      <main className="container mx-auto px-4 py-12 relative z-10 w-full max-w-7xl">
         <AnimatedOutlet />
       </main>
 
-      {/* Mobile Bottom Navigation - Tab bar style */}
-      {isAdmin ? (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t-2 border-border bg-card md:hidden">
-          <div className="flex h-16 items-center justify-center">
-            <Link
-              to="/admin"
-              className={`flex flex-col items-center gap-1 px-6 py-2 ${
-                isActive('/admin') 
-                  ? 'text-primary' 
-                  : 'text-muted-foreground'
-              }`}
-            >
-              <Shield className="h-5 w-5" strokeWidth={1.5} />
-              <span className="text-[10px] uppercase tracking-wider font-semibold">
-                Admin
-              </span>
-            </Link>
-          </div>
-        </nav>
-      ) : (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t-2 border-border md:hidden">
-          <div className="flex h-16 items-center justify-around px-2">
-            <Link
-              to="/"
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-sm transition-all ${
-                isActive('/') 
-                  ? 'text-primary bg-primary/10' 
-                  : 'text-muted-foreground'
-              }`}
-            >
-              <Home className="h-5 w-5" strokeWidth={1.5} />
-              <span className="text-[10px] uppercase tracking-wider font-semibold">
-                Home
-              </span>
-            </Link>
-
-            {showGroups && (
-              <Link
-                to="/groups"
-                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-sm transition-all ${
-                  isActive('/groups') 
-                    ? 'text-primary bg-primary/10' 
-                    : 'text-muted-foreground'
-                }`}
-              >
-                <Users className="h-5 w-5" strokeWidth={1.5} />
-                <span className="text-[10px] uppercase tracking-wider font-semibold">
-                  Nhóm
-                </span>
-              </Link>
-            )}
-
-            {showDebts && (
-              <Link
-                to="/debts"
-                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-sm transition-all ${
-                  isActive('/debts') 
-                    ? 'text-primary bg-primary/10' 
-                    : 'text-muted-foreground'
-                }`}
-              >
-                <Wallet className="h-5 w-5" strokeWidth={1.5} />
-                <span className="text-[10px] uppercase tracking-wider font-semibold">
-                  Nợ
-                </span>
-              </Link>
-            )}
-
-            {showGames && (
-              <Link
-                to="/games"
-                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-sm transition-all ${
-                  isActive('/games') 
-                    ? 'text-primary bg-primary/10' 
-                    : 'text-muted-foreground'
-                }`}
-              >
-                <Sparkles className="h-5 w-5" strokeWidth={1.5} />
-                <span className="text-[10px] uppercase tracking-wider font-semibold">
-                  Games
-                </span>
-              </Link>
-            )}
-          </div>
-        </nav>
-      )}
+      {/* Mobile Bottom Navigation - Minimal Dark */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-md border-t border-white/5 md:hidden pb-safe">
+        <div className="flex h-16 items-center justify-around px-2">
+          {/* Simple Icon-only nav for mobile */}
+          <Link to="/" className={`p-3 ${isActive('/') ? 'text-primary' : 'text-muted-foreground'}`}>
+            <Home className="h-6 w-6" />
+          </Link>
+          {showGroups && (
+          <Link to="/groups" className={`p-3 ${isActive('/groups') ? 'text-primary' : 'text-muted-foreground'}`}>
+            <Users className="h-6 w-6" />
+          </Link>
+          )}
+          {showDebts && (
+          <Link to="/debts" className={`p-3 ${isActive('/debts') ? 'text-primary' : 'text-muted-foreground'}`}>
+            <Wallet className="h-6 w-6" />
+          </Link>
+          )}
+          <Link to="/profile" className={`p-3 ${isActive('/profile') ? 'text-primary' : 'text-muted-foreground'}`}>
+            <User className="h-6 w-6" />
+          </Link>
+        </div>
+      </nav>
       
-      {/* Background Music Player */}
+      {/* Background Music Player - Keep functionality but verify style later */}
       <MusicPlayer />
       
-      {/* Portal for FABs - rendered outside main container */}
       <div id="fab-portal" />
     </div>
   )

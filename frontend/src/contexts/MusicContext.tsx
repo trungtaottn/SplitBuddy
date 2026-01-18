@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { isYouTubeUrl, extractYouTubeVideoId, loadYouTubeAPI, YTPlayer, YTPlayerState } from '@/lib/youtube'
 import { api } from '@/lib/axios'
 import type { ApiResponse, PaginationMeta } from '@/types/api'
@@ -16,6 +17,7 @@ interface MusicContextType {
   tracks: Track[]
   volume: number
   isLoading: boolean
+  isShuffled: boolean
   play: () => void
   pause: () => void
   toggle: () => void
@@ -24,6 +26,7 @@ interface MusicContextType {
   prevTrack: () => void
   selectTrack: (track: Track) => void
   refreshTracks: () => Promise<void>
+  toggleShuffle: () => void
 }
 
 const MusicContext = createContext<MusicContextType | null>(null)
@@ -32,7 +35,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [tracks, setTracks] = useState<Track[]>([])
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isShuffled, setIsShuffled] = useState(false)
+  const [shuffledIndices, setShuffledIndices] = useState<number[]>([])
+  // const [isLoading, setIsLoading] = useState(true) // Removed unused state
   const [volume, setVolumeState] = useState(() => {
     const saved = localStorage.getItem('musicVolume')
     return saved ? parseFloat(saved) : 0.3
@@ -48,36 +53,33 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const currentTrack = tracks.length > 0 ? tracks[currentTrackIndex] : null
 
-  // Load tracks from API
-  const refreshTracks = async () => {
-    try {
-      setIsLoading(true)
-      // Response shape giống với AdminPage: ApiResponse<{ data: Track[], pagination: PaginationMeta }>
-      const res = await api.get<ApiResponse<{ data: Track[]; pagination: PaginationMeta }>>('/admin/music')
-      const paginated = res.data.data
-
-      if (paginated && Array.isArray(paginated.data)) {
-        // Đánh dấu track là YouTube hay không
-        const tracksWithType = paginated.data.map((t: Track) => ({
-          ...t,
-          isYouTube: isYouTubeUrl(t.src),
-        }))
-        setTracks(tracksWithType)
-      } else {
-        setTracks([])
-      }
-    } catch (error) {
-      console.warn('Failed to load music tracks:', error)
-      setTracks([])
-    } finally {
-      setIsLoading(false)
+  const { data: paginatedData, isFetching: isLoading, refetch } = useQuery({
+    queryKey: ['music-tracks'],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<{ data: Track[]; pagination: PaginationMeta }>>('/admin/music?limit=1000')
+      return res.data.data
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: (failureCount, error: any) => {
+       if (error?.response?.status === 429) return false
+       return failureCount < 2
     }
-  }
+  })
 
-  // Load tracks on mount
+  // Sync state with query data
   useEffect(() => {
-    refreshTracks()
-  }, [])
+    if (paginatedData && Array.isArray(paginatedData.data)) {
+      const tracksWithType = paginatedData.data.map((t: Track) => ({
+        ...t,
+        isYouTube: isYouTubeUrl(t.src),
+      }))
+      setTracks(tracksWithType)
+    }
+  }, [paginatedData])
+
+  const refreshTracks = async () => {
+     await refetch()
+  }
 
   // Initialize YouTube API
   useEffect(() => {
@@ -282,7 +284,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const nextTrack = () => {
     if (tracks.length > 0) {
-      setCurrentTrackIndex((prev) => (prev + 1) % tracks.length)
+      if (isShuffled && shuffledIndices.length > 0) {
+        // Find current position in shuffled array
+        const currentShufflePos = shuffledIndices.indexOf(currentTrackIndex)
+        const nextShufflePos = (currentShufflePos + 1) % shuffledIndices.length
+        setCurrentTrackIndex(shuffledIndices[nextShufflePos])
+      } else {
+        // Normal sequential playback
+        setCurrentTrackIndex((prev) => (prev + 1) % tracks.length)
+      }
       // Auto-play when switching tracks
       setIsPlaying(true)
     }
@@ -295,7 +305,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const prevTrack = () => {
     if (tracks.length > 0) {
-      setCurrentTrackIndex((prev) => (prev - 1 + tracks.length) % tracks.length)
+      if (isShuffled && shuffledIndices.length > 0) {
+        // Find current position in shuffled array
+        const currentShufflePos = shuffledIndices.indexOf(currentTrackIndex)
+        const prevShufflePos = (currentShufflePos - 1 + shuffledIndices.length) % shuffledIndices.length
+        setCurrentTrackIndex(shuffledIndices[prevShufflePos])
+      } else {
+        // Normal sequential playback
+        setCurrentTrackIndex((prev) => (prev - 1 + tracks.length) % tracks.length)
+      }
     }
   }
 
@@ -303,6 +321,24 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const index = tracks.findIndex((t) => t.id === track.id)
     if (index !== -1) {
       setCurrentTrackIndex(index)
+    }
+  }
+
+  const toggleShuffle = () => {
+    if (!isShuffled) {
+      // Enable shuffle - create shuffled indices
+      const indices = tracks.map((_, i) => i)
+      // Fisher-Yates shuffle
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[indices[i], indices[j]] = [indices[j], indices[i]]
+      }
+      setShuffledIndices(indices)
+      setIsShuffled(true)
+    } else {
+      // Disable shuffle - go back to original order
+      setShuffledIndices([])
+      setIsShuffled(false)
     }
   }
 
@@ -314,6 +350,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         tracks,
         volume,
         isLoading,
+        isShuffled,
         play,
         pause,
         toggle,
@@ -322,6 +359,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         prevTrack,
         selectTrack,
         refreshTracks,
+        toggleShuffle,
       }}
     >
       {children}

@@ -6,18 +6,21 @@ import {
   SkipBack, 
   SkipForward, 
   Volume2, 
-  VolumeX
+  VolumeX,
+  Disc,
+  Music2,
+  Shuffle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
 
 /**
- * MusicPlayer - Vintage Paper Style
+ * MusicPlayer - Neon Cyberpunk Style
  * Features:
- * - Paper card design
- * - Sepia monochrome colors
- * - Typewriter typography
+ * - Glassmorphism panel
+ * - Neon glow controls
+ * - Digital visualizer effect
  */
 
 export function MusicPlayer() {
@@ -30,7 +33,9 @@ export function MusicPlayer() {
     nextTrack, 
     prevTrack,
     tracks,
-    selectTrack
+    selectTrack,
+    isShuffled,
+    toggleShuffle
   } = useMusic()
   
   const [isExpanded, setIsExpanded] = useState(false)
@@ -77,114 +82,115 @@ export function MusicPlayer() {
 
   return (
     <div ref={containerRef} className="fixed bottom-20 md:bottom-4 left-4 z-50">
-      {/* Expanded Panel - Vintage Paper Style */}
+      {/* Expanded Panel - Neon Glass Style */}
       <div 
         className={cn(
-          "absolute bottom-full left-0 mb-2 w-72 overflow-hidden transition-all duration-300 ease-out",
-          "card-paper",
-          isExpanded ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95 pointer-events-none"
+          "absolute bottom-full left-0 mb-4 w-72 overflow-hidden transition-all duration-300 cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+          "bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)]",
+          isExpanded ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-4 scale-95 pointer-events-none"
         )}
       >
+        {/* Glow effect */}
+        <div className="absolute top-0 w-full h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent opacity-70" />
+
         {/* Track Info */}
-        <div className="p-4 border-b-2 border-dotted border-border">
+        <div className="p-5 relative">
           <div className="flex items-center gap-4">
-            {/* Vintage Vinyl Record - Spinning when playing */}
-            <div className="relative w-12 h-12 flex-shrink-0">
-              {/* Vinyl Record */}
+            {/* Album Art / Visualizer */}
+            <div className="relative w-12 h-12 flex-shrink-0 group">
               <div className={cn(
-                "w-14 h-14 rounded-full border-2 border-border bg-gradient-to-br from-foreground/20 to-foreground/5",
-                "relative overflow-hidden shadow-lg",
-                isPlaying && "animate-spin"
-              )} style={{ animationDuration: '3s' }}>
-                {/* Record grooves */}
-                <div className="absolute inset-1 rounded-full border border-border/40" />
-                <div className="absolute inset-2 rounded-full border border-border/30" />
-                <div className="absolute inset-3 rounded-full border border-border/20" />
-                
-                {/* Center label */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/50 flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                  </div>
-                </div>
+                "w-12 h-12 rounded-lg bg-black border border-white/10 flex items-center justify-center overflow-hidden",
+                isPlaying && "shadow-[0_0_15px_hsl(var(--primary)/0.5)] border-primary/50"
+              )}>
+                 {isPlaying ? (
+                   <div className="flex items-center justify-center gap-[2px]">
+                     {[1,2,3,4].map(i => (
+                       <div 
+                        key={i} 
+                        className="w-1 bg-primary rounded-full animate-neon-pulse"
+                        style={{ height: '60%', animationDelay: `${i * 0.1}s` }}
+                       />
+                     ))}
+                   </div>
+                 ) : (
+                   <Disc className="text-muted-foreground w-6 h-6" />
+                 )}
               </div>
-              
-              {/* Needle arm (static, doesn't spin) */}
-              {isPlaying && (
-                <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-foreground/60 origin-top rotate-12" />
-              )}
             </div>
             
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm truncate uppercase tracking-wide">
-                {currentTrack?.name || 'Không có bài hát'}
+              <p className={cn(
+                "font-bold text-sm truncate tracking-wide text-white",
+                isPlaying && "text-transparent bg-clip-text bg-gradient-to-r from-white to-primary animate-pulse"
+              )}>
+                {currentTrack?.name || 'Giai điệu Neon'}
               </p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                {tracks.length} bài hát
+              <p className="text-[10px] text-cyan-400 uppercase tracking-widest font-mono mt-1">
+                {tracks.length} TRACKS • LOFI
               </p>
-              {isPlaying && (
-                <div className="flex items-center gap-1 mt-1">
-                  {[0, 1, 2, 3].map((i) => (
-                    <span 
-                      key={i}
-                      className="w-0.5 bg-primary rounded-none animate-bounce" 
-                      style={{ 
-                        animationDelay: `${i * 100}ms`,
-                        height: `${6 + Math.random() * 6}px`
-                      }} 
-                    />
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>
 
         {/* Controls */}
-        <div className="p-4">
-          <div className="flex items-center justify-center gap-3">
+        <div className="px-5 pb-5">
+          <div className="flex items-center justify-center gap-4 mb-4">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-10 w-10 rounded-sm"
+              className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-white/10"
               onClick={prevTrack}
             >
-              <SkipBack className="h-5 w-5" strokeWidth={1.5} />
+              <SkipBack className="h-4 w-4" />
             </Button>
+            
             <Button 
-              variant="stamp" 
               size="icon" 
-              className="h-12 w-12 rounded-sm"
+              className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 text-black shadow-[0_0_15px_hsl(var(--primary)/0.5)] hover:shadow-[0_0_25px_hsl(var(--primary)/0.7)] hover:scale-105 transition-all"
               onClick={toggle}
+              haptic={true}
             >
               {isPlaying ? (
-                <Pause className="h-5 w-5" strokeWidth={1.5} />
+                <Pause className="h-4 w-4 fill-current" />
               ) : (
-                <Play className="h-5 w-5 ml-0.5" strokeWidth={1.5} />
+                <Play className="h-4 w-4 fill-current ml-0.5" />
               )}
             </Button>
+            
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-10 w-10 rounded-sm"
+              className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-white/10"
               onClick={nextTrack}
             >
-              <SkipForward className="h-5 w-5" strokeWidth={1.5} />
+              <SkipForward className="h-4 w-4" />
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={cn(
+                "h-8 w-8 transition-colors",
+                isShuffled ? "text-primary hover:text-primary/80" : "text-muted-foreground hover:text-white hover:bg-white/10"
+              )}
+              onClick={toggleShuffle}
+            >
+              <Shuffle className="h-4 w-4" />
             </Button>
           </div>
 
           {/* Volume */}
-          <div className="flex items-center gap-3 mt-4">
+          <div className="flex items-center gap-2">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-9 w-9 shrink-0 rounded-sm"
+              className="h-6 w-6 shrink-0 text-muted-foreground hover:text-white pr-0"
               onClick={handleMuteToggle}
             >
               {isMuted || volume === 0 ? (
-                <VolumeX className="h-5 w-5" strokeWidth={1.5} />
+                <VolumeX className="h-4 w-4" />
               ) : (
-                <Volume2 className="h-5 w-5" strokeWidth={1.5} />
+                <Volume2 className="h-4 w-4" />
               )}
             </Button>
             <Slider
@@ -192,82 +198,84 @@ export function MusicPlayer() {
               onValueChange={handleVolumeChange}
               max={1}
               step={0.01}
-              className="flex-1"
+              className="flex-1 [&>.relative>.absolute]:bg-primary [&>.relative]:bg-white/10"
             />
           </div>
         </div>
 
-        {/* Track List */}
-        <div className="max-h-32 overflow-y-auto border-t-2 border-dotted border-border">
-          {tracks.map((track, index) => (
+        {/* Playlist */}
+        <div className="max-h-40 overflow-y-auto bg-black/20 border-t border-white/5">
+          {tracks.map((track,_index) => (
             <button
               key={track.id}
               className={cn(
-                "w-full px-3 py-2 text-left text-xs hover:bg-secondary transition-colors",
-                "flex items-center gap-2 border-b border-border/30 last:border-b-0",
-                currentTrack?.id === track.id && "bg-primary/10 text-primary"
+                "w-full px-4 py-3 text-left text-xs transition-colors flex items-center justify-between group",
+                currentTrack?.id === track.id 
+                  ? "bg-primary/10 text-primary border-l-2 border-primary" 
+                  : "text-muted-foreground hover:bg-white/5 hover:text-white border-l-2 border-transparent"
               )}
               onClick={() => selectTrack(track)}
             >
-              <span className="w-4 text-center text-[10px] text-muted-foreground">
-                {index + 1}
-              </span>
-              <span className="flex-1 truncate">{track.name}</span>
+              <span className="truncate pr-2 font-medium">{track.name}</span>
               {currentTrack?.id === track.id && isPlaying && (
-                <span className="text-[10px]">♪</span>
+                 <div className="flex gap-0.5 h-2 items-end">
+                    <span className="w-0.5 bg-primary animate-pulse h-full" />
+                    <span className="w-0.5 bg-primary animate-pulse h-2/3" />
+                    <span className="w-0.5 bg-primary animate-pulse h-1/2" />
+                 </div>
               )}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Floating Button - Vintage Style */}
+      {/* Floating Button - Glass Capsule */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
-          "group flex items-center gap-2 h-11 px-4 rounded-sm transition-all duration-200",
-          "bg-card border-2 border-border shadow-paper",
-          "hover:shadow-lifted hover:border-primary/50",
-          isPlaying && "border-primary/50"
+          "group flex items-center gap-3 h-12 pl-3 pr-5 rounded-full transition-all duration-300",
+          "bg-black/40 backdrop-blur-xl border border-white/10",
+          "hover:border-primary/50 hover:shadow-[0_0_20px_hsl(var(--primary)/0.2)]",
+          isPlaying && "border-primary/30 shadow-[0_0_15px_hsl(var(--primary)/0.1)]"
         )}
       >
-        {/* Icon - Mini Vinyl Record */}
-        <div className="relative w-6 h-6 flex-shrink-0">
+        {/* Visualizer Circle */}
+        <div className="relative w-8 h-8 flex items-center justify-center">
           <div className={cn(
-            "w-6 h-6 rounded-full border border-primary/50 bg-gradient-to-br from-foreground/20 to-foreground/5",
-            "relative overflow-hidden",
-            isPlaying && "animate-spin"
-          )} style={{ animationDuration: '2s' }}>
-            {/* Center dot */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-            </div>
+            "absolute inset-0 rounded-full border border-primary/30",
+            isPlaying && "animate-ping opacity-20"
+          )} />
+          <div className={cn(
+            "w-8 h-8 rounded-full bg-gradient-to-br from-gray-800 to-black flex items-center justify-center border border-white/10 overflow-hidden",
+            isPlaying && "border-primary/50"
+          )}>
+            {isPlaying ? (
+              <div className="flex gap-[2px] items-end h-3">
+                 {[1,2,3].map(i => (
+                    <div 
+                      key={i} 
+                      className="w-[2px] bg-primary rounded-full animate-bounce"
+                      style={{ height: '80%', animationDelay: `${i*0.1}s` }} 
+                    />
+                 ))}
+              </div>
+            ) : (
+              <Music2 className="w-4 h-4 text-muted-foreground" />
+            )}
           </div>
-          {/* Needle */}
-          {isPlaying && (
-            <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-px h-3 bg-primary/60 origin-top rotate-12" />
-          )}
         </div>
         
-        <span className="text-xs font-semibold uppercase tracking-wider max-w-20 truncate text-foreground">
-          {isPlaying ? (currentTrack?.name || 'Playing') : 'Music'}
-        </span>
-        
-        {/* Sound wave indicator when playing */}
-        {isPlaying && (
-          <div className="flex items-center gap-0.5 h-4">
-            {[0, 1, 2].map((i) => (
-              <span 
-                key={i}
-                className="w-0.5 bg-primary rounded-none animate-bounce" 
-                style={{ 
-                  animationDelay: `${i * 150}ms`,
-                  height: `${5 + i * 2}px`
-                }} 
-              />
-            ))}
-          </div>
-        )}
+        <div className="flex flex-col items-start">
+           <span className={cn(
+             "text-xs font-bold uppercase tracking-wider max-w-[100px] truncate transition-colors",
+             isPlaying ? "text-primary" : "text-white/80"
+           )}>
+             {isPlaying ? currentTrack?.name : 'Music'}
+           </span>
+           <span className="text-[9px] text-muted-foreground font-mono">
+             {isPlaying ? 'PLAYING...' : 'PAUSED'}
+           </span>
+        </div>
       </button>
     </div>
   )

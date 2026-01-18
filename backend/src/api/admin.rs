@@ -28,7 +28,7 @@ fn default_page() -> i64 {
     1
 }
 fn default_limit() -> i64 {
-    20
+    100
 }
 
 /// Pagination metadata
@@ -583,7 +583,8 @@ async fn delete_music(
         }
 
         // Delete from database
-        sqlx::query!("DELETE FROM music_tracks WHERE id = $1", id)
+        sqlx::query("DELETE FROM music_tracks WHERE id = $1")
+            .bind(id)
             .execute(&state.pool)
             .await?;
     }

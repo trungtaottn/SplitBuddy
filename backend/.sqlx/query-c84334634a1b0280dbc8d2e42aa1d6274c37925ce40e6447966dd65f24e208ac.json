@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, name, description, created_by, created_at\n            FROM groups\n            WHERE id = $1\n            ",
+  "query": "\n            SELECT g.id, g.name, g.description, g.created_by, g.created_at, g.archived_at\n            FROM groups g\n            INNER JOIN group_members gm ON g.id = gm.group_id\n            WHERE gm.user_id = $1\n              AND ($2::bool OR g.archived_at IS NULL)\n            ORDER BY g.created_at DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -27,11 +27,17 @@
         "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "archived_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Bool"
       ]
     },
     "nullable": [
@@ -39,8 +45,9 @@
       false,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "63b026d1a846a4b79b701120fa990d073f111270064f389fd8c4e21e7d3fa1dd"
+  "hash": "c84334634a1b0280dbc8d2e42aa1d6274c37925ce40e6447966dd65f24e208ac"
 }

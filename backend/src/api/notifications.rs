@@ -21,6 +21,9 @@ pub fn routes() -> Router<AppState> {
         .route("/unread-count", get(get_unread_count))
         .route("/:id/read", put(mark_as_read))
         .route("/mark-all-read", post(mark_all_as_read))
+        .route("/push/subscribe", post(subscribe_push))
+        .route("/push/unsubscribe", post(unsubscribe_push))
+        .route("/preferences", get(get_preferences).put(update_preferences))
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -197,4 +200,183 @@ async fn mark_all_as_read(
     .await?;
 
     Ok(ok(()))
+}
+
+#[derive(Deserialize)]
+pub struct PushSubscriptionRequest {
+    pub endpoint: String,
+    pub keys: PushSubscriptionKeys,
+}
+
+#[derive(Deserialize)]
+pub struct PushSubscriptionKeys {
+    pub p256dh: String,
+    pub auth: String,
+}
+
+#[derive(Serialize)]
+pub struct PushSubscriptionResponse {
+    pub message: String,
+}
+
+#[allow(dead_code)]
+#[derive(Serialize)]
+pub struct MessageResponse {
+    pub message: String,
+}
+
+/// Subscribe to push notifications
+pub async fn subscribe_push(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Json(payload): Json<PushSubscriptionRequest>,
+) -> Result<Json<ApiResponse<PushSubscriptionResponse>>, AppError> {
+    sqlx::query(
+        r#"
+        INSERT INTO push_subscriptions (user_id, endpoint, p256dh_key, auth_key, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, NOW(), NOW())
+        ON CONFLICT (user_id, endpoint) 
+        DO UPDATE SET 
+            p256dh_key = EXCLUDED.p256dh_key,
+            auth_key = EXCLUDED.auth_key,
+            updated_at = NOW()
+        "#,
+    )
+    .bind(auth_user.user_id)
+    .bind(&payload.endpoint)
+    .bind(&payload.keys.p256dh)
+    .bind(&payload.keys.auth)
+    .execute(&state.pool)
+    .await?;
+
+    // Ensure notification preferences exist
+    sqlx::query(
+        r#"
+        INSERT INTO notification_preferences (user_id, created_at, updated_at)
+        VALUES ($1, NOW(), NOW())
+        ON CONFLICT (user_id) DO NOTHING
+        "#,
+    )
+    .bind(auth_user.user_id)
+    .execute(&state.pool)
+    .await?;
+
+    Ok(ok(PushSubscriptionResponse {
+        message: "Push subscription registered successfully".to_string(),
+    }))
+}
+
+#[derive(Deserialize)]
+pub struct UnsubscribePushRequest {
+    pub endpoint: String,
+}
+
+/// Unsubscribe from push notifications
+pub async fn unsubscribe_push(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Json(payload): Json<UnsubscribePushRequest>,
+) -> Result<Json<ApiResponse<PushSubscriptionResponse>>, AppError> {
+    sqlx::query(
+        r#"
+        DELETE FROM push_subscriptions
+        WHERE user_id = $1 AND endpoint = $2
+        "#,
+    )
+    .bind(auth_user.user_id)
+    .bind(&payload.endpoint)
+    .execute(&state.pool)
+    .await?;
+
+    Ok(ok(PushSubscriptionResponse {
+        message: "Push subscription removed successfully".to_string(),
+    }))
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct NotificationPreferencesResponse {
+    pub debt_reminders: bool,
+    pub settlement_notifications: bool,
+    pub session_invites: bool,
+    pub bill_updates: bool,
+    pub game_events: bool,
+}
+
+#[derive(Deserialize)]
+pub struct UpdatePreferencesRequest {
+    pub debt_reminders: Option<bool>,
+    pub settlement_notifications: Option<bool>,
+    pub session_invites: Option<bool>,
+    pub bill_updates: Option<bool>,
+    pub game_events: Option<bool>,
+}
+
+/// Get notification preferences
+pub async fn get_preferences(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+) -> Result<Json<ApiResponse<NotificationPreferencesResponse>>, AppError> {
+    let prefs: Option<NotificationPreferencesResponse> = sqlx::query_as(
+        r#"
+        SELECT debt_reminders, settlement_notifications, session_invites, bill_updates, game_events
+        FROM notification_preferences
+        WHERE user_id = $1
+        "#,
+    )
+    .bind(auth_user.user_id)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    let prefs = prefs.unwrap_or(NotificationPreferencesResponse {
+        debt_reminders: true,
+        settlement_notifications: true,
+        session_invites: true,
+        bill_updates: true,
+        game_events: false,
+    });
+
+    Ok(ok(prefs))
+}
+
+/// Update notification preferences
+pub async fn update_preferences(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Json(payload): Json<UpdatePreferencesRequest>,
+) -> Result<Json<ApiResponse<NotificationPreferencesResponse>>, AppError> {
+    sqlx::query(
+        r#"
+        INSERT INTO notification_preferences (user_id, debt_reminders, settlement_notifications, session_invites, bill_updates, game_events, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+        ON CONFLICT (user_id)
+        DO UPDATE SET
+            debt_reminders = COALESCE(EXCLUDED.debt_reminders, notification_preferences.debt_reminders),
+            settlement_notifications = COALESCE(EXCLUDED.settlement_notifications, notification_preferences.settlement_notifications),
+            session_invites = COALESCE(EXCLUDED.session_invites, notification_preferences.session_invites),
+            bill_updates = COALESCE(EXCLUDED.bill_updates, notification_preferences.bill_updates),
+            game_events = COALESCE(EXCLUDED.game_events, notification_preferences.game_events),
+            updated_at = NOW()
+        "#,
+    )
+    .bind(auth_user.user_id)
+    .bind(payload.debt_reminders.unwrap_or(true))
+    .bind(payload.settlement_notifications.unwrap_or(true))
+    .bind(payload.session_invites.unwrap_or(true))
+    .bind(payload.bill_updates.unwrap_or(true))
+    .bind(payload.game_events.unwrap_or(false))
+    .execute(&state.pool)
+    .await?;
+
+    let prefs: NotificationPreferencesResponse = sqlx::query_as(
+        r#"
+        SELECT debt_reminders, settlement_notifications, session_invites, bill_updates, game_events
+        FROM notification_preferences
+        WHERE user_id = $1
+        "#,
+    )
+    .bind(auth_user.user_id)
+    .fetch_one(&state.pool)
+    .await?;
+
+    Ok(ok(prefs))
 }

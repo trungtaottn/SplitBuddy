@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO groups (name, description, created_by)\n            VALUES ($1, $2, $3)\n            RETURNING id, name, description, created_by, created_at\n            ",
+  "query": "\n            INSERT INTO groups (name, description, created_by)\n            VALUES ($1, $2, $3)\n            RETURNING id, name, description, created_by, created_at, archived_at\n            ",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,11 @@
         "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "archived_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -41,8 +46,9 @@
       false,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "24921f9ac06ea1134ba0a843fc8544e57db093180aabf9463563566d45480e5c"
+  "hash": "d9f28bdbace01095c1ef2d2572d8266d24b11807890715d375c6c7e6000d675f"
 }

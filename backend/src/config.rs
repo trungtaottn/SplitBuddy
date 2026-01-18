@@ -14,6 +14,8 @@ pub struct Config {
     // HTTP client settings
     pub http_timeout_seconds: u64,
     pub http_connect_timeout_seconds: u64,
+    // Scheduler settings
+    pub recurring_expense_scheduler_interval_seconds: u64,
 }
 
 impl Config {
@@ -67,6 +69,13 @@ impl Config {
                 .unwrap_or_else(|_| "10".to_string())
                 .parse()
                 .unwrap_or(10),
+            // Scheduler settings - default to 5 minutes (300 seconds)
+            recurring_expense_scheduler_interval_seconds: env::var(
+                "RECURRING_EXPENSE_SCHEDULER_INTERVAL_SECONDS",
+            )
+            .unwrap_or_else(|_| "300".to_string())
+            .parse()
+            .unwrap_or(300),
         })
     }
 }

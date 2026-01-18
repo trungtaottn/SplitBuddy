@@ -7,14 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
   Check, Clock, Wallet, Users, Beer, Calendar, Zap, 
   ChevronDown, ChevronUp, Copy, TrendingUp,
-  ArrowUpRight, ArrowDownRight, MessageSquare
+  ArrowUpRight, ArrowDownRight, MessageSquare, QrCode
 } from 'lucide-react'
 import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { toast } from '@/components/ui/toaster'
+import { showError } from '@/utils/errorHandler'
 import { cn } from '@/lib/utils'
 import { DebtCardSkeleton, StatsSkeleton } from '@/components/ui/skeleton'
 import { staggerContainer, staggerItem } from '@/components/PageTransition'
+import { QRCodeGenerator } from '@/components/QRCodeGenerator'
+import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import type { DebtSummary, ApiResponse, SessionDebt } from '@/types/api'
 
 type TabType = 'summary' | 'sessions'
@@ -25,7 +28,7 @@ interface NettedDebt {
   netAmount: number // positive = I owe them, negative = they owe me
 }
 
-// DebtCard Component - Mobile-optimized card for individual debts
+// DebtCard Component - Modern Dark Luxury style
 function DebtCard({
   type,
   counterpartName,
@@ -35,6 +38,8 @@ function DebtCard({
   isGuest,
   onSettle,
   onSettleGuest,
+  onShowPayQr,
+  canShowPayQr,
   isSettling,
 }: {
   type: 'owe' | 'owed'
@@ -45,6 +50,8 @@ function DebtCard({
   isGuest: boolean
   onSettle: () => void
   onSettleGuest?: () => void
+  onShowPayQr?: () => void
+  canShowPayQr?: boolean
   isSettling: boolean
 }) {
   const isOwe = type === 'owe'
@@ -56,7 +63,7 @@ function DebtCard({
       ? `Tôi nợ ${counterpartName}: ${formatCurrency(amount)} (từ ${sessionName})`
       : `${counterpartName} nợ tôi: ${formatCurrency(amount)} (từ ${sessionName})`
     navigator.clipboard.writeText(text)
-    toast.success('Đã copy!')
+    toast.success('Đã sao chép!')
   }
 
   const shareReminder = () => {
@@ -68,98 +75,111 @@ function DebtCard({
       navigator.share({ text })
     } else {
       navigator.clipboard.writeText(text)
-      toast.success('Đã copy tin nhắn nhắc nợ!')
+      toast.success('Đã sao chép tin nhắn nhắc nợ!')
     }
   }
 
   return (
-    <div className={cn(
-      "relative rounded-xl border p-4 transition-all hover:shadow-md",
-      isOwe 
-        ? "bg-destructive/5 border-destructive/20"
-        : "bg-success/5 border-success/20"
-    )}>
+    <div className="group relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/50 p-5 transition-all hover:bg-zinc-900 hover:border-white/10 hover:shadow-lg">
+      {/* Background Gradient Accents */}
+      <div className={cn(
+        "absolute top-0 right-0 w-32 h-32 blur-3xl opacity-10 rounded-full pointer-events-none transition-opacity group-hover:opacity-20",
+        isOwe ? "bg-red-600" : "bg-emerald-600"
+      )} />
+
       {/* Status indicator */}
       {isWaiting && (
-        <div className="absolute -top-2 -right-2">
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-warning/15 text-warning">
+        <div className="absolute top-4 right-4 animate-pulse">
+          <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 shadow-[0_0_10px_rgba(234,179,8,0.2)]">
             <Clock className="h-3 w-3" />
             Chờ xác nhận
           </span>
         </div>
       )}
 
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center gap-3 min-w-0">
-          {/* Avatar - Retro style */}
+      <div className="flex items-start justify-between gap-4 mb-5 relative z-10">
+        <div className="flex items-center gap-4 min-w-0">
+          {/* Avatar - Minimal Modern */}
           <div className={cn(
-            "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm font-body",
+            "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold ring-2 ring-offset-2 ring-offset-[#0E0E0E]",
             isOwe 
-              ? "bg-destructive/15 text-destructive"
-              : "bg-success/15 text-success"
+              ? "bg-gradient-to-br from-red-500 to-red-700 text-white ring-red-500/20"
+              : "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white ring-emerald-500/20"
           )}>
             {counterpartName.split(' ').pop()?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div className="min-w-0">
-            <p className="font-semibold truncate font-heading">{counterpartName}</p>
-            <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+            <p className="font-bold text-base truncate font-heading text-white tracking-tight">{counterpartName}</p>
+            <p className="text-xs text-zinc-400 truncate flex items-center gap-1.5 mt-0.5 font-medium">
               <Beer className="h-3 w-3" /> {sessionName}
             </p>
           </div>
         </div>
 
-        {/* Amount - Retro mono font */}
-        <div className={cn(
-          "text-right flex-shrink-0",
-          isOwe ? "text-destructive" : "text-success"
-        )}>
-          <p className="text-lg font-bold font-mono">{formatCurrency(amount)}</p>
-        </div>
+        {/* Amount */}
+        {!isWaiting && (
+          <div className={cn(
+            "text-right flex-shrink-0",
+            isOwe ? "text-red-500" : "text-emerald-500"
+          )}>
+            <p className="text-xl font-bold font-mono tracking-tight">{formatCurrency(amount)}</p>
+          </div>
+        )}
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex gap-2">
+      {/* Quick Actions - Pill Buttons */}
+      <div className="flex flex-wrap gap-2 relative z-10">
         <Button
           size="sm"
-          variant="ghost"
-          className="flex-1 h-8 text-xs"
+          variant="secondary"
+          className="flex-1 h-9 rounded-full text-xs font-medium bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 border border-white/5"
           onClick={copyToClipboard}
         >
-          <Copy className="h-3 w-3 mr-1" />
-          Copy
+          <Copy className="h-3.5 w-3.5 mr-1.5" />
+          Sao chép
         </Button>
         <Button
           size="sm"
-          variant="ghost"
-          className="flex-1 h-8 text-xs"
+          variant="secondary"
+          className="flex-1 h-9 rounded-full text-xs font-medium bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 border border-white/5"
           onClick={shareReminder}
         >
-          <MessageSquare className="h-3 w-3 mr-1" />
+          <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
           Nhắc nợ
         </Button>
+        
+        {type === 'owe' && canShowPayQr && onShowPayQr && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1 h-9 rounded-full text-xs font-medium border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 hover:border-red-500/50"
+            onClick={onShowPayQr}
+          >
+            <QrCode className="h-3.5 w-3.5 mr-1.5" />
+            QR
+          </Button>
+        )}
         
         {/* Action button based on type and status */}
         {isOwe && isPending && (
           <Button
             size="sm"
-            variant="destructive"
-            className="flex-1 h-8 text-xs"
+            className="flex-1 h-9 rounded-full text-xs font-bold bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-lg shadow-red-900/20 border-0"
             onClick={onSettle}
             disabled={isSettling}
           >
-            <Check className="h-3 w-3 mr-1" />
+            <Check className="h-3.5 w-3.5 mr-1.5" />
             Đã trả
           </Button>
         )}
         {!isOwe && isWaiting && (
           <Button
             size="sm"
-            variant="success"
-            className="flex-1 h-8 text-xs"
+            className="flex-1 h-9 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-900/20 border-0"
             onClick={onSettle}
             disabled={isSettling}
           >
-            <Check className="h-3 w-3 mr-1" />
+            <Check className="h-3.5 w-3.5 mr-1.5" />
             Xác nhận
           </Button>
         )}
@@ -167,13 +187,12 @@ function DebtCard({
         {!isOwe && isPending && isGuest && onSettleGuest && (
           <Button
             size="sm"
-            variant="success"
-            className="flex-1 h-8 text-xs"
+            className="flex-1 h-9 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-900/20 border-0"
             onClick={onSettleGuest}
             disabled={isSettling}
             title="Khách ngoài nhóm - tất toán trực tiếp"
           >
-            <Check className="h-3 w-3 mr-1" />
+            <Check className="h-3.5 w-3.5 mr-1.5" />
             Tất toán
           </Button>
         )}
@@ -186,6 +205,19 @@ export default function DebtsPage() {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<TabType>('sessions')
   const [isNettingExpanded, setIsNettingExpanded] = useState(false)
+  const [qrModal, setQrModal] = useState<{ open: boolean; amount: string; note: string }>({
+    open: false,
+    amount: '',
+    note: '',
+  })
+  const [payToModal, setPayToModal] = useState<{
+    open: boolean
+    name: string
+    bankName?: string | null
+    accountNumber?: string | null
+    accountHolder?: string | null
+    qrImageUrl?: string | null
+  }>({ open: false, name: '' })
 
   const { data: debts, isLoading } = useQuery({
     queryKey: ['debts', 'me'],
@@ -243,6 +275,7 @@ export default function DebtsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['debts'] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
       toast.success('Đã gửi yêu cầu xác nhận!')
     },
     onError: () => {
@@ -256,6 +289,7 @@ export default function DebtsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['debts'] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
       toast.success('Đã xác nhận thanh toán!')
     },
     onError: () => {
@@ -269,11 +303,11 @@ export default function DebtsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['debts'] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
       toast.success('Đã tất toán nợ từ khách!')
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
+    onError: (error: unknown) => {
+      showError(error, 'Không thể tất toán nợ. Vui lòng thử lại.')
     },
   })
 
@@ -302,29 +336,31 @@ export default function DebtsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header - Retro Typography */}
-      <h1 className="text-2xl font-heading font-semibold text-foreground">Công nợ của tôi</h1>
+      {/* Page Header */}
+      <h1 className="text-3xl font-heading font-bold text-white tracking-tight">Công nợ của tôi</h1>
 
-      {/* Tabs - Retro Style */}
-      <div className="flex gap-2 border-b border-border/50">
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-zinc-900/50 rounded-xl border border-white/5 w-fit">
         <button
           onClick={() => setActiveTab('sessions')}
-          className={`flex items-center gap-2 px-4 py-2.5 font-body text-sm font-medium transition-all ${
+          className={cn(
+            "flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all",
             activeTab === 'sessions'
-              ? 'border-b-2 border-primary text-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
+              ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-900/20"
+              : "text-zinc-400 hover:text-white hover:bg-white/5"
+          )}
         >
           <Users className="h-4 w-4" />
           Theo cuộc nhậu
         </button>
         <button
           onClick={() => setActiveTab('summary')}
-          className={`flex items-center gap-2 px-4 py-2.5 font-body text-sm font-medium transition-all ${
+          className={cn(
+            "flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all",
             activeTab === 'summary'
-              ? 'border-b-2 border-primary text-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
+              ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-900/20"
+              : "text-zinc-400 hover:text-white hover:bg-white/5"
+          )}
         >
           <Wallet className="h-4 w-4" />
           Tổng hợp
@@ -334,11 +370,11 @@ export default function DebtsPage() {
       {activeTab === 'sessions' && (
         <div className="space-y-4">
           {sessionDebts?.length === 0 ? (
-            <Card className="bg-gray-50 dark:bg-gray-800/50">
+            <Card className="bg-card dark:bg-card/50 border-white/5">
               <CardContent className="py-12 text-center">
-                <Beer className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <Beer className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
                 <p className="text-muted-foreground">Chưa có dữ liệu công nợ</p>
-                <p className="text-sm text-gray-400 mt-1">Tham gia cuộc nhậu và thêm hoá đơn để bắt đầu</p>
+                <p className="text-sm text-gray-500 mt-1">Tham gia cuộc nhậu và thêm hoá đơn để bắt đầu</p>
               </CardContent>
             </Card>
           ) : (
@@ -348,27 +384,32 @@ export default function DebtsPage() {
               
               return (
                 <FunTooltip key={session.session_id} messages={FUN_MESSAGES.sessionCard}>
-                  <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <CardHeader className="pb-3 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                          <Beer className="h-5 w-5 text-orange-500" /> {session.session_name}
-                        </CardTitle>
-                        <span className="text-sm font-semibold text-orange-600 dark:text-orange-400">
-                          {formatCurrency(totalPaid)}
-                        </span>
+                  <Card className="overflow-hidden bg-zinc-900 border-white/5 hover:border-orange-500/30 transition-all shadow-md group">
+                    <CardHeader className="pb-4 bg-gradient-to-br from-zinc-800/50 to-transparent border-b border-white/5">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2 text-lg text-white font-heading">
+                            <Beer className="h-5 w-5 text-orange-500" /> {session.session_name}
+                          </CardTitle>
+                          <p className="text-xs text-zinc-400 mt-1 flex items-center gap-2 font-medium">
+                            <Calendar className="h-3.5 w-3.5" /> 
+                            {new Date(session.session_date).toLocaleDateString('vi-VN', { 
+                              weekday: 'short', day: '2-digit', month: '2-digit' 
+                            })}
+                            <span className="w-1 h-1 rounded-full bg-zinc-600"></span>
+                            <Users className="h-3.5 w-3.5" />
+                            {session.participants.length} người
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-0.5">Tổng chi</p>
+                           <span className="text-base font-bold font-mono text-orange-400 bg-orange-500/10 px-2 py-1 rounded-lg border border-orange-500/20">
+                            {formatCurrency(totalPaid)}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-4 w-4" /> 
-                        {new Date(session.session_date).toLocaleDateString('vi-VN', { 
-                          weekday: 'short', day: '2-digit', month: '2-digit' 
-                        })}
-                        <span className="mx-2">•</span>
-                        <Users className="h-4 w-4" />
-                        {session.participants.length} người
-                      </p>
                     </CardHeader>
-                    <CardContent className="pt-4">
+                    <CardContent className="pt-4 bg-zinc-900/50">
                       {/* Mobile-friendly card grid */}
                       <div className="grid gap-2 sm:grid-cols-2">
                         {session.participants.map((p) => {
@@ -380,24 +421,24 @@ export default function DebtsPage() {
                             <div 
                               key={p.participant_id} 
                               className={cn(
-                                "flex items-center justify-between p-3 rounded-lg border",
-                                isPositive && "bg-green-50/50 border-green-100 dark:bg-green-900/10 dark:border-green-800/30",
-                                isNegative && "bg-red-50/50 border-red-100 dark:bg-red-900/10 dark:border-red-800/30",
-                                !isPositive && !isNegative && "bg-gray-50 dark:bg-gray-800/50"
+                                "flex items-center justify-between p-3 rounded-xl border transition-all hover:bg-zinc-800",
+                                isPositive && "bg-emerald-500/5 border-emerald-500/10",
+                                isNegative && "bg-red-500/5 border-red-500/10",
+                                !isPositive && !isNegative && "bg-zinc-900 border-white/5"
                               )}
                             >
-                              <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex items-center gap-3 min-w-0">
                                 <div className={cn(
-                                  "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
-                                  isPositive && "bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400",
-                                  isNegative && "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400",
-                                  !isPositive && !isNegative && "bg-gray-100 text-gray-600 dark:bg-gray-700"
+                                  "w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-offset-1 ring-offset-[#0E0E0E]",
+                                  isPositive && "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white ring-emerald-500/20",
+                                  isNegative && "bg-gradient-to-br from-red-500 to-red-700 text-white ring-red-500/20",
+                                  !isPositive && !isNegative && "bg-zinc-800 text-zinc-400 ring-white/5"
                                 )}>
                                   {p.name.split(' ').pop()?.charAt(0)?.toUpperCase() || '?'}
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="font-medium text-sm truncate">{p.name}</p>
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="font-medium text-sm truncate text-zinc-200">{p.name}</p>
+                                  <p className="text-[11px] text-zinc-500">
                                     Trả: {formatCurrency(p.total_paid)}
                                   </p>
                                 </div>
@@ -405,16 +446,16 @@ export default function DebtsPage() {
                               
                               <div className="text-right flex-shrink-0">
                                 <p className={cn(
-                                  "font-bold text-sm",
-                                  isPositive && "text-green-600 dark:text-green-400",
-                                  isNegative && "text-red-600 dark:text-red-400",
-                                  !isPositive && !isNegative && "text-gray-500"
+                                  "font-bold text-sm font-mono tracking-tight",
+                                  isPositive && "text-emerald-500",
+                                  isNegative && "text-red-500",
+                                  !isPositive && !isNegative && "text-zinc-500"
                                 )}>
                                   {isPositive && '+'}
                                   {formatCurrency(p.balance)}
                                 </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {isPositive ? 'Được nhận' : isNegative ? 'Cần trả' : 'Huề'}
+                                <p className="text-[10px] uppercase font-bold tracking-wider mt-0.5 opacity-80">
+                                  {isPositive ? <span className="text-emerald-600">Được nhận</span> : isNegative ? <span className="text-red-600">Cần trả</span> : <span className="text-zinc-600">Huề</span>}
                                 </p>
                               </div>
                             </div>
@@ -434,26 +475,26 @@ export default function DebtsPage() {
         <>
           {/* Smart Netting Section - Debt Optimization Visualization */}
           {nettedDebts.length > 0 && (
-            <Card className="overflow-hidden border-primary/20">
-              <CardHeader className="pb-2 bg-gradient-to-r from-primary/5 to-primary/10">
+            <Card className="overflow-hidden border-orange-500/20 bg-zinc-900/50">
+              <CardHeader className="pb-2 bg-gradient-to-r from-orange-500/10 via-orange-500/5 to-transparent border-b border-orange-500/10">
                 <button
                   onClick={() => setIsNettingExpanded(!isNettingExpanded)}
                   className="w-full flex items-center justify-between hover:opacity-80 transition-opacity"
                 >
-                  <CardTitle className="text-lg flex items-center gap-2 font-heading">
-                    <div className="p-1.5 rounded-lg bg-primary/10">
-                      <Zap className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg flex items-center gap-2 font-heading text-white">
+                    <div className="p-2 rounded-lg bg-orange-500/10 ring-1 ring-orange-500/20">
+                      <Zap className="h-4 w-4 text-orange-500" />
                     </div>
                     Cấn trừ nợ thông minh
                   </CardTitle>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono bg-card px-2 py-1 rounded-lg border border-border/50">
+                    <span className="text-xs font-mono bg-black/40 text-orange-400 px-2.5 py-1 rounded-lg border border-orange-500/20 shadow-sm">
                       {nettedDebts.length} giao dịch tối ưu
                     </span>
                     {isNettingExpanded ? (
-                      <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                      <ChevronUp className="h-5 w-5 text-zinc-400" />
                     ) : (
-                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      <ChevronDown className="h-5 w-5 text-zinc-400" />
                     )}
                   </div>
                 </button>
@@ -462,11 +503,11 @@ export default function DebtsPage() {
               {isNettingExpanded && (
                 <CardContent className="pt-4 space-y-4">
                   {/* Info banner */}
-                  <div className="flex items-start gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10">
-                    <TrendingUp className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-muted-foreground font-body">
-                      Sau khi cấn trừ các khoản nợ qua lại, đây là số tiền thực tế cần thanh toán. 
-                      <span className="text-primary font-medium"> Giảm {nettedDebts.length} giao dịch!</span>
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-orange-500/5 border border-orange-500/10">
+                    <TrendingUp className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-zinc-400 font-body leading-relaxed">
+                      Hệ thống đã tự động tính toán bù trừ các khoản nợ. 
+                      <span className="text-orange-400 font-medium block mt-1"> Bạn chỉ cần thanh toán số tiền thực tế này thay vì nhiều giao dịch nhỏ lẻ.</span>
                     </p>
                   </div>
 
@@ -476,33 +517,33 @@ export default function DebtsPage() {
                       <div
                         key={debt.counterpartId}
                         className={cn(
-                          "flex items-center justify-between p-4 rounded-xl border transition-all hover:shadow-md animate-in slide-in-from-bottom-2",
+                          "flex items-center justify-between p-4 rounded-xl border transition-all hover:bg-zinc-800/80 animate-in slide-in-from-bottom-2",
                           debt.netAmount > 0 
-                            ? "bg-destructive/5 border-destructive/20" 
-                            : "bg-success/5 border-success/20"
+                            ? "bg-red-500/5 border-red-500/20" 
+                            : "bg-emerald-500/5 border-emerald-500/20"
                         )}
                         style={{ animationDelay: `${index * 50}ms` }}
                       >
                         <div className="flex items-center gap-3">
                           <div className={cn(
-                            "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm font-body",
+                            "w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm font-body ring-2 ring-offset-2 ring-offset-[#0E0E0E]",
                             debt.netAmount > 0 
-                              ? "bg-destructive/15 text-destructive" 
-                              : "bg-success/15 text-success"
+                              ? "bg-gradient-to-br from-red-500 to-red-700 text-white ring-red-500/20" 
+                              : "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white ring-emerald-500/20"
                           )}>
                             {debt.counterpartName.split(' ').pop()?.charAt(0)?.toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-medium text-sm font-heading">{debt.counterpartName}</p>
-                            <p className="text-xs text-muted-foreground font-body">
+                            <p className="font-bold text-sm font-heading text-white">{debt.counterpartName}</p>
+                            <p className="text-xs text-zinc-400 font-body mt-0.5">
                               {debt.netAmount > 0 ? (
-                                <span className="flex items-center gap-1">
-                                  <ArrowUpRight className="h-3 w-3 text-destructive" />
+                                <span className="flex items-center gap-1.5">
+                                  <ArrowUpRight className="h-3.5 w-3.5 text-red-500" />
                                   Bạn cần trả
                                 </span>
                               ) : (
-                                <span className="flex items-center gap-1">
-                                  <ArrowDownRight className="h-3 w-3 text-success" />
+                                <span className="flex items-center gap-1.5">
+                                  <ArrowDownRight className="h-3.5 w-3.5 text-emerald-500" />
                                   Họ cần trả bạn
                                 </span>
                               )}
@@ -510,95 +551,108 @@ export default function DebtsPage() {
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-3">
+                        <div className="text-right">
                           <span className={cn(
-                            "text-lg font-bold font-mono",
-                            debt.netAmount > 0 ? "text-destructive" : "text-success"
+                            "text-lg font-bold font-mono tracking-tight block",
+                            debt.netAmount > 0 ? "text-red-500" : "text-emerald-500"
                           )}>
                             {formatCurrency(Math.abs(debt.netAmount))}
                           </span>
                           
-                          {/* Settlement action for netted debts */}
-                          {debt.netAmount > 0 ? (
-                            // I owe them - request settlement for all related debts
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
-                              onClick={() => {
-                                // Find all pending debts I owe to this person and request settle
-                                const relatedDebts = debts?.i_owe.filter(
-                                  d => d.counterpart_id === debt.counterpartId && d.status === 'pending'
+                          <div className="mt-2 flex justify-end">
+                            {/* Settlement action for netted debts */}
+                            {debt.netAmount > 0 ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[10px] rounded-full px-3 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 hover:border-red-500/50"
+                                onClick={() => {
+                                  const relatedDebts = debts?.i_owe.filter(
+                                    d => d.counterpart_id === debt.counterpartId && d.status === 'pending'
+                                  ) || []
+                                  relatedDebts.forEach(d => requestSettle.mutate(d.id))
+                                }}
+                                disabled={requestSettle.isPending}
+                              >
+                                <Check className="h-3 w-3 mr-1" />
+                                Đã trả
+                              </Button>
+                            ) : (
+                              (() => {
+                                const relatedDebts = debts?.owed_to_me.filter(
+                                  d => d.counterpart_id === debt.counterpartId
                                 ) || []
-                                relatedDebts.forEach(d => requestSettle.mutate(d.id))
-                              }}
-                              disabled={requestSettle.isPending}
-                            >
-                              <Check className="h-3 w-3 mr-1" />
-                              Đã trả
-                            </Button>
-                          ) : (
-                            // They owe me - show pending count or settle guests
-                            (() => {
-                              const relatedDebts = debts?.owed_to_me.filter(
-                                d => d.counterpart_id === debt.counterpartId
-                              ) || []
-                              const pendingDebts = relatedDebts.filter(d => d.status === 'pending')
-                              const waitingDebts = relatedDebts.filter(d => d.status === 'settlement_requested')
-                              const guestDebts = pendingDebts.filter(d => d.is_guest)
-                              
-                              return (
-                                <div className="flex items-center gap-1">
-                                  {waitingDebts.length > 0 && (
+                                const pendingDebts = relatedDebts.filter(d => d.status === 'pending')
+                                const waitingDebts = relatedDebts.filter(d => d.status === 'settlement_requested')
+                                const guestDebts = pendingDebts.filter(d => d.is_guest)
+                                
+                                return (
+                                  <div className="flex items-center gap-2">
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      className="h-8 text-xs border-success/30 text-success hover:bg-success/10"
+                                      className="h-7 text-[10px] rounded-full px-3 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 hover:border-emerald-500/50"
                                       onClick={() => {
-                                        waitingDebts.forEach(d => confirmSettle.mutate(d.id))
+                                        setQrModal({
+                                          open: true,
+                                          amount: String(Math.round(Math.abs(debt.netAmount))),
+                                          note: `Thanh toan no - ${debt.counterpartName}`,
+                                        })
                                       }}
-                                      disabled={confirmSettle.isPending}
                                     >
-                                      <Check className="h-3 w-3 mr-1" />
-                                      Xác nhận ({waitingDebts.length})
+                                      <QrCode className="h-3 w-3 mr-1" />
+                                      VietQR
                                     </Button>
-                                  )}
-                                  {guestDebts.length > 0 && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-8 text-xs border-success/30 text-success hover:bg-success/10"
-                                      onClick={() => {
-                                        guestDebts.forEach(d => settleGuestDebt.mutate(d.id))
-                                      }}
-                                      disabled={settleGuestDebt.isPending}
-                                      title="Tất toán nợ từ khách"
-                                    >
-                                      <Check className="h-3 w-3 mr-1" />
-                                      Tất toán khách
-                                    </Button>
-                                  )}
-                                </div>
-                              )
-                            })()
-                          )}
+                                    {waitingDebts.length > 0 && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-[10px] rounded-full px-3 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 hover:border-emerald-500/50 animate-pulse"
+                                        onClick={() => {
+                                          waitingDebts.forEach(d => confirmSettle.mutate(d.id))
+                                        }}
+                                        disabled={confirmSettle.isPending}
+                                      >
+                                        <Check className="h-3 w-3 mr-1" />
+                                        Xác nhận ({waitingDebts.length})
+                                      </Button>
+                                    )}
+                                    {guestDebts.length > 0 && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-[10px] rounded-full px-3 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 hover:border-emerald-500/50"
+                                        onClick={() => {
+                                          guestDebts.forEach(d => settleGuestDebt.mutate(d.id))
+                                        }}
+                                        disabled={settleGuestDebt.isPending}
+                                      >
+                                        <Check className="h-3 w-3 mr-1" />
+                                        Khách
+                                      </Button>
+                                    )}
+                                  </div>
+                                )
+                              })()
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
                   
                   {/* Summary with visual comparison */}
-                  <div className="pt-4 border-t border-border/50">
+                  <div className="pt-4 border-t border-white/5">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 rounded-xl bg-destructive/5 border border-destructive/20">
-                        <p className="text-sm text-muted-foreground font-body mb-1">Tổng cần trả</p>
-                        <p className="text-2xl font-bold font-mono text-destructive">
+                      <div className="text-center p-4 rounded-xl bg-red-500/5 border border-red-500/10">
+                        <p className="text-xs uppercase tracking-widest text-red-400/70 font-bold mb-2">Tổng cần trả</p>
+                        <p className="text-2xl font-bold font-mono text-red-500 tracking-tight">
                           {formatCurrency(totalNetIOwe)}
                         </p>
                       </div>
-                      <div className="text-center p-4 rounded-xl bg-success/5 border border-success/20">
-                        <p className="text-sm text-muted-foreground font-body mb-1">Tổng được nhận</p>
-                        <p className="text-2xl font-bold font-mono text-success">
+                      <div className="text-center p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                        <p className="text-xs uppercase tracking-widest text-emerald-400/70 font-bold mb-2">Tổng được nhận</p>
+                        <p className="text-2xl font-bold font-mono text-emerald-500 tracking-tight">
                           {formatCurrency(totalNetOwedToMe)}
                         </p>
                       </div>
@@ -610,27 +664,27 @@ export default function DebtsPage() {
           )}
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
-                  <Wallet className="h-6 w-6" />
+            <Card className="bg-zinc-900/50 border-white/5 hover:border-red-500/20 transition-colors group">
+              <CardContent className="flex items-center gap-5 p-6">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-500 group-hover:bg-red-500/20 transition-colors">
+                  <Wallet className="h-7 w-7" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Tổng nợ (gốc)</p>
-                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                  <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-1">Tổng nợ (gốc)</p>
+                  <p className="text-3xl font-bold text-red-500 tracking-tighter">
                     {debts ? formatCurrency(debts.total_i_owe) : '0đ'}
                   </p>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
-                  <Wallet className="h-6 w-6" />
+            <Card className="bg-zinc-900/50 border-white/5 hover:border-emerald-500/20 transition-colors group">
+              <CardContent className="flex items-center gap-5 p-6">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-500 group-hover:bg-emerald-500/20 transition-colors">
+                  <Wallet className="h-7 w-7" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Được nợ (gốc)</p>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  <p className="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-1">Được nợ (gốc)</p>
+                  <p className="text-3xl font-bold text-emerald-500 tracking-tighter">
                     {debts ? formatCurrency(debts.total_owed_to_me) : '0đ'}
                   </p>
                 </div>
@@ -641,7 +695,7 @@ export default function DebtsPage() {
           {/* Debts I Owe - Mobile Optimized Cards */}
           <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-red-600 dark:text-red-400">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-red-500">
             <ArrowUpRight className="h-5 w-5" />
             Tôi cần trả
           </h2>
@@ -651,10 +705,10 @@ export default function DebtsPage() {
         </div>
         
         {debts?.i_owe.length === 0 ? (
-          <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+          <Card className="bg-green-500/5 border-green-500/20">
             <CardContent className="py-8 text-center">
               <TrendingUp className="h-12 w-12 mx-auto mb-2 text-green-500" />
-              <p className="text-green-700 dark:text-green-300 font-medium">Bạn không nợ ai! 🎉</p>
+              <p className="text-green-500 font-medium">Bạn không nợ ai!</p>
             </CardContent>
           </Card>
         ) : (
@@ -677,6 +731,20 @@ export default function DebtsPage() {
                   amount={debt.amount}
                   status={debt.status}
                   isGuest={debt.is_guest}
+                  canShowPayQr={
+                    !!debt.counterpart_qr_image_url ||
+                    (!!debt.counterpart_bank_name && !!debt.counterpart_account_number)
+                  }
+                  onShowPayQr={() =>
+                    setPayToModal({
+                      open: true,
+                      name: debt.counterpart_name,
+                      bankName: debt.counterpart_bank_name,
+                      accountNumber: debt.counterpart_account_number,
+                      accountHolder: debt.counterpart_account_holder_name,
+                      qrImageUrl: debt.counterpart_qr_image_url,
+                    })
+                  }
                   onSettle={() => requestSettle.mutate(debt.id)}
                   isSettling={requestSettle.isPending}
                 />
@@ -689,7 +757,7 @@ export default function DebtsPage() {
       {/* Debts Owed To Me - Mobile Optimized Cards */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-green-600 dark:text-green-400">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-green-500">
             <ArrowDownRight className="h-5 w-5" />
             Được nhận lại
           </h2>
@@ -699,9 +767,9 @@ export default function DebtsPage() {
         </div>
 
         {debts?.owed_to_me.length === 0 ? (
-          <Card className="bg-gray-50 dark:bg-gray-800/50">
+          <Card className="bg-card/50">
             <CardContent className="py-8 text-center">
-              <Users className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+              <Users className="h-12 w-12 mx-auto mb-2 text-muted-foreground opacity-50" />
               <p className="text-muted-foreground">Không ai nợ bạn</p>
             </CardContent>
           </Card>
@@ -736,6 +804,60 @@ export default function DebtsPage() {
       </div>
         </>
       )}
+
+      {/* VietQR Modal */}
+      <ResponsiveModal
+        isOpen={qrModal.open}
+        onClose={() => setQrModal({ open: false, amount: '', note: '' })}
+        title="VietQR"
+        desktopClassName="max-w-3xl"
+      >
+        <QRCodeGenerator initialAmount={qrModal.amount} initialNote={qrModal.note} />
+      </ResponsiveModal>
+
+      {/* Pay-to Modal (show counterpart uploaded QR / bank info) */}
+      <ResponsiveModal
+        isOpen={payToModal.open}
+        onClose={() => setPayToModal({ open: false, name: '' })}
+        title={`Trả cho ${payToModal.name}`}
+        desktopClassName="max-w-xl"
+      >
+        <div className="space-y-3">
+          {payToModal.qrImageUrl ? (
+            <div className="rounded-lg border p-3 bg-white">
+              <img
+                src={payToModal.qrImageUrl}
+                alt="Bank QR"
+                className="w-full h-64 object-contain"
+              />
+            </div>
+          ) : (
+            <div className="rounded-lg border p-3 text-sm text-muted-foreground">
+              Người này chưa upload ảnh QR ngân hàng. Bạn có thể chuyển khoản thủ công theo thông tin bên dưới (nếu có).
+            </div>
+          )}
+
+          {(payToModal.bankName || payToModal.accountNumber || payToModal.accountHolder) && (
+            <div className="text-sm">
+              {payToModal.bankName && (
+                <p>
+                  <span className="font-medium">Ngân hàng:</span> {payToModal.bankName}
+                </p>
+              )}
+              {payToModal.accountNumber && (
+                <p>
+                  <span className="font-medium">Số TK:</span> {payToModal.accountNumber}
+                </p>
+              )}
+              {payToModal.accountHolder && (
+                <p>
+                  <span className="font-medium">Chủ TK:</span> {payToModal.accountHolder}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </ResponsiveModal>
     </div>
   )
 }

@@ -5,106 +5,71 @@ import { cn } from '@/lib/utils'
 import { triggerHaptic } from '@/hooks/useHaptic'
 
 /**
- * Button - Vintage Typewriter Style
+ * Button - Dark Luxury / Portfolio Style
  * Features:
- * - Typewriter key press effect
- * - Stamp style for primary actions
- * - Dotted outline for secondary
- * - All uppercase with letter spacing
+ * - Pill shape (rounded-full)
+ * - Bold, Uppercase, Tracking-wide typography
+ * - Orange/Red Gradient for primary
  */
 
 const buttonVariants = cva(
-  // Base styles - Typewriter aesthetic
+  // Base styles
   [
     'inline-flex items-center justify-center whitespace-nowrap',
-    'text-sm font-semibold uppercase tracking-wider',
-    'ring-offset-background transition-all duration-150',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-    'disabled:pointer-events-none disabled:opacity-50 disabled:grayscale',
-    'touch-manipulation select-none',
+    'rounded-full', // Pill shape
+    'font-bold tracking-wider uppercase text-xs', // Editorial Typography
+    'transition-all duration-300',
+    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+    'disabled:pointer-events-none disabled:opacity-50',
+    'touch-manipulation select-none cursor-pointer',
+    'active:scale-[0.98]',
   ],
   {
     variants: {
       variant: {
-        // Default - Typewriter key style
+        // Luxury Primary: Gradient Orange->Red
         default: [
-          'rounded-sm',
-          'bg-gradient-to-b from-card to-secondary',
-          'border-2 border-border',
-          'text-foreground',
-          'shadow-[inset_0_1px_0_hsl(40_35%_98%/0.5),0_3px_0_hsl(var(--muted-foreground)/0.3),0_4px_4px_hsl(var(--shadow-color)/0.1)]',
-          'hover:from-background hover:to-card',
-          'active:translate-y-[2px] active:shadow-[inset_0_1px_0_hsl(40_35%_98%/0.5),0_1px_0_hsl(var(--muted-foreground)/0.3)]',
+          'bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(0,100%,60%)]',
+          'text-white',
+          'hover:brightness-110 hover:shadow-[0_0_25px_hsl(10,100%,50%,0.5)]',
+          'border-0',
         ],
-        // Stamp - Ink stamp effect
-        stamp: [
-          'rounded-none',
-          'bg-primary text-primary-foreground',
-          'border-2 border-primary',
-          'shadow-none',
-          'transition-all duration-200 ease-out',
-          'hover:rotate-[-2deg] hover:scale-[1.02] hover:shadow-[3px_3px_0_hsl(var(--foreground)/0.2)] hover:-translate-y-0.5',
-          'active:rotate-0 active:scale-[0.98] active:shadow-none active:translate-y-0',
-        ],
-        // Destructive - Warning stamp
-        destructive: [
-          'rounded-none',
-          'bg-destructive text-destructive-foreground',
-          'border-2 border-destructive',
-          'shadow-none',
-          'hover:rotate-[-1deg] hover:scale-[1.02]',
-          'active:rotate-0 active:scale-[0.98]',
-        ],
-        // Success - Approval stamp
-        success: [
-          'rounded-none',
-          'bg-success text-success-foreground',
-          'border-2 border-success',
-          'shadow-none',
-          'hover:rotate-[1deg] hover:scale-[1.02]',
-          'active:rotate-0 active:scale-[0.98]',
-        ],
-        // Outline - Dotted form field style
-        outline: [
-          'rounded-sm',
-          'bg-transparent',
-          'border-2 border-dotted border-border',
-          'text-foreground',
-          'hover:border-solid hover:border-primary hover:bg-primary/10',
-          'active:bg-primary/20',
-        ],
-        // Secondary - Subtle paper button
+        // Secondary: Dark Gray
         secondary: [
-          'rounded-sm',
           'bg-secondary text-secondary-foreground',
-          'border border-border',
-          'shadow-paper',
-          'hover:bg-secondary/80 hover:shadow-lifted',
-          'active:shadow-none active:translate-y-[1px]',
+          'hover:bg-secondary/80',
         ],
-        // Ghost - Minimal, underline on hover
+        // Destructive
+        destructive: [
+          'bg-destructive text-destructive-foreground',
+          'hover:bg-destructive/90',
+        ],
+        // Outline: Minimal White Border
+        outline: [
+          'bg-transparent border border-white/20 text-foreground',
+          'hover:border-white hover:bg-white/5',
+        ],
+        // Ghost: Text only
         ghost: [
-          'rounded-sm',
-          'bg-transparent text-foreground',
-          'border-none',
-          'hover:bg-accent/30',
-          'active:bg-accent/50',
+          'bg-transparent text-foreground/70',
+          'hover:text-foreground hover:bg-white/5',
         ],
-        // Link - Typewriter underline
+        // Link
         link: [
-          'rounded-none',
-          'bg-transparent text-primary',
-          'border-none p-0 h-auto',
-          'underline underline-offset-4 decoration-dotted',
-          'hover:decoration-solid hover:text-primary/80',
-          'normal-case tracking-normal',
+          'text-primary underline-offset-4 hover:underline p-0 h-auto',
+        ],
+        // Stamp mapping to Luxury Primary
+        stamp: [
+          'bg-gradient-to-r from-[hsl(20,100%,50%)] to-[hsl(0,100%,60%)]',
+          'text-white shadow-lg',
+          'hover:brightness-110',
         ],
       },
       size: {
-        default: 'h-10 px-5 py-2',
-        sm: 'h-8 px-3 py-1 text-xs',
-        lg: 'h-12 px-8 py-3 text-base',
-        icon: 'h-10 w-10 p-0',
+        default: 'h-12 px-8', // Taller and wider for luxury feel
+        sm: 'h-9 px-4 text-[10px]',
+        lg: 'h-14 px-10 text-sm',
+        icon: 'h-10 w-10',
       },
     },
     defaultVariants: {

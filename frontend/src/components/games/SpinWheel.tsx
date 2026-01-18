@@ -244,7 +244,7 @@ export function SpinWheel({ participants, onResult, disabled = false }: SpinWhee
         onClick={spin}
         disabled={isSpinning || disabled}
         size="lg"
-        className="gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+        className="gap-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 border-0"
       >
         <RotateCcw className={`h-5 w-5 ${isSpinning ? 'animate-spin' : ''}`} />
         {isSpinning ? 'Đang quay...' : 'QUAY!'}

@@ -44,7 +44,7 @@ Click vào session detail
 ┌─────────────────────────────────────────────────┐
 │ 🍺 Nhậu cuối tuần                    [ACTIVE]   │
 │ ─────────────────────────────────────────────── │
-│ 👤👤👤 +2 more                                  │
+│  +2 more                                  │
 │ ───────────────────────────                     │
 │ 📍 Quán Bia Hơi    📅 29/12/2024               │
 │                                                 │
@@ -168,11 +168,11 @@ User nhập số tiền: 500,000đ
 Ngay lập tức hiển thị preview:
   ┌────────────────────────────┐
   │ Chia cho 5 người:          │
-  │ 👤 An: 100,000đ            │
-  │ 👤 Bình: 100,000đ          │
-  │ 👤 Cường: 100,000đ         │
-  │ 👤 Dũng: 100,000đ          │
-  │ 👤 Em: 100,000đ            │
+  │  An: 100,000đ            │
+  │  Bình: 100,000đ          │
+  │  Cường: 100,000đ         │
+  │  Dũng: 100,000đ          │
+  │  Em: 100,000đ            │
   └────────────────────────────┘
     ↓
 User bỏ chọn 1 người
@@ -180,10 +180,10 @@ User bỏ chọn 1 người
 Preview cập nhật ngay:
   ┌────────────────────────────┐
   │ Chia cho 4 người:          │
-  │ 👤 An: 125,000đ            │
-  │ 👤 Bình: 125,000đ          │
-  │ 👤 Cường: 125,000đ         │
-  │ 👤 Dũng: 125,000đ          │
+  │  An: 125,000đ            │
+  │  Bình: 125,000đ          │
+  │  Cường: 125,000đ         │
+  │  Dũng: 125,000đ          │
   │ ✗ Em: không chia           │
   └────────────────────────────┘
     ↓
@@ -202,10 +202,10 @@ Hiển thị tổng và warning nếu không khớp
 │ Chia cho:  ○ Đều  ● Custom                      │
 │ ─────────────────────────────────────────────── │
 │                                                 │
-│ [✓] 👤 An         ████████░░ 200,000đ          │
-│ [✓] 👤 Bình       ██████░░░░ 150,000đ          │
-│ [✓] 👤 Cường      ██████░░░░ 150,000đ          │
-│ [ ] 👤 Dũng       ░░░░░░░░░░ 0đ                │
+│ [✓]  An         ████████░░ 200,000đ          │
+│ [✓]  Bình       ██████░░░░ 150,000đ          │
+│ [✓]  Cường      ██████░░░░ 150,000đ          │
+│ [ ]  Dũng       ░░░░░░░░░░ 0đ                │
 │                                                 │
 │ ─────────────────────────────────────────────── │
 │ Tổng: 500,000đ / 500,000đ  ✓ Khớp              │
@@ -257,9 +257,9 @@ Bottom sheet hiện lên:
   │                            │
   │ Thành viên: (bỏ chọn nếu   │
   │             ai không đi)   │
-  │ [✓] 👤 An                  │
-  │ [✓] 👤 Bình                │
-  │ [✓] 👤 Cường               │
+  │ [✓]  An                  │
+  │ [✓]  Bình                │
+  │ [✓]  Cường               │
   │                            │
   │ [ 🍺 Bắt đầu nhậu! ]       │
   └────────────────────────────┘
@@ -426,8 +426,8 @@ Hiển thị:
   │ ──────────────────────────────     │
   │ Giảm từ 3 → 2 giao dịch!           │
   │                                    │
-  │ 👤 Bạn → 👤 Bình: 20,000đ    [Trả] │
-  │ 👤 Bạn → 👤 Cường: 130,000đ  [Trả] │
+  │  Bạn →  Bình: 20,000đ    [Trả] │
+  │  Bạn →  Cường: 130,000đ  [Trả] │
   │                                    │
   │ Tiết kiệm: 1 giao dịch             │
   └────────────────────────────────────┘
@@ -461,11 +461,11 @@ Thấy danh sách:
   ┌────────────────────────────────────┐
   │ ⏰ Cần nhắc nhở                     │
   │ ──────────────────────────────     │
-  │ 👤 Bình - 150,000đ                 │
+  │  Bình - 150,000đ                 │
   │    Từ "Nhậu tuần trước" (10 ngày)  │
   │    [💬 Nhắc] [✓ Đã trả]            │
   │                                    │
-  │ 👤 Cường - 80,000đ                 │
+  │  Cường - 80,000đ                 │
   │    Từ "Sinh nhật An" (14 ngày)     │
   │    [💬 Nhắc] [✓ Đã trả]            │
   └────────────────────────────────────┘
@@ -564,7 +564,37 @@ Kết quả reveal với flash effect
 
 ---
 
-## 10. Empty States
+## 10. Quick Actions (Long-press)
+
+### User Flow
+```
+User ở tab Hoá đơn
+    ↓
+Long-press trên card hoá đơn (mobile) hoặc right‑click (desktop)
+    ↓
+Bottom sheet "Thao tác nhanh" xuất hiện
+    ↓
+Các lựa chọn:
+  - ✏️ Sửa hoá đơn
+  - 🧾 Xem ảnh hoá đơn (nếu có)
+  - 🗑️ Xoá hoá đơn (confirm)
+    ↓
+Chạm ra ngoài để đóng
+```
+
+### Micro‑Interactions
+- Haptic nhẹ khi mở sheet (mobile)
+- Swipe actions: kéo trái để Xoá, kéo phải để Sửa
+- Trạng thái xoá 2 bước: chọn → xác nhận
+
+### Design Notes
+- Ưu tiên thao tác 1 tay, nút đủ lớn (>= 44px)
+- Bottom sheet dùng tiêu đề ngắn, rõ hành động
+- Không chặn thao tác click nút bên trong card
+
+---
+
+## 11. Empty States
 
 ### Các trường hợp
 1. **Chưa có sessions** - Dashboard trống

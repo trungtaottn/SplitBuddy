@@ -44,9 +44,9 @@
 | Entity | Fields | Ghi chú |
 |--------|--------|---------|
 | **User** | id, email, full_name, avatar_url | UUID format |
-| **Session** | id, name, location, status, created_by, participant_count, total_amount | status: active/closed |
-| **Participant** | id, user_id, guest_name, display_name, role | role: owner/member |
-| **Bill** | id, description, amount, split_strategy, created_by | amount: Decimal **as string** |
+| **Session** | id, name, location, status, base_currency, minimize_debts, archived_at, created_by, participant_count, total_amount | status: active/closed, archived_at nullable |
+| **Participant** | id, user_id, guest_name, display_name, role, default_weight, is_active | role: owner/member |
+| **Bill** | id, description, amount, amount_original, currency_code, split_strategy, created_by | split_strategy: EQUAL/CUSTOM/WEIGHTED |
 | **Debt** | id, debtor_id, creditor_id, amount, status | status: pending/settlement_requested/settled |
 
 ### 1.3 Nghiệp vụ chia tiền & công nợ
@@ -54,6 +54,11 @@
 1. **Thuật toán Net Balance**: `Balance = Tổng trả - Tổng chịu`
 2. **Chia đều (MVP)**: `amount / participant_count`
 3. **Settlement flow**: Debtor → "Đã trả" → Creditor → "Xác nhận"
+
+### 1.4 Multi-currency notes
+- UI hien thi `amount` theo `base_currency`.
+- Neu `currency_code` khac base, hien them `amount_original` va don vi goc.
+- Khi tao bill, can gui `amount_original`, `currency_code`, va `exchange_rate` (neu user override).
 
 ---
 
@@ -204,7 +209,7 @@ frontend/
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │ 💰 Bạn đang nợ: 500,000đ    |  👤 Bạn được nợ: 200k│   │
+│  │ 💰 Bạn đang nợ: 500,000đ    |   Bạn được nợ: 200k│   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  Cuộc nhậu của tôi            [+ Tạo cuộc nhậu mới]        │
@@ -238,7 +243,7 @@ frontend/
 │                                                             │
 │  Thành viên:                    [+ Thêm người]             │
 │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐          │
-│  │ 👤 Trung│ │ 👤 Minh │ │ 👤 Hùng │ │ 👻 Guest│          │
+│  │  Trung│ │  Minh │ │  Hùng │ │ 👻 Guest│          │
 │  │ (Owner) │ │         │ │         │ │ "Bạn A" │          │
 │  └─────────┘ └─────────┘ └─────────┘ └─────────┘          │
 │                                                             │

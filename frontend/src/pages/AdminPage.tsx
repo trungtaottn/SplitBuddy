@@ -9,6 +9,7 @@ import { UserPlus, Key, Users, ToggleLeft, ToggleRight, Settings, Music, Upload,
 import { toast } from '@/components/ui/toaster'
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
 import { useMusic } from '@/contexts/MusicContext'
+import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import type { ApiResponse, FeatureFlag } from '@/types/api'
 
 interface MusicTrack {
@@ -30,12 +31,12 @@ export default function AdminPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showResetModal, setShowResetModal] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
-  
+
   const [newEmail, setNewEmail] = useState('')
   const [newName, setNewName] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [resetPassword, setResetPassword] = useState('')
-  
+
   const [musicName, setMusicName] = useState('')
   const [musicUrl, setMusicUrl] = useState('')
   const [isUploading, setIsUploading] = useState(false)
@@ -200,11 +201,11 @@ export default function AdminPage() {
 
   const getModuleLabel = (module: string) => {
     const labels: Record<string, string> = {
-      general: '🏠 Chung',
-      sessions: '🍻 Buổi nhậu',
-      groups: '👥 Nhóm',
-      debts: '💰 Công nợ',
-      games: '🎮 Trò chơi',
+      general: 'Chung',
+      sessions: 'Buổi nhậu',
+      groups: 'Nhóm',
+      debts: 'Công nợ',
+      games: 'Trò chơi',
     }
     return labels[module] || module
   }
@@ -396,7 +397,7 @@ export default function AdminPage() {
             {Object.entries(featuresByModule).map(([module, moduleFeatures]) => (
               <div key={module} className="border rounded-lg overflow-hidden">
                 {/* Module Header */}
-                <div 
+                <div
                   className="flex items-center justify-between p-3 bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors"
                   onClick={() => toggleModuleCollapse(module)}
                 >
@@ -415,9 +416,9 @@ export default function AdminPage() {
                     <Button
                       variant={isModuleFullyEnabled(module) ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => toggleModuleFeatures.mutate({ 
-                        module, 
-                        enabled: !isModuleFullyEnabled(module) 
+                      onClick={() => toggleModuleFeatures.mutate({
+                        module,
+                        enabled: !isModuleFullyEnabled(module)
                       })}
                       disabled={toggleModuleFeatures.isPending}
                       className="gap-1 text-xs h-7"
@@ -493,7 +494,7 @@ export default function AdminPage() {
           <p className="text-sm text-muted-foreground mb-4">
             Tải lên các file nhạc nền cho ứng dụng. Chỉ admin mới có thể quản lý.
           </p>
-          
+
           {/* Add Music Section */}
           <div className="mb-6 p-4 border rounded-lg bg-muted/30 space-y-4">
             {/* Track Name */}
@@ -599,106 +600,102 @@ export default function AdminPage() {
         </CardContent>
       </Card>
 
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Tạo tài khoản mới</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateUser} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Họ tên</Label>
-                  <Input
-                    id="name"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Nguyễn Văn A"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="user@example.com"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Mật khẩu</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Nhập mật khẩu"
-                    required
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setShowCreateModal(false)}
-                  >
-                    Hủy
-                  </Button>
-                  <Button type="submit" className="flex-1" disabled={createUser.isPending}>
-                    {createUser.isPending ? 'Đang tạo...' : 'Tạo'}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <ResponsiveModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Tạo tài khoản mới"
+        desktopClassName="max-w-md"
+      >
+        <form onSubmit={handleCreateUser} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Họ tên</Label>
+            <Input
+              id="name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Nguyễn Văn A"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              placeholder="user@example.com"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Mật khẩu</Label>
+            <Input
+              id="password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Nhập mật khẩu"
+              required
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowCreateModal(false)}
+            >
+              Hủy
+            </Button>
+            <Button type="submit" className="flex-1" disabled={createUser.isPending}>
+              {createUser.isPending ? 'Đang tạo...' : 'Tạo'}
+            </Button>
+          </div>
+        </form>
+      </ResponsiveModal>
 
-      {showResetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Đặt lại mật khẩu</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleResetPassword} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="resetPassword">Mật khẩu mới</Label>
-                  <Input
-                    id="resetPassword"
-                    type="password"
-                    value={resetPassword}
-                    onChange={(e) => setResetPassword(e.target.value)}
-                    placeholder="Nhập mật khẩu mới"
-                    required
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => {
-                      setShowResetModal(false)
-                      setSelectedUserId(null)
-                      setResetPassword('')
-                    }}
-                  >
-                    Hủy
-                  </Button>
-                  <Button type="submit" className="flex-1" disabled={resetUserPassword.isPending}>
-                    {resetUserPassword.isPending ? 'Đang xử lý...' : 'Đặt lại'}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <ResponsiveModal
+        isOpen={showResetModal}
+        onClose={() => {
+          setShowResetModal(false)
+          setSelectedUserId(null)
+          setResetPassword('')
+        }}
+        title="Đặt lại mật khẩu"
+        desktopClassName="max-w-md"
+      >
+        <form onSubmit={handleResetPassword} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="resetPassword">Mật khẩu mới</Label>
+            <Input
+              id="resetPassword"
+              type="password"
+              value={resetPassword}
+              onChange={(e) => setResetPassword(e.target.value)}
+              placeholder="Nhập mật khẩu mới"
+              required
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setShowResetModal(false)
+                setSelectedUserId(null)
+                setResetPassword('')
+              }}
+            >
+              Hủy
+            </Button>
+            <Button type="submit" className="flex-1" disabled={resetUserPassword.isPending}>
+              {resetUserPassword.isPending ? 'Đang xử lý...' : 'Đặt lại'}
+            </Button>
+          </div>
+        </form>
+      </ResponsiveModal>
     </div>
   )
 }

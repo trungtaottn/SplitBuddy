@@ -56,33 +56,35 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Vintage Paper specific colors
-        paper: {
-          DEFAULT: "hsl(40 35% 94%)",
-          dark: "hsl(38 25% 88%)",
-          cream: "hsl(40 30% 91%)",
-        },
-        ink: {
-          DEFAULT: "hsl(35 20% 22%)",
-          light: "hsl(35 15% 40%)",
-          sepia: "hsl(28 65% 26%)",
-        },
       },
       fontFamily: {
-        mono: ['var(--font-mono)', 'monospace'],
-        sans: ['var(--font-mono)', 'monospace'],
-        serif: ['var(--font-mono)', 'monospace'],
+        heading: ['var(--font-heading)', 'Outfit', 'sans-serif'],
+        body: ['var(--font-body)', 'Plus Jakarta Sans', 'sans-serif'],
+        sans: ['var(--font-body)', 'Plus Jakarta Sans', 'sans-serif'],
+        mono: ['var(--font-mono)', 'Space Mono', 'monospace'],
       },
       borderRadius: {
-        lg: "var(--radius-lg)",
-        md: "var(--radius)",
-        sm: "var(--radius-sm)",
-        none: "0",
+        pill: "var(--radius-pill)",
+        card: "var(--radius-card)",
+        xl: "1rem",
+        lg: "0.75rem",
+        md: "0.5rem",
+        sm: "0.25rem",
       },
       boxShadow: {
-        'paper': 'var(--shadow-paper)',
-        'stack': 'var(--shadow-stack)',
-        'lifted': 'var(--shadow-lifted)',
+        'sm': 'var(--shadow-sm)',
+        'md': 'var(--shadow-md)',
+        'lg': 'var(--shadow-lg)',
+        'xl': 'var(--shadow-xl)',
+      },
+      spacing: {
+        'touch': 'var(--touch-target)',
+      },
+      minHeight: {
+        'touch': 'var(--touch-target)',
+      },
+      minWidth: {
+        'touch': 'var(--touch-target)',
       },
       keyframes: {
         "accordion-down": {
@@ -97,6 +99,37 @@ export default {
           "0%": { backgroundPosition: "200% 0" },
           "100%": { backgroundPosition: "-200% 0" },
         },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "slide-up": {
+          from: { opacity: "0", transform: "translateY(16px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "slide-down": {
+          from: { opacity: "0", transform: "translateY(-16px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "scale-up": {
+          from: { opacity: "0", transform: "scale(0.95)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
+        "bounce-in": {
+          "0%": { opacity: "0", transform: "scale(0.3)" },
+          "50%": { transform: "scale(1.05)" },
+          "70%": { transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "shake": {
+          "0%, 100%": { transform: "translateX(0)" },
+          "10%, 30%, 50%, 70%, 90%": { transform: "translateX(-4px)" },
+          "20%, 40%, 60%, 80%": { transform: "translateX(4px)" },
+        },
+        "float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
         "card-flip": {
           "0%": { transform: "rotateY(0deg)" },
           "50%": { transform: "rotateY(90deg)" },
@@ -107,45 +140,36 @@ export default {
           "25%": { transform: "rotate(-15deg) scale(1.1)" },
           "75%": { transform: "rotate(15deg) scale(1.1)" },
         },
-        "dice-roll": {
+        "wheel-spin": {
           "0%": { transform: "rotate(0deg)" },
-          "100%": { transform: "rotate(720deg)" },
-        },
-        "reveal-pop": {
-          "0%": { transform: "scale(0.5)", opacity: "0" },
-          "50%": { transform: "scale(1.1)" },
-          "100%": { transform: "scale(1)", opacity: "1" },
+          "100%": { transform: "rotate(1800deg)" },
         },
         "confetti": {
           "0%": { transform: "translateY(0) rotate(0deg)", opacity: "1" },
-          "100%": { transform: "translateY(100vh) rotate(720deg)", opacity: "0" },
+          "100%": { transform: "translateY(-100vh) rotate(720deg)", opacity: "0" },
         },
-        "float": {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-10px)" },
-        },
-        "bounce-in": {
+        "pop-reveal": {
           "0%": { transform: "scale(0)", opacity: "0" },
-          "50%": { transform: "scale(1.1)" },
+          "50%": { transform: "scale(1.2)" },
           "100%": { transform: "scale(1)", opacity: "1" },
-        },
-        "spin-slow": {
-          "0%": { transform: "rotate(0deg)" },
-          "100%": { transform: "rotate(360deg)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "shimmer": "shimmer 2s ease-in-out infinite",
-        "card-flip": "card-flip 0.6s ease-in-out",
-        "dice-shake": "dice-shake 0.5s ease-in-out",
-        "dice-roll": "dice-roll 1s ease-out",
-        "reveal-pop": "reveal-pop 0.4s ease-out",
-        "confetti": "confetti 3s ease-out forwards",
+        "shimmer": "shimmer 1.5s ease-in-out infinite",
+        "fade-in": "fade-in 0.3s ease-out forwards",
+        "slide-up": "slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "slide-down": "slide-down 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "scale-up": "scale-up 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "bounce-in": "bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards",
+        "shake": "shake 0.5s ease-in-out",
         "float": "float 3s ease-in-out infinite",
-        "bounce-in": "bounce-in 0.5s ease-out",
-        "spin-slow": "spin-slow 3s linear infinite",
+        "card-flip": "card-flip 0.6s ease-in-out forwards",
+        "dice-shake": "dice-shake 0.5s ease-in-out",
+        "wheel-spin": "wheel-spin 5s cubic-bezier(0.17, 0.67, 0.12, 0.99) forwards",
+        "confetti": "confetti 3s ease-out forwards",
+        "pop-reveal": "pop-reveal 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards",
       },
     },
   },

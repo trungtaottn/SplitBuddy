@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT g.id, g.name, g.description, g.created_by, g.created_at\n            FROM groups g\n            INNER JOIN group_members gm ON g.id = gm.group_id\n            WHERE gm.user_id = $1\n            ORDER BY g.created_at DESC\n            ",
+  "query": "\n            SELECT id, name, description, created_by, created_at, archived_at\n            FROM groups\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,11 @@
         "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "archived_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -39,8 +44,9 @@
       false,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "2417ae82975b6021371a19e7aa6fb6339d568e48bcb55e9fd5af43da9fdec818"
+  "hash": "f30d43a04691d8ff301eeb4169ee71bf04ec2f37e222d5e4b75d8abb1ed71b73"
 }

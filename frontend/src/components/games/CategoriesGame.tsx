@@ -123,10 +123,10 @@ export function CategoriesGame({ onClose }: CategoriesGameProps) {
 
         {/* Category Display */}
         {currentCategory ? (
-          <div className="card-paper p-4 rounded-xl border-2 border-success/30 text-center">
-            <p className="text-sm text-success mb-1 font-body">Chủ đề:</p>
-            <p className="text-2xl font-heading font-bold text-foreground">{currentCategory.name}</p>
-            <p className="text-xs text-muted-foreground mt-2 font-body">VD: {currentCategory.examples}</p>
+          <div className="bg-zinc-900 p-4 rounded-xl border border-orange-500/30 text-center shadow-[0_0_15px_rgba(249,115,22,0.1)]">
+            <p className="text-sm text-orange-500 mb-1 font-body">Chủ đề:</p>
+            <p className="text-2xl font-heading font-bold text-white">{currentCategory.name}</p>
+            <p className="text-xs text-zinc-400 mt-2 font-body">VD: {currentCategory.examples}</p>
           </div>
         ) : (
           <div className="p-4 bg-secondary/50 rounded-xl border-2 border-dashed border-border text-center">

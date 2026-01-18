@@ -14,6 +14,7 @@ use crate::domain::debt::DebtStatus;
 use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::repository::debt_repo::DebtRepository;
+use crate::repository::session_repo::SessionRepository;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -32,7 +33,7 @@ pub struct DebtSummaryResponse {
     pub total_owed_to_me: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, sqlx::FromRow)]
 pub struct DebtItemResponse {
     pub id: Uuid,
     pub session_id: Uuid,
@@ -43,6 +44,11 @@ pub struct DebtItemResponse {
     pub amount: Decimal,
     pub status: DebtStatus,
     pub is_guest: bool, // Whether the counterpart (debtor for owed_to_me) is a guest
+    // Optional payment info for settlement UX (only available for registered users with default bank account)
+    pub counterpart_bank_name: Option<String>,
+    pub counterpart_account_number: Option<String>,
+    pub counterpart_account_holder_name: Option<String>,
+    pub counterpart_qr_image_url: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -133,9 +139,29 @@ async fn confirm_settle(
     auth_user: AuthUser,
     Path(debt_id): Path<Uuid>,
 ) -> Result<Json<ApiResponse<SettleResponse>>, AppError> {
+    tracing::info!(
+        "Confirm settlement request: debt_id={}, user_id={}",
+        debt_id,
+        auth_user.user_id
+    );
     let repo = DebtRepository::new(state.pool.clone());
 
-    let debt = repo.confirm_settlement(debt_id, auth_user.user_id).await?;
+    let debt = match repo.confirm_settlement(debt_id, auth_user.user_id).await {
+        Ok(d) => d,
+        Err(e) => {
+            tracing::error!(
+                "Failed to confirm settlement: debt_id={}, user_id={}, error={:?}",
+                debt_id,
+                auth_user.user_id,
+                e
+            );
+            return Err(e);
+        }
+    };
+
+    auto_archive_if_settled(&state.pool, debt.session_id)
+        .await
+        .ok();
 
     // Broadcast WebSocket event
     state
@@ -148,6 +174,74 @@ async fn confirm_settle(
             },
         )
         .await;
+
+    // Create notification for the debtor that their payment was confirmed
+    // Get debt details to notify the debtor
+    let debt_details: Option<(Uuid, String, String, Decimal)> = sqlx::query_as(
+        r#"
+        SELECT 
+            d.debtor_id,
+            COALESCE(u.full_name, sp.guest_name, 'Unknown') as creditor_name,
+            s.name as session_name,
+            d.amount
+        FROM debts d
+        JOIN sessions s ON d.session_id = s.id
+        LEFT JOIN session_participants sp ON d.creditor_id = sp.id
+        LEFT JOIN users u ON sp.user_id = u.id
+        WHERE d.id = $1
+        "#,
+    )
+    .bind(debt_id)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    if let Some((debtor_id, creditor_name, session_name, amount)) = debt_details {
+        // Check if debtor is a registered user (not a guest)
+        let debtor_user_id: Option<Uuid> =
+            sqlx::query_scalar("SELECT user_id FROM session_participants WHERE id = $1")
+                .bind(debtor_id)
+                .fetch_optional(&state.pool)
+                .await?
+                .flatten();
+
+        if let Some(user_id) = debtor_user_id {
+            // Check settlement_notifications preference
+            let prefs_enabled: bool = sqlx::query_scalar(
+                r#"
+                SELECT COALESCE(settlement_notifications, true)
+                FROM notification_preferences
+                WHERE user_id = $1
+                "#,
+            )
+            .bind(user_id)
+            .fetch_optional(&state.pool)
+            .await?
+            .unwrap_or(true);
+
+            if prefs_enabled {
+                let notification_id = uuid::Uuid::new_v4();
+                sqlx::query(
+                    r#"
+                    INSERT INTO notifications (id, user_id, type, title, message, data, is_read, created_at)
+                    VALUES ($1, $2, 'settlement_confirmed', $3, $4, $5, false, NOW())
+                    "#,
+                )
+                .bind(notification_id)
+                .bind(user_id)
+                .bind("Thanh toán đã được xác nhận".to_string())
+                .bind(format!("{} đã xác nhận thanh toán {} VND từ session '{}'", creditor_name, amount, session_name))
+                .bind(serde_json::json!({
+                    "debt_id": debt_id,
+                    "session_id": debt.session_id,
+                    "session_name": session_name,
+                    "creditor_name": creditor_name,
+                    "amount": amount.to_string()
+                }))
+                .execute(&state.pool)
+                .await?;
+            }
+        }
+    }
 
     Ok(ok(SettleResponse {
         debt_id: debt.id,
@@ -167,6 +261,10 @@ async fn settle_guest_debt(
 
     let debt = repo.settle_guest_debt(debt_id, auth_user.user_id).await?;
 
+    auto_archive_if_settled(&state.pool, debt.session_id)
+        .await
+        .ok();
+
     // Broadcast WebSocket event
     state
         .ws_manager
@@ -184,4 +282,31 @@ async fn settle_guest_debt(
         status: debt.status,
         message: "Guest debt has been settled.".to_string(),
     }))
+}
+
+async fn auto_archive_if_settled(pool: &sqlx::PgPool, session_id: Uuid) -> Result<(), AppError> {
+    #[derive(sqlx::FromRow)]
+    struct DebtCountRow {
+        total: i64,
+        unsettled: i64,
+    }
+
+    let counts: DebtCountRow = sqlx::query_as(
+        r#"
+        SELECT COUNT(*) as total,
+               COUNT(*) FILTER (WHERE status != 'settled') as unsettled
+        FROM debts
+        WHERE session_id = $1
+        "#,
+    )
+    .bind(session_id)
+    .fetch_one(pool)
+    .await?;
+
+    if counts.total > 0 && counts.unsettled == 0 {
+        let repo = SessionRepository::new(pool.clone());
+        let _ = repo.set_archived(session_id, true).await?;
+    }
+
+    Ok(())
 }

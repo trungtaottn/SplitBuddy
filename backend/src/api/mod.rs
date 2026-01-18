@@ -7,16 +7,22 @@ use crate::config::Config;
 
 pub mod admin;
 pub mod ai;
+pub mod analytics;
 pub mod auth;
 pub mod bills;
+pub mod categories;
 pub mod debts;
+pub mod fx;
 pub mod games;
 pub mod groups;
 pub mod health;
 pub mod notifications;
+pub mod payments;
 pub mod personas;
+pub mod recurring_expenses;
 pub mod response;
 pub mod sessions;
+pub mod templates;
 pub mod uploads;
 pub mod users;
 pub mod wrapped;
@@ -60,12 +66,18 @@ pub fn routes() -> Router<AppState> {
         .nest("/groups", groups::routes())
         .nest("/sessions", sessions::routes())
         .nest("/debts", debts::routes())
+        .nest("/fx", fx::routes())
         .nest("/notifications", notifications::routes())
         .nest("/ai", ai::routes())
         .nest("/games", games::routes())
         .nest("/uploads", uploads::routes())
         .nest("/personas", personas::routes())
         .nest("/wrapped", wrapped::routes())
+        .nest("/payments", payments::routes())
+        .nest("/categories", categories::routes())
+        .nest("/templates", templates::routes())
+        .nest("/analytics", analytics::routes())
+        .nest("/recurring-expenses", recurring_expenses::routes())
         .nest("/health", health::routes())
         .nest("/ws", ws::routes())
 }

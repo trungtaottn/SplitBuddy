@@ -35,6 +35,7 @@ mod error;
 mod middleware;
 mod openapi;
 mod repository;
+mod scheduler;
 mod utils;
 
 use cache::AppCache;
@@ -291,8 +292,10 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    // Create uploads directory if it doesn't exist
+    // Create uploads directories if they don't exist
     tokio::fs::create_dir_all("uploads/avatars").await.ok();
+    tokio::fs::create_dir_all("uploads/receipts").await.ok();
+    tokio::fs::create_dir_all("uploads/bank_qr").await.ok();
 
     // Configure rate limiting with custom key extractor for localhost handling
     let governor_conf = Arc::new(
@@ -318,6 +321,17 @@ async fn main() -> anyhow::Result<()> {
         "Rate limiting configured: {} req/s, burst size {}",
         config.rate_limit_requests_per_second,
         config.rate_limit_burst_size
+    );
+
+    // Spawn recurring expense scheduler
+    let scheduler = scheduler::RecurringExpenseScheduler::new(
+        app_state.pool.clone(),
+        config.recurring_expense_scheduler_interval_seconds,
+    );
+    scheduler.spawn();
+    tracing::info!(
+        "Recurring expense scheduler initialized (interval: {}s)",
+        config.recurring_expense_scheduler_interval_seconds
     );
 
     // Serve static files (frontend) - fallback to index.html for SPA routing

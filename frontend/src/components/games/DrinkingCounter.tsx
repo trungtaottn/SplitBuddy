@@ -78,10 +78,10 @@ export function DrinkingCounter({ onClose }: DrinkingCounterProps) {
     : null
 
   const getDrinkColor = (drinks: number) => {
-    if (drinks >= DANGER_THRESHOLD) return 'text-red-600 bg-red-50'
-    if (drinks >= WARNING_THRESHOLD) return 'text-orange-600 bg-orange-50'
-    if (drinks >= 3) return 'text-yellow-600 bg-yellow-50'
-    return 'text-emerald-600 bg-emerald-50'
+    if (drinks >= DANGER_THRESHOLD) return 'text-red-500 bg-red-500/10 border-red-500/30'
+    if (drinks >= WARNING_THRESHOLD) return 'text-orange-500 bg-orange-500/10 border-orange-500/30'
+    if (drinks >= 3) return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30'
+    return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30'
   }
 
   return (
@@ -102,22 +102,22 @@ export function DrinkingCounter({ onClose }: DrinkingCounterProps) {
       <CardContent className="space-y-4">
         {/* Stats summary */}
         <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="p-2 bg-blue-50 rounded-lg">
-            <p className="text-2xl font-bold text-blue-600">{participants.length}</p>
-            <p className="text-xs text-blue-500">Người chơi</p>
+          <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+            <p className="text-2xl font-bold text-blue-500">{participants.length}</p>
+            <p className="text-xs text-blue-400">Người chơi</p>
           </div>
-          <div className="p-2 bg-amber-50 rounded-lg">
-            <p className="text-2xl font-bold text-amber-600">{totalDrinks}</p>
-            <p className="text-xs text-amber-500">Tổng ly</p>
+          <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
+            <p className="text-2xl font-bold text-amber-500">{totalDrinks}</p>
+            <p className="text-xs text-amber-400">Tổng ly</p>
           </div>
-          <div className="p-2 bg-purple-50 rounded-lg">
+          <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
             <div className="flex items-center justify-center gap-1">
               <Trophy className="h-4 w-4 text-purple-500" />
-              <p className="text-sm font-bold text-purple-600 truncate">
+              <p className="text-sm font-bold text-purple-400 truncate">
                 {leader?.name || '-'}
               </p>
             </div>
-            <p className="text-xs text-purple-500">Dẫn đầu</p>
+            <p className="text-xs text-purple-400">Dẫn đầu</p>
           </div>
         </div>
 
@@ -204,8 +204,8 @@ export function DrinkingCounter({ onClose }: DrinkingCounterProps) {
 
         {/* Warning message */}
         {participants.some(p => p.drinks >= WARNING_THRESHOLD) && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-center">
-            <p className="text-sm text-red-600 font-medium">
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-center">
+            <p className="text-sm text-red-500 font-medium">
               ⚠️ Uống có trách nhiệm - Đã uống không lái xe!
             </p>
           </div>

@@ -85,6 +85,12 @@ jobs:
         
       - name: Clippy
         run: cargo clippy --release -- -D warnings
+      
+      - name: Update version (main branch only)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git fetch --tags || true
+          bash scripts/update-version.sh
         
       - name: Build
         run: cargo build --release
@@ -114,10 +120,22 @@ jobs:
           
       - name: Install dependencies
         run: npm ci --prefer-offline
+      
+      - name: Update version (main branch only)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git fetch --tags || true
+          node scripts/update-version.js
         
       - name: Type check
         run: npm run type-check || true
         
+      - name: Update version (main branch only)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git fetch --tags || true
+          node scripts/update-version.js
+      
       - name: Build
         run: npm run build
 

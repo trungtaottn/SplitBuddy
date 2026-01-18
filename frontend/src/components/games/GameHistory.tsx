@@ -23,10 +23,10 @@ const GAME_NAMES: Record<string, string> = {
 }
 
 const DIFFICULTY_COLORS: Record<string, string> = {
-  easy: 'bg-green-100 text-green-700',
-  medium: 'bg-yellow-100 text-yellow-700',
-  hard: 'bg-red-100 text-red-700',
-  extreme: 'bg-purple-100 text-purple-700',
+  easy: 'bg-green-500/10 text-green-500 border border-green-500/20',
+  medium: 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20',
+  hard: 'bg-red-500/10 text-red-500 border border-red-500/20',
+  extreme: 'bg-purple-500/10 text-purple-500 border border-purple-500/20',
 }
 
 export function GameHistory({ sessionId }: GameHistoryProps) {
@@ -51,7 +51,7 @@ export function GameHistory({ sessionId }: GameHistoryProps) {
         <CardContent>
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-gray-100 animate-pulse rounded-lg" />
+              <div key={i} className="h-16 bg-zinc-800 animate-pulse rounded-lg" />
             ))}
           </div>
         </CardContent>
@@ -90,7 +90,7 @@ export function GameHistory({ sessionId }: GameHistoryProps) {
           {history.map((entry) => (
             <div
               key={entry.id}
-              className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+              className="flex items-start gap-3 p-3 rounded-lg bg-zinc-900 border border-white/5 hover:bg-zinc-800/80 transition-colors"
             >
               <div className="flex-shrink-0 mt-0.5">
                 {GAME_ICONS[entry.game_type] || <Beer className="h-4 w-4" />}
@@ -101,7 +101,7 @@ export function GameHistory({ sessionId }: GameHistoryProps) {
                     {GAME_NAMES[entry.game_type] || entry.game_type}
                   </span>
                   {entry.difficulty && (
-                    <span className={`text-xs px-1.5 py-0.5 rounded ${DIFFICULTY_COLORS[entry.difficulty] || 'bg-gray-100'}`}>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${DIFFICULTY_COLORS[entry.difficulty] || 'bg-zinc-800 text-zinc-400'}`}>
                       {entry.difficulty}
                     </span>
                   )}
@@ -110,7 +110,7 @@ export function GameHistory({ sessionId }: GameHistoryProps) {
                 {entry.player_name && (
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs text-gray-500">
-                      👤 {entry.player_name}
+                       {entry.player_name}
                     </span>
                     {entry.drink_count && entry.drink_count > 0 && (
                       <span className="text-xs text-orange-600 flex items-center gap-0.5">

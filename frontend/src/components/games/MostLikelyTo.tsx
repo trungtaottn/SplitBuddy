@@ -115,7 +115,7 @@ export function MostLikelyTo({ onClose }: MostLikelyToProps) {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ThumbsUp className="h-5 w-5 text-indigo-500" />
+            <ThumbsUp className="h-5 w-5 text-orange-500" />
             Ai có khả năng nhất?
           </div>
           <div className="flex items-center gap-2">
@@ -148,15 +148,15 @@ export function MostLikelyTo({ onClose }: MostLikelyToProps) {
             </div>
           ) : currentQuestion ? (
             <div className="text-center space-y-4">
-              <div className="card-paper p-6 rounded-2xl border-2 border-primary/30">
+              <div className="bg-zinc-900 p-6 rounded-2xl border-2 border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
                 <p className="text-xl font-heading font-semibold text-foreground leading-relaxed">
                   {currentQuestion}
                 </p>
               </div>
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground font-body">
-                <ThumbsUp className="h-4 w-4 text-primary" />
+                <ThumbsUp className="h-4 w-4 text-orange-500" />
                 <span>Đếm 3-2-1 rồi chỉ!</span>
-                <ThumbsUp className="h-4 w-4 text-primary" />
+                <ThumbsUp className="h-4 w-4 text-orange-500" />
               </div>
             </div>
           ) : (
@@ -180,12 +180,12 @@ export function MostLikelyTo({ onClose }: MostLikelyToProps) {
         </Button>
 
         {/* Rules */}
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+        <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg text-sm">
           <div className="flex items-start gap-2">
-            <Beer className="h-4 w-4 text-amber-600 mt-0.5" />
+            <Beer className="h-4 w-4 text-orange-500 mt-0.5" />
             <div>
-              <p className="font-medium text-amber-800">Luật chơi:</p>
-              <p className="text-amber-700">Đếm 3-2-1, mọi người cùng chỉ. Ai bị chỉ nhiều nhất phải uống!</p>
+              <p className="font-bold text-orange-400">Luật chơi:</p>
+              <p className="text-zinc-400">Đếm 3-2-1, mọi người cùng chỉ. Ai bị chỉ nhiều nhất phải uống!</p>
             </div>
           </div>
         </div>

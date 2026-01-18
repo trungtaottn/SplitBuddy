@@ -1,962 +1,510 @@
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/axios'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Users, Receipt, Wallet, Beer, Calendar, MapPin, Banknote, Trash2, Pencil, X, Check, Lock, Unlock, Download, UserPlus, Ghost } from 'lucide-react'
-import { BillInput, BillInputInline } from '@/components/BillInput'
-import { PageSkeleton } from '@/components/ui/skeleton'
-import { SuccessToast } from '@/components/ui/Celebration'
-import { formatCurrency } from '@/utils/formatCurrency'
-import { toast } from '@/components/ui/toaster'
-import type { SessionDetail, Bill, ApiResponse, CreateBillDto, PayerInput, SplitDetailInput, GroupDetail } from '@/types/api'
+import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { ArrowLeft, Plus, Upload } from "lucide-react";
+import type { Bill, ExpenseCategory } from "@/types/api";
+import { ResponsiveModal } from "@/components/ui/responsive-modal";
+import { BillInput } from "@/components/BillInput";
+import { useAuth } from "@/contexts/AuthContext";
 
-type TabType = 'overview' | 'bills' | 'debts'
+// Sub-components
+import { SessionOverview } from "./session/SessionOverview";
+import { BillList } from "./session/BillList";
+import { DebtBreakdown } from "./session/DebtBreakdown";
+import { RecurringExpenses } from "./session/RecurringExpenses";
+import { ImportExportModal } from "./session/ImportExportModal";
 
 export default function SessionDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<TabType>('overview')
-  const [showBillModal, setShowBillModal] = useState(false)
-  const [editingBill, setEditingBill] = useState<{
-    id: string
-    description: string
-    amount: string
-    payerId: string
-    splitParticipants: string[]
-  } | null>(null)
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("overview");
+  const [showBillInput, setShowBillInput] = useState(false);
+  const [editingBill, setEditingBill] = useState<Bill | null>(null);
+  const [showImportExport, setShowImportExport] = useState(false);
+  const [defaultPayerId, setDefaultPayerId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
 
-  const { data: session, isLoading } = useQuery({
-    queryKey: ['sessions', id],
-    queryFn: async () => {
-      const res = await api.get<ApiResponse<SessionDetail>>(`/sessions/${id}`)
-      return res.data.data
-    },
-  })
+  // Queries
+  const { data: session, isLoading: isSessionLoading } = useQuery({
+    queryKey: ["session", id],
+    queryFn: () => api.getSession(id!),
+    enabled: !!id,
+  });
 
-  const { data: bills } = useQuery({
-    queryKey: ['sessions', id, 'bills'],
-    queryFn: async () => {
-      const res = await api.get<ApiResponse<Bill[]>>(`/sessions/${id}/bills`)
-      return res.data.data
-    },
-  })
+  const { data: bills, isLoading: isBillsLoading } = useQuery({
+    queryKey: ["session-bills", id],
+    queryFn: () => api.inputs.listBills(id!),
+    enabled: !!id,
+  });
 
-  const createBill = useMutation({
-    mutationFn: async (data: CreateBillDto) => {
-      const res = await api.post<ApiResponse<Bill>>(`/sessions/${id}/bills`, data)
-      return res.data.data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
-      queryClient.invalidateQueries({ queryKey: ['sessions', id, 'bills'] })
-      queryClient.invalidateQueries({ queryKey: ['debts'] })
-      setShowBillModal(false)
-      setShowBillSuccess(true)
-    },
-    onError: () => {
-      toast.error('Có lỗi xảy ra. Vui lòng thử lại.')
-    },
-  })
-
-  const updateBill = useMutation({
-    mutationFn: async ({ 
-      billId, 
-      description, 
-      amount, 
-      payerId,
-      splitParticipants 
-    }: { 
-      billId: string
-      description: string
-      amount: string
-      payerId: string
-      splitParticipants: string[]
-    }) => {
-      const payers: PayerInput[] = [{ participant_id: payerId, amount }]
-      const amountPerPerson = (parseFloat(amount) / splitParticipants.length).toFixed(0)
-      const split_details: SplitDetailInput[] = splitParticipants.map((participant_id) => ({
-        participant_id,
-        amount: amountPerPerson,
-      }))
-      
-      await api.put(`/sessions/${id}/bills/${billId}`, {
-        description,
-        total_amount: amount,
-        split_strategy: 'EQUAL',
-        payers,
-        split_details,
-      })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
-      queryClient.invalidateQueries({ queryKey: ['sessions', id, 'bills'] })
-      queryClient.invalidateQueries({ queryKey: ['debts'] })
-      setEditingBill(null)
-      toast.success('Cập nhật hoá đơn thành công!')
-    },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
-    },
-  })
-
-  const [deletingBillId, setDeletingBillId] = useState<string | null>(null)
-
-  const deleteBill = useMutation({
-    mutationFn: async (billId: string) => {
-      await api.delete(`/sessions/${id}/bills/${billId}`)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
-      queryClient.invalidateQueries({ queryKey: ['sessions', id, 'bills'] })
-      queryClient.invalidateQueries({ queryKey: ['debts'] })
-      setDeletingBillId(null)
-      toast.success('Đã xóa hoá đơn!')
-    },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
-      setDeletingBillId(null)
-    },
-  })
-
-  const [editingParticipant, setEditingParticipant] = useState<{ id: string; name: string } | null>(null)
-  const [deletingParticipantId, setDeletingParticipantId] = useState<string | null>(null)
-  const [showAddParticipant, setShowAddParticipant] = useState(false)
-  const [addMode, setAddMode] = useState<'guest' | 'member'>('guest')
-  const [newGuestName, setNewGuestName] = useState('')
-
-  // Fetch group details if session has a group
   const { data: groupDetail } = useQuery({
-    queryKey: ['groups', session?.group_id],
-    queryFn: async () => {
-      if (!session?.group_id) return null
-      const res = await api.get<ApiResponse<GroupDetail>>(`/groups/${session.group_id}`)
-      return res.data.data
-    },
+    queryKey: ["group", session?.group_id],
+    queryFn: () => api.groups.get(session!.group_id!),
     enabled: !!session?.group_id,
-  })
+  });
 
-  // Filter group members who are not already participants
-  const availableMembers = groupDetail?.members.filter(
-    (m) => !session?.participants.some((p) => p.user_id === m.user_id)
-  ) || []
+  const { data: categories = [] } = useQuery<ExpenseCategory[]>({
+    queryKey: ["categories"],
+    queryFn: api.inputs.getCategories,
+  });
 
-  const updateParticipant = useMutation({
-    mutationFn: async ({ participantId, guestName }: { participantId: string; guestName: string }) => {
-      await api.put(`/sessions/${id}/participants/${participantId}`, { guest_name: guestName })
+  const { data: whoPaysNext } = useQuery({
+    queryKey: ["who-pays-next", id],
+    queryFn: () => api.whoPaysNext(id!),
+    enabled: !!id,
+  });
+
+  const categoriesById = categories.reduce(
+    (acc, cat) => {
+      acc[cat.id] = cat;
+      return acc;
     },
+    {} as Record<string, ExpenseCategory>
+  );
+
+  // Mutations
+  const updateSessionStatus = useMutation({
+    mutationFn: (status: "active" | "closed") =>
+      status === "closed" ? api.closeSession(id!) : api.reopenSession(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
-      setEditingParticipant(null)
-      toast.success('Đã cập nhật tên!')
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      toast.success("Cập nhật trạng thái thành công");
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
-    },
-  })
+  });
 
-  const deleteParticipant = useMutation({
-    mutationFn: async (participantId: string) => {
-      await api.delete(`/sessions/${id}/participants/${participantId}`)
-    },
+  const updateDebtStrategy = useMutation({
+    mutationFn: (minimizeDebts: boolean) =>
+      api.updateMinimizeDebts(id!, minimizeDebts),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
-      setDeletingParticipantId(null)
-      toast.success('Đã xóa người tham gia!')
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["debts"] });
+      toast.success("Cập nhật cách tính công nợ");
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
-      setDeletingParticipantId(null)
-    },
-  })
+  });
 
-  const addParticipant = useMutation({
-    mutationFn: async (data: { user_id?: string; guest_name?: string }) => {
-      await api.post(`/sessions/${id}/participants`, data)
-    },
+  const archiveSession = useMutation({
+    mutationFn: () => api.archiveSession(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
-      queryClient.invalidateQueries({ queryKey: ['sessions', id, 'bills'] })
-      setShowAddParticipant(false)
-      setNewGuestName('')
-      toast.success('Đã thêm người tham gia!')
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      toast.success("Đã lưu trữ cuộc nhậu");
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
-    },
-  })
+  });
 
-  const closeSession = useMutation({
-    mutationFn: async () => {
-      await api.post(`/sessions/${id}/close`)
-    },
+  const restoreSession = useMutation({
+    mutationFn: () => api.restoreSession(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
-      queryClient.invalidateQueries({ queryKey: ['sessions'] })
-      queryClient.invalidateQueries({ queryKey: ['groups'] })
-      queryClient.invalidateQueries({ queryKey: ['debts'] })
-      toast.success('Đã đóng session!')
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      toast.success("Đã khôi phục cuộc nhậu");
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
-    },
-  })
-
-  const reopenSession = useMutation({
-    mutationFn: async () => {
-      await api.post(`/sessions/${id}/reopen`)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions', id] })
-      queryClient.invalidateQueries({ queryKey: ['sessions'] })
-      queryClient.invalidateQueries({ queryKey: ['groups'] })
-      queryClient.invalidateQueries({ queryKey: ['debts'] })
-      toast.success('Đã mở lại session!')
-    },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error?.message || 'Có lỗi xảy ra'
-      toast.error(message)
-    },
-  })
-
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  });
 
   const deleteSession = useMutation({
-    mutationFn: async () => {
-      await api.delete(`/sessions/${id}`)
-    },
+    mutationFn: () => api.deleteSession(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] })
-      toast.success('Đã xóa buổi nhậu!')
-      navigate('/')
+      toast.success("Đã xóa phiên nhậu");
+      navigate("/");
+    },
+  });
+
+  const createBill = useMutation({
+    mutationFn: (data: any) => api.inputs.createBill(id!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["session-bills", id] });
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["debts"] });
+      setShowBillInput(false);
     },
     onError: (error: any) => {
-      console.error('Delete session error:', error)
-      const message = error?.response?.data?.error?.message || error?.message || 'Có lỗi xảy ra khi xóa session'
-      toast.error(message)
-      setShowDeleteConfirm(false)
+      toast.error(
+        "Lỗi khi tạo hóa đơn: " +
+          (error.response?.data?.message || error.message)
+      );
     },
-  })
+  });
 
+  const updateBill = useMutation({
+    mutationFn: (data: any) => api.inputs.updateBill(id!, data.billId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["session-bills", id] });
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["debts"] });
+      setEditingBill(null);
+      toast.success("Đã cập nhật hóa đơn");
+    },
+  });
 
-  // Celebration states
-  const [showBillSuccess, setShowBillSuccess] = useState(false)
+  const deleteBill = useMutation({
+    mutationFn: (billId: string) => api.inputs.deleteBill(id!, billId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["session-bills", id] });
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["debts"] });
+      setDeletingBillId(null);
+      toast.success("Đã xóa hóa đơn");
+    },
+  });
 
-  if (isLoading) {
-    return <PageSkeleton type="detail" />
-  }
+  const addParticipant = useMutation({
+    mutationFn: (data: { user_id?: string; guest_name?: string }) =>
+      api.addParticipant(id!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['session', id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
+      toast.success('Thêm thành viên thành công')
+    },
+  });
 
-  if (!session) {
+  const updateParticipant = useMutation({
+    mutationFn: ({
+      pid,
+      guest_name,
+      default_weight,
+      is_active,
+    }: {
+      pid: string;
+      guest_name?: string;
+      default_weight?: number;
+      is_active?: boolean;
+    }) =>
+      api.updateParticipant(id!, pid, {
+        guest_name,
+        default_weight,
+        is_active,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['session', id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
+      toast.success('Cập nhật thành công')
+    },
+  });
+
+  const deleteParticipant = useMutation({
+    mutationFn: (pid: string) => api.deleteParticipant(id!, pid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['session', id] })
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
+      toast.success('Xóa thành viên thành công')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Không thể xóa thành viên");
+    },
+  });
+
+  // Handlers for Overview
+  const handleUpdateParticipant = (
+    pid: string,
+    updates: {
+      guest_name?: string;
+      default_weight?: number;
+      is_active?: boolean;
+    }
+  ) => {
+    updateParticipant.mutate({ pid, ...updates });
+  };
+
+  const handleDeleteParticipant = (pid: string) => {
+    deleteParticipant.mutate(pid);
+  };
+
+  const handleAddParticipant = (data: {
+    user_id?: string;
+    guest_name?: string;
+  }) => {
+    addParticipant.mutate(data);
+  };
+
+  // Handlers for BillList
+  const handleDeleteBill = (billId: string) => {
+    if (!billId) {
+      setDeletingBillId(null);
+      return;
+    }
+    if (deletingBillId === billId) {
+      deleteBill.mutate(billId);
+    } else {
+      setDeletingBillId(billId);
+    }
+  };
+
+  const handleEditBill = (bill: Bill) => {
+    setEditingBill(bill);
+    setShowBillInput(true); // Reuse BillInput modal/drawer logic or inline
+  };
+
+  if (isSessionLoading || !session) {
     return (
-      <div className="text-center">
-        <p>Không tìm thấy cuộc nhậu</p>
-        <Button onClick={() => navigate('/')} className="mt-4">
-          Về trang chủ
-        </Button>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
-    )
+    );
   }
+
+  const isOwner = session.created_by === user?.id;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+    <div className="container mx-auto max-w-2xl px-4 py-6 pb-24">
+      <div className="mb-6 flex items-center justify-between">
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Beer className="h-6 w-6 text-orange-500" /> {session.name}
-            {session.status === 'closed' && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
-                <Lock className="h-3 w-3" /> Đã đóng
-              </span>
-            )}
-          </h1>
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {new Date(session.session_date).toLocaleDateString('vi-VN')}</span>
-            {session.location && <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {session.location}</span>}
-          </div>
+        <h1 className="text-xl font-bold truncate px-2">{session.name}</h1>
+        <div className="w-9" /> {/* Spacer */}
+      </div>
+
+      {session.archived_at && (
+        <div className="mb-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Cuộc nhậu đã được lưu trữ. Bạn có thể khôi phục để tiếp tục chỉnh sửa.
         </div>
-        <div className="ml-auto flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              try {
-                const response = await api.get(`/sessions/${id}/export`, { responseType: 'blob' })
-                const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' })
-                const url = window.URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url
-                a.download = `${session.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
-                document.body.appendChild(a)
-                a.click()
-                window.URL.revokeObjectURL(url)
-                document.body.removeChild(a)
-                toast.success('Đã xuất file CSV!')
-              } catch {
-                toast.error('Không thể xuất file')
-              }
+      )}
+
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+          <TabsTrigger value="bills">Hoá đơn</TabsTrigger>
+          <TabsTrigger value="debts">Chia tiền</TabsTrigger>
+          <TabsTrigger value="recurring">Định kỳ</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview">
+          <SessionOverview
+            session={session}
+            groupDetail={groupDetail}
+            onUpdateParticipant={handleUpdateParticipant}
+            onDeleteParticipant={handleDeleteParticipant}
+            onAddParticipant={handleAddParticipant}
+            isUpdatingParticipant={updateParticipant.isPending}
+            isDeletingParticipant={deleteParticipant.isPending}
+            isAddingParticipant={addParticipant.isPending}
+            onUpdateDebtStrategy={updateDebtStrategy.mutate}
+            isUpdatingDebtStrategy={updateDebtStrategy.isPending}
+            isOwner={isOwner}
+            whoPaysNext={whoPaysNext}
+            onQuickCreate={() => {
+              const suggestedId = whoPaysNext?.suggested?.participant_id;
+              setDefaultPayerId(suggestedId || null);
+              setEditingBill(null);
+              setShowBillInput(true);
             }}
-            className="gap-1"
-          >
-            <Download className="h-4 w-4" />
-            Xuất CSV
-          </Button>
-          {session.status === 'active' ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => closeSession.mutate()}
-              disabled={closeSession.isPending}
-              className="gap-1"
-            >
-              <Lock className="h-4 w-4" />
-              {closeSession.isPending ? 'Đang đóng...' : 'Đóng session'}
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => reopenSession.mutate()}
-              disabled={reopenSession.isPending}
-              className="gap-1"
-            >
-              <Unlock className="h-4 w-4" />
-              {reopenSession.isPending ? 'Đang mở...' : 'Mở lại session'}
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowDeleteConfirm(true)}
-            className="gap-1 text-red-500 hover:text-red-600 hover:bg-red-50"
-          >
-            <Trash2 className="h-4 w-4" />
-            Xóa
-          </Button>
-        </div>
-      </div>
+          />
 
-      <div className="flex gap-2 border-b">
-        {(['overview', 'bills', 'debts'] as TabType[]).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex items-center gap-2 px-4 py-2 ${
-              activeTab === tab
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-muted-foreground'
-            }`}
-          >
-            {tab === 'overview' && <Users className="h-4 w-4" />}
-            {tab === 'bills' && <Receipt className="h-4 w-4" />}
-            {tab === 'debts' && <Wallet className="h-4 w-4" />}
-            {tab === 'overview' && 'Tổng quan'}
-            {tab === 'bills' && 'Hoá đơn'}
-            {tab === 'debts' && 'Công nợ'}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === 'overview' && (
-        <div className="space-y-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <p className="text-sm text-muted-foreground">Tổng chi</p>
-                  <p className="text-2xl font-bold text-primary">
-                    {formatCurrency(session.total_amount)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Số người</p>
-                  <p className="text-2xl font-bold">{session.participants.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div>
-            <h3 className="mb-4 text-lg font-semibold">Thành viên</h3>
-            <div className="flex flex-wrap gap-2">
-              {session.participants.map((p) => (
-                <div
-                  key={p.id}
-                  className={`flex items-center gap-2 rounded-full px-3 py-2 ${
-                    p.role === 'owner' ? 'bg-primary/10 text-primary' : 'bg-gray-100 dark:bg-gray-800'
-                  }`}
-                >
-                  {editingParticipant?.id === p.id ? (
-                    <>
-                      <Input
-                        value={editingParticipant.name}
-                        onChange={(e) => setEditingParticipant({ ...editingParticipant, name: e.target.value })}
-                        className="h-7 w-32 text-sm"
-                        autoFocus
-                      />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0"
-                        onClick={() => updateParticipant.mutate({ participantId: p.id, guestName: editingParticipant.name })}
-                        disabled={updateParticipant.isPending}
-                      >
-                        <Check className="h-3 w-3 text-green-600" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0"
-                        onClick={() => setEditingParticipant(null)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </>
-                  ) : deletingParticipantId === p.id ? (
-                    <>
-                      <span className="text-sm">Xóa {p.display_name}?</span>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => deleteParticipant.mutate(p.id)}
-                        disabled={deleteParticipant.isPending}
-                      >
-                        {deleteParticipant.isPending ? '...' : 'Xóa'}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => setDeletingParticipantId(null)}
-                      >
-                        Hủy
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <span>{p.user_id ? '👤' : '👻'}</span>
-                      <span>{p.display_name}</span>
-                      {p.role === 'owner' && (
-                        <span className="text-xs">(Chủ xị)</span>
-                      )}
-                      {p.role !== 'owner' && !p.user_id && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-5 w-5 p-0 opacity-50 hover:opacity-100"
-                          onClick={() => setEditingParticipant({ id: p.id, name: p.guest_name || p.display_name })}
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                      )}
-                      {p.role !== 'owner' && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-5 w-5 p-0 text-red-400 opacity-50 hover:opacity-100 hover:text-red-600"
-                          onClick={() => setDeletingParticipantId(p.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-              ))}
-              
-              {/* Add Participant Button */}
-              {session.status === 'active' && (
-                showAddParticipant ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* Mode Toggle - show only if session has group */}
-                    {session.group_id && availableMembers.length > 0 && (
-                      <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full p-0.5">
-                        <button
-                          onClick={() => setAddMode('member')}
-                          className={`px-2 py-1 text-xs rounded-full transition-all ${
-                            addMode === 'member' 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          👤 Nhóm
-                        </button>
-                        <button
-                          onClick={() => setAddMode('guest')}
-                          className={`px-2 py-1 text-xs rounded-full transition-all ${
-                            addMode === 'guest' 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          👻 Khách
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Add Group Member */}
-                    {addMode === 'member' && availableMembers.length > 0 && (
-                      <div className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-2">
-                        <Users className="h-4 w-4 text-primary" />
-                        <select
-                          className="h-7 text-sm bg-transparent border-none outline-none cursor-pointer"
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              addParticipant.mutate({ user_id: e.target.value })
-                              e.target.value = ''
-                            }
-                          }}
-                          disabled={addParticipant.isPending}
-                        >
-                          <option value="">Chọn thành viên...</option>
-                          {availableMembers.map((m) => (
-                            <option key={m.user_id} value={m.user_id}>
-                              {m.full_name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Add Guest */}
-                    {addMode === 'guest' && (
-                      <div className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-2">
-                        <Ghost className="h-4 w-4 text-primary" />
-                        <Input
-                          value={newGuestName}
-                          onChange={(e) => setNewGuestName(e.target.value)}
-                          placeholder="Tên khách..."
-                          className="h-7 w-32 text-sm"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && newGuestName.trim()) {
-                              addParticipant.mutate({ guest_name: newGuestName.trim() })
-                            }
-                          }}
-                        />
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0"
-                          onClick={() => {
-                            if (newGuestName.trim()) {
-                              addParticipant.mutate({ guest_name: newGuestName.trim() })
-                            }
-                          }}
-                          disabled={addParticipant.isPending || !newGuestName.trim()}
-                        >
-                          <Check className="h-3 w-3 text-green-600" />
-                        </Button>
-                      </div>
-                    )}
-
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0"
-                      onClick={() => {
-                        setShowAddParticipant(false)
-                        setNewGuestName('')
-                        setAddMode('guest')
-                      }}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAddParticipant(true)}
-                    className="rounded-full gap-1"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    Thêm người
-                  </Button>
-                )
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'bills' && (
-        <div className="space-y-4">
-          {/* Bill Input - Inline or Expanded */}
-          {session.status === 'active' ? (
-            showBillModal ? (
-              <BillInput
-                participants={session.participants}
-                onSubmit={(data) => {
-                  createBill.mutate({
-                    description: data.description,
-                    total_amount: data.total_amount,
-                    payers: data.payers,
-                    split_strategy: data.split_strategy,
-                    split_details: data.split_details,
-                  })
-                }}
-                onCancel={() => setShowBillModal(false)}
-                isSubmitting={createBill.isPending}
-              />
+          <div className="mt-6 flex flex-col gap-3">
+            {session.status === "active" ? (
+              <Button
+                variant="outline"
+                className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
+                onClick={() => updateSessionStatus.mutate("closed")}
+                disabled={!!session.archived_at}
+              >
+                Kết thúc cuộc nhậu
+              </Button>
             ) : (
-              <BillInputInline
-                participants={session.participants}
-                onExpand={() => setShowBillModal(true)}
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => updateSessionStatus.mutate("active")}
+                disabled={!!session.archived_at}
+              >
+                Mở lại cuộc nhậu
+              </Button>
+            )}
+
+            {session.archived_at ? (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => restoreSession.mutate()}
+                disabled={!isOwner || restoreSession.isPending}
+              >
+                {restoreSession.isPending
+                  ? "Đang khôi phục..."
+                  : "Khôi phục cuộc nhậu"}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => archiveSession.mutate()}
+                disabled={!isOwner || archiveSession.isPending}
+              >
+                {archiveSession.isPending
+                  ? "Đang lưu trữ..."
+                  : "Lưu trữ cuộc nhậu"}
+              </Button>
+            )}
+
+            <Button
+              variant="ghost"
+              className="w-full text-red-400 hover:text-red-500"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={!!session.archived_at}
+            >
+              Xóa cuộc nhậu
+            </Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="bills">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+            <Button
+              className="w-full gap-2"
+              size="lg"
+              onClick={() => {
+                setDefaultPayerId(null);
+                setEditingBill(null);
+                setShowBillInput(true);
+              }}
+              disabled={session.status === "closed" || !!session.archived_at}
+            >
+              <Plus className="h-5 w-5" />
+              Thêm hoá đơn
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              size="lg"
+              onClick={() => setShowImportExport(true)}
+            >
+              <Upload className="h-5 w-5" />
+              Import/Export CSV
+            </Button>
+          </div>
+
+          {/* If editing or creating, show input form. Wait, original design was inline if editing? 
+               The original code showed BillInput inside a Drawer/Modal driven by showBillInput for Creation
+               AND inline for Editing? 
+               Let's check previous code.
+               Lines 616: <ResponsiveModal isOpen={showBillInput} ...> <BillInput ... /> </ResponsiveModal>
+               Lines 791: map(bill => ( editingBill?.id === bill.id ? <BillInput ... inline /> : <Card>... )
+               
+               My BillList doesn't support inline editing. It calls onEdit.
+               I should open the Modal for editing too, OR make BillList support inline editing.
+               Modal is cleaner for virtualization.
+               So I will use the Modal for both Create and Edit.
+           */}
+
+          <div className="space-y-4">
+            {isBillsLoading ? (
+              <div className="text-center py-8">Đang tải hóa đơn...</div>
+            ) : (
+              <BillList
+                bills={bills || []}
+                onEdit={handleEditBill}
+                onDelete={handleDeleteBill}
+                deletingBillId={deletingBillId}
+                categoriesById={categoriesById}
+                baseCurrency={session.base_currency}
               />
-            )
-          ) : (
-            <div className="flex items-center justify-center gap-2 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500">
-              <Lock className="h-4 w-4" />
-              <span>Session đã đóng - Không thể thêm hoá đơn mới</span>
-            </div>
-          )}
+            )}
+          </div>
+        </TabsContent>
 
-          {bills?.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Receipt className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <p className="text-muted-foreground">Chưa có hoá đơn nào</p>
-                <p className="text-sm text-gray-400">Thêm hoá đơn đầu tiên để bắt đầu chia tiền</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {bills?.map((bill) => (
-                <Card key={bill.id}>
-                  <CardContent className="p-4">
-                    {editingBill?.id === bill.id && session ? (
-                      <div className="space-y-3">
-                        <Input
-                          value={editingBill.description}
-                          onChange={(e) => setEditingBill({ ...editingBill, description: e.target.value })}
-                          placeholder="Mô tả"
-                        />
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          value={editingBill.amount ? Number(editingBill.amount).toLocaleString('vi-VN') : ''}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/[^\d]/g, '')
-                            setEditingBill({ ...editingBill, amount: value })
-                          }}
-                          placeholder="Số tiền"
-                        />
-                        
-                        {/* Payer selection */}
-                        <div className="space-y-2">
-                          <Label className="text-sm">Người trả tiền</Label>
-                          <select
-                            value={editingBill.payerId}
-                            onChange={(e) => setEditingBill({ ...editingBill, payerId: e.target.value })}
-                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                          >
-                            <option value="">Chọn người trả</option>
-                            {session.participants.map((p) => (
-                              <option key={p.id} value={p.id}>{p.display_name}</option>
-                            ))}
-                          </select>
-                        </div>
-                        
-                        {/* Split participants */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-sm">Chia cho</Label>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingBill({
-                                ...editingBill,
-                                splitParticipants: session.participants.map(p => p.id)
-                              })}
-                            >
-                              Chọn tất cả
-                            </Button>
-                          </div>
-                          <div className="rounded-lg border p-2 max-h-40 overflow-y-auto">
-                            {session.participants.map((p) => (
-                              <label
-                                key={p.id}
-                                className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={editingBill.splitParticipants.includes(p.id)}
-                                  onChange={() => {
-                                    const isSelected = editingBill.splitParticipants.includes(p.id)
-                                    setEditingBill({
-                                      ...editingBill,
-                                      splitParticipants: isSelected
-                                        ? editingBill.splitParticipants.filter(id => id !== p.id)
-                                        : [...editingBill.splitParticipants, p.id]
-                                    })
-                                  }}
-                                  className="h-4 w-4 rounded border-gray-300"
-                                />
-                                <span className="text-sm">{p.display_name}</span>
-                              </label>
-                            ))}
-                          </div>
-                          {editingBill.splitParticipants.length > 0 && editingBill.amount && (
-                            <p className="text-sm text-primary">
-                              Mỗi người: {formatCurrency(
-                                (parseFloat(editingBill.amount) / editingBill.splitParticipants.length).toFixed(0)
-                              )} ({editingBill.splitParticipants.length} người)
-                            </p>
-                          )}
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setEditingBill(null)}
-                          >
-                            Hủy
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => updateBill.mutate({
-                              billId: bill.id,
-                              description: editingBill.description,
-                              amount: editingBill.amount,
-                              payerId: editingBill.payerId,
-                              splitParticipants: editingBill.splitParticipants,
-                            })}
-                            disabled={updateBill.isPending || editingBill.splitParticipants.length === 0 || !editingBill.payerId}
-                          >
-                            {updateBill.isPending ? 'Đang lưu...' : 'Lưu'}
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">🧾</span>
-                            <div>
-                              <p className="font-medium">{bill.description}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(bill.created_at).toLocaleDateString('vi-VN')}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-lg font-bold text-primary">
-                              {formatCurrency(bill.amount)}
-                            </p>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setEditingBill({
-                                id: bill.id,
-                                description: bill.description,
-                                amount: bill.amount,
-                                payerId: bill.payers?.[0]?.participant_id || '',
-                                splitParticipants: bill.participants?.map(p => p.participant_id) || [],
-                              })}
-                            >
-                              ✏️
-                            </Button>
-                            {deletingBillId === bill.id ? (
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => deleteBill.mutate(bill.id)}
-                                  disabled={deleteBill.isPending}
-                                >
-                                  {deleteBill.isPending ? '...' : 'Xóa'}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setDeletingBillId(null)}
-                                >
-                                  Hủy
-                                </Button>
-                              </div>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setDeletingBillId(bill.id)}
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Payer info */}
-                        {bill.payers && bill.payers.length > 0 && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="text-green-600 flex items-center gap-1"><Banknote className="h-4 w-4" /> Người trả:</span>
-                            <span className="font-medium">
-                              {bill.payers.map(p => p.name).join(', ')}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {/* Participants info */}
-                        {bill.participants && bill.participants.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-2 text-sm">
-                            <span className="text-blue-600 flex items-center gap-1"><Users className="h-4 w-4" /> Chia cho:</span>
-                            <span className="font-medium">
-                              {bill.participants.map(p => p.name).join(', ')}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+        <TabsContent value="debts">
+          <DebtBreakdown session={session} bills={bills || []} />
+        </TabsContent>
 
-      {activeTab === 'debts' && (
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">
-                Chia tiền ({session.participants.length} người)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {bills && bills.length > 0 ? (
-                (() => {
-                  // Calculate actual amounts from bill splits
-                  const participantTotals: Record<string, { name: string; owed: number; paid: number }> = {}
-                  
-                  // Initialize all participants
-                  session.participants.forEach((p) => {
-                    participantTotals[p.id] = { name: p.display_name, owed: 0, paid: 0 }
-                  })
-                  
-                  // Sum up actual amounts from bills
-                  bills.forEach((bill) => {
-                    // Add amounts owed from bill splits
-                    bill.participants?.forEach((bp) => {
-                      if (participantTotals[bp.participant_id]) {
-                        participantTotals[bp.participant_id].owed += parseFloat(bp.amount_owed) || 0
-                      }
-                    })
-                    // Add amounts paid
-                    bill.payers?.forEach((payer) => {
-                      if (participantTotals[payer.participant_id]) {
-                        participantTotals[payer.participant_id].paid += parseFloat(payer.amount_paid) || 0
-                      }
-                    })
-                  })
-                  
-                  return (
-                    <div className="space-y-3">
-                      <div className="rounded-lg bg-primary/10 p-4 text-center">
-                        <p className="text-sm text-muted-foreground">Tổng tiền cuộc nhậu</p>
-                        <p className="text-2xl font-bold text-primary">{formatCurrency(session.total_amount)}</p>
-                      </div>
-                      
-                      <div className="rounded-lg border p-4">
-                        <p className="mb-3 text-sm font-medium text-muted-foreground">Chi tiết mỗi người:</p>
-                        <div className="space-y-2">
-                          {session.participants.map((p) => {
-                            const data = participantTotals[p.id] || { owed: 0, paid: 0 }
-                            return (
-                              <div key={p.id} className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2">
-                                <div className="flex items-center gap-2">
-                                  <span>{p.user_id ? '👤' : '👻'}</span>
-                                  <span className="font-medium">{p.display_name}</span>
-                                </div>
-                                <div className="text-right">
-                                  {data.owed > 0 ? (
-                                    <span className="font-bold text-primary">{formatCurrency(data.owed.toFixed(0))}</span>
-                                  ) : (
-                                    <span className="text-muted-foreground">-</span>
-                                  )}
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })()
-              ) : (
-                <p className="py-8 text-center text-muted-foreground">
-                  Chưa có hoá đơn nào. Thêm hoá đơn để xem chia tiền.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-          <Button onClick={() => navigate('/debts')} variant="outline" className="w-full">
-            Xem tổng hợp công nợ tất cả cuộc nhậu
-          </Button>
-        </div>
-      )}
+        <TabsContent value="recurring">
+          <RecurringExpenses
+            sessionId={session.id}
+            baseCurrency={session.base_currency}
+            isOwner={isOwner}
+            isArchived={!!session.archived_at}
+            isClosed={session.status === "closed"}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Bill Input Modal (Create + Edit) */}
+      <ResponsiveModal
+        isOpen={showBillInput}
+        onClose={() => {
+          setShowBillInput(false);
+          setEditingBill(null);
+        }}
+        title={editingBill ? "Sửa hóa đơn" : "Thêm hoá đơn"}
+      >
+        <BillInput
+          participants={session.participants}
+          baseCurrency={session.base_currency}
+          defaultPayerId={defaultPayerId || undefined}
+          onSubmit={(data) => {
+            if (editingBill) {
+              updateBill.mutate({ ...data, billId: editingBill.id });
+            } else {
+              createBill.mutate(data);
+            }
+          }}
+          onCancel={() => {
+            setShowBillInput(false);
+            setEditingBill(null);
+          }}
+          isSubmitting={createBill.isPending || updateBill.isPending}
+          initialData={editingBill}
+          categories={categories}
+        />
+      </ResponsiveModal>
+
+      <ImportExportModal
+        isOpen={showImportExport}
+        onClose={() => setShowImportExport(false)}
+        sessionId={session.id}
+        onImported={() => {
+          queryClient.invalidateQueries({ queryKey: ["session-bills", id] });
+          queryClient.invalidateQueries({ queryKey: ["session", id] });
+        }}
+      />
 
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-600">
-                <Trash2 className="h-5 w-5" />
-                Xác nhận xóa
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Bạn có chắc muốn xóa buổi nhậu <strong>"{session?.name}"</strong>? 
-                Tất cả hoá đơn và công nợ liên quan sẽ bị xóa vĩnh viễn.
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowDeleteConfirm(false)}
-                >
-                  Huỷ
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="flex-1"
-                  onClick={() => deleteSession.mutate()}
-                  disabled={deleteSession.isPending}
-                >
-                  {deleteSession.isPending ? 'Đang xóa...' : 'Xóa'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      <ResponsiveModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Xác nhận xóa"
+        desktopClassName="max-w-sm"
+        showHandle={false}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Bạn có chắc muốn xóa buổi nhậu <strong>"{session?.name}"</strong>?
+            Tất cả hoá đơn và công nợ liên quan sẽ bị xóa vĩnh viễn.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowDeleteConfirm(false)}
+            >
+              Huỷ
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={() => deleteSession.mutate()}
+              disabled={deleteSession.isPending}
+            >
+              {deleteSession.isPending ? "Đang xóa..." : "Xóa"}
+            </Button>
+          </div>
         </div>
-      )}
-
-      {/* Success Toast for Bill Creation */}
-      <SuccessToast
-        message="Thêm hoá đơn thành công! 🧾"
-        show={showBillSuccess}
-        onHide={() => setShowBillSuccess(false)}
-        emoji="✅"
-      />
+      </ResponsiveModal>
     </div>
-  )
+  );
 }

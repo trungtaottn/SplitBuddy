@@ -42,6 +42,15 @@ pub enum AuditAction {
     MusicUpload,
     MusicDelete,
 
+    // Recurring Expenses
+    RecurringExpenseCreate,
+    RecurringExpenseUpdate,
+    RecurringExpenseDelete,
+    RecurringExpenseExecute,
+    RecurringExpensePause,
+    RecurringExpenseResume,
+    RecurringExpenseSkip,
+
     // Other
     Custom(String),
 }
@@ -70,6 +79,13 @@ impl std::fmt::Display for AuditAction {
             AuditAction::FeatureToggle => write!(f, "feature_toggle"),
             AuditAction::MusicUpload => write!(f, "music_upload"),
             AuditAction::MusicDelete => write!(f, "music_delete"),
+            AuditAction::RecurringExpenseCreate => write!(f, "recurring_expense_create"),
+            AuditAction::RecurringExpenseUpdate => write!(f, "recurring_expense_update"),
+            AuditAction::RecurringExpenseDelete => write!(f, "recurring_expense_delete"),
+            AuditAction::RecurringExpenseExecute => write!(f, "recurring_expense_execute"),
+            AuditAction::RecurringExpensePause => write!(f, "recurring_expense_pause"),
+            AuditAction::RecurringExpenseResume => write!(f, "recurring_expense_resume"),
+            AuditAction::RecurringExpenseSkip => write!(f, "recurring_expense_skip"),
             AuditAction::Custom(s) => write!(f, "{}", s),
         }
     }
@@ -86,6 +102,7 @@ pub enum AuditEntityType {
     Group,
     FeatureFlag,
     Music,
+    RecurringExpense,
     Other(String),
 }
 
@@ -99,6 +116,7 @@ impl std::fmt::Display for AuditEntityType {
             AuditEntityType::Group => write!(f, "group"),
             AuditEntityType::FeatureFlag => write!(f, "feature_flag"),
             AuditEntityType::Music => write!(f, "music"),
+            AuditEntityType::RecurringExpense => write!(f, "recurring_expense"),
             AuditEntityType::Other(s) => write!(f, "{}", s),
         }
     }
@@ -148,7 +166,17 @@ impl AuditLogBuilder {
         self
     }
 
+    pub fn metadata(mut self, meta: serde_json::Value) -> Self {
+        self.metadata = meta;
+        self
+    }
+
     /// Save the audit log entry to the database
+    pub async fn log(self, pool: &PgPool) -> Result<(), sqlx::Error> {
+        self.save(pool).await?;
+        Ok(())
+    }
+
     pub async fn save(self, pool: &PgPool) -> Result<Uuid, sqlx::Error> {
         let id = Uuid::new_v4();
 

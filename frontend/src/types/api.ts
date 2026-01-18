@@ -40,6 +40,7 @@ export interface User {
 export interface AuthResponse {
   user: User
   access_token: string
+  refresh_token: string
 }
 
 export type SessionStatus = 'active' | 'closed'
@@ -62,6 +63,10 @@ export interface Session {
   session_date: string
   participant_count: number
   total_amount: string
+  base_currency: string
+  minimize_debts: boolean
+  timezone: string
+  archived_at: string | null
   // Enhanced fields for better UX
   participants: ParticipantBasicInfo[]
   my_debt: string       // How much current user owes in this session
@@ -80,6 +85,10 @@ export interface SessionDetail {
   participants: Participant[]
   total_amount: string
   group_id: string | null
+  base_currency: string
+  minimize_debts: boolean
+  timezone: string
+  archived_at: string | null
 }
 
 export interface Participant {
@@ -89,6 +98,8 @@ export interface Participant {
   display_name: string
   role: ParticipantRole
   joined_at: string
+  default_weight: number
+  is_active: boolean
 }
 
 export interface Bill {
@@ -96,11 +107,26 @@ export interface Bill {
   session_id: string
   description: string
   amount: string
+  amount_original: string
+  currency_code: string
+  exchange_rate: string
+  rate_source: string
+  rate_timestamp: string
   split_strategy: string
   created_by: string
   created_at: string
+  category_id?: string | null
+  receipt_url?: string | null
   payers: BillPayerInfo[]
   participants: BillParticipantInfo[]
+}
+
+export interface ExpenseCategory {
+  id: string
+  name: string
+  icon: string | null
+  color: string | null
+  is_system: boolean
 }
 
 export interface BillPayerInfo {
@@ -124,6 +150,10 @@ export interface DebtItem {
   amount: string
   status: DebtStatus
   is_guest: boolean
+  counterpart_bank_name?: string | null
+  counterpart_account_number?: string | null
+  counterpart_account_holder_name?: string | null
+  counterpart_qr_image_url?: string | null
 }
 
 export interface DebtSummary {
@@ -139,6 +169,8 @@ export interface CreateSessionDto {
   session_date?: string
   group_id?: string
   participant_ids?: string[]
+  base_currency?: string
+  timezone?: string
 }
 
 export interface AddParticipantDto {
@@ -156,12 +188,48 @@ export interface SplitDetailInput {
   amount: string
 }
 
+export type RecurringFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY'
+
+export interface RecurringExpense {
+  id: string
+  session_id: string
+  name: string
+  description?: string | null
+  amount: number
+  currency_code: string
+  category_id?: string | null
+  split_strategy: string
+  frequency: RecurringFrequency
+  interval_count: number
+  start_date: string
+  end_date?: string | null
+  next_run: string
+  last_run?: string | null
+  timezone: string
+  is_active: boolean
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface RecurringException {
+  id: string
+  recurring_expense_id: string
+  date: string
+  reason?: string | null
+  created_at: string
+}
+
 export interface CreateBillDto {
   description: string
   total_amount: string
   payers: PayerInput[]
   split_strategy?: string
   split_details?: SplitDetailInput[]
+  category_id?: string | null
+  receipt_url?: string | null
+  currency_code?: string
+  exchange_rate?: string
 }
 
 // Group types
@@ -172,6 +240,7 @@ export interface Group {
   created_by: string
   created_at: string
   member_count: number
+  archived_at: string | null
 }
 
 export interface GroupDetail {
@@ -180,6 +249,7 @@ export interface GroupDetail {
   description: string | null
   created_by: string
   created_at: string
+  archived_at: string | null
   members: GroupMember[]
 }
 
@@ -211,6 +281,8 @@ export interface CreateSessionDto {
   group_id?: string
   participant_ids?: string[]
   guest_names?: string[]
+  base_currency?: string
+  timezone?: string
 }
 
 export interface SessionDebt {
@@ -343,6 +415,198 @@ export interface FeatureFlag {
 export interface FeatureFlagPublic {
   key: string
   enabled: boolean
+}
+
+// Session Templates
+export interface SessionTemplate {
+  id: string
+  name: string
+  location: string | null
+  participant_ids: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateTemplateDto {
+  name: string
+  location?: string | null
+  participant_ids?: string[]
+}
+
+export interface UpdateTemplateDto {
+  name?: string
+  location?: string | null
+  participant_ids?: string[]
+}
+
+export interface CreateSessionFromTemplateDto {
+  session_date?: string
+  group_id?: string | null
+}
+
+// Analytics
+export interface CategorySpending {
+  category_id: string | null
+  category_name: string | null
+  total_amount: string
+  bill_count: number
+}
+
+export interface SpendingAnalyticsResponse {
+  total_spent: string
+  total_received: string
+  net_balance: string
+  session_count: number
+  avg_per_session: string
+  top_category: CategorySpending | null
+  category_breakdown: CategorySpending[]
+}
+
+export interface MonthlySpending {
+  year: number
+  month: number
+  total_amount: string
+  session_count: number
+}
+
+export interface YearlySpending {
+  year: number
+  total_amount: string
+  session_count: number
+}
+
+export interface SpendingTrendsResponse {
+  monthly: MonthlySpending[]
+  yearly: YearlySpending[]
+}
+
+// Payments / Bank Accounts
+export interface BankAccount {
+  id: string
+  bank_name: string
+  account_number: string
+  account_holder_name: string
+  is_default: boolean
+  qr_image_url?: string | null
+  created_at: string
+}
+
+export interface AddBankAccountDto {
+  bank_name: string
+  account_number: string
+  account_holder_name: string
+  is_default?: boolean
+  qr_image_url?: string | null
+}
+
+export interface UpdateBankAccountDto {
+  bank_name?: string
+  account_number?: string
+  account_holder_name?: string
+  is_default?: boolean
+  qr_image_url?: string | null
+}
+
+export interface QrResponse {
+  qr_data: string
+  qr_image: string
+  bank_name: string
+  account_number: string
+  account_holder: string
+}
+
+// Notifications
+export interface NotificationItem {
+  id: string
+  user_id: string
+  type: string
+  title: string
+  message: string
+  data: Record<string, unknown>
+  is_read: boolean
+  created_at: string
+  read_at: string | null
+}
+
+export interface NotificationListResponse {
+  notifications: NotificationItem[]
+  total: number
+  unread_count: number
+}
+
+export interface UnreadCountResponse {
+  count: number
+}
+
+export interface NotificationPreferences {
+  debt_reminders: boolean
+  settlement_notifications: boolean
+  session_invites: boolean
+  bill_updates: boolean
+  game_events: boolean
+}
+
+export interface UpdateNotificationPreferencesDto {
+  debt_reminders?: boolean
+  settlement_notifications?: boolean
+  session_invites?: boolean
+  bill_updates?: boolean
+  game_events?: boolean
+}
+
+export interface ImportRowError {
+  row: number
+  field: string
+  message: string
+}
+
+export interface ImportPreviewRow {
+  row: number
+  description: string
+  amount: string
+  currency_code: string
+  split_strategy: string
+  payers: string[]
+  participants: string[]
+}
+
+export interface ImportPreviewResponse {
+  total_rows: number
+  valid_rows: number
+  errors: ImportRowError[]
+  rows: ImportPreviewRow[]
+}
+
+export interface ImportResultResponse {
+  created_count: number
+  errors: ImportRowError[]
+}
+
+export interface ParticipantBalance {
+  participant_id: string
+  name: string
+  total_paid: string
+  total_owed: string
+  balance: string
+}
+
+export interface WhoPaysNextResponse {
+  suggested: ParticipantBalance | null
+  balances: ParticipantBalance[]
+}
+
+export interface RateHistoryEntry {
+  rate_date: string
+  rate: string
+  rate_source: string
+}
+
+export interface PushSubscriptionDto {
+  endpoint: string
+  keys: {
+    p256dh: string
+    auth: string
+  }
 }
 
 // Personas & Achievements

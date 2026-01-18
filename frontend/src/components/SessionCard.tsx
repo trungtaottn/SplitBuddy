@@ -26,24 +26,26 @@ interface SessionCardProps {
   date: string
   status: 'active' | 'settled' | 'pending'
   total_amount: number
+  base_currency: string
   participants: Participant[]
   user_debt?: number
   user_owed?: number
   settled_amount?: number
+  archived_at?: string | null
 }
 
 // Vintage Status Badges
 const STATUS_CONFIG = {
   active: {
-    label: 'ACTIVE',
+    label: 'ĐANG MỞ',
     className: 'badge-stamp text-success border-success rotate-[-2deg]',
   },
   settled: {
-    label: 'DONE',
+    label: 'ĐÃ CHỐT',
     className: 'badge-stamp text-muted-foreground border-muted-foreground rotate-[1deg]',
   },
   pending: {
-    label: 'PENDING',
+    label: 'CHỜ XỬ LÝ',
     className: 'badge-stamp text-warning border-warning rotate-[-1deg]',
   },
 }
@@ -86,10 +88,12 @@ export function SessionCard({
   date,
   status,
   total_amount,
+  base_currency,
   participants,
   user_debt = 0,
   user_owed = 0,
   settled_amount = 0,
+  archived_at,
 }: SessionCardProps) {
   const statusConfig = STATUS_CONFIG[status]
   const formattedDate = new Date(date).toLocaleDateString('vi-VN', {
@@ -97,6 +101,7 @@ export function SessionCard({
     month: '2-digit',
     year: 'numeric',
   })
+  const isArchived = Boolean(archived_at)
 
   // Calculate settlement progress
   const totalDebts = total_amount > 0 ? total_amount : 1
@@ -129,9 +134,16 @@ export function SessionCard({
               </div>
             </div>
           </div>
-          <span className={cn('text-[10px]', statusConfig.className)}>
-            {statusConfig.label}
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            <span className={cn('text-[10px]', statusConfig.className)}>
+              {statusConfig.label}
+            </span>
+            {isArchived && (
+              <span className="badge-stamp text-muted-foreground border-muted-foreground rotate-[2deg] text-[9px]">
+                ĐÃ LƯU TRỮ
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Divider - dotted line like receipt */}
@@ -149,7 +161,7 @@ export function SessionCard({
         {total_amount > 0 && status !== 'settled' && (
           <div className="space-y-1.5">
             <div className="flex justify-between text-[10px] text-muted-foreground uppercase tracking-wider">
-              <span>Progress</span>
+              <span>Tiến độ</span>
               <span>{settlementProgress}%</span>
             </div>
             <div className="h-1.5 bg-secondary rounded-none overflow-hidden border border-border">
@@ -174,13 +186,13 @@ export function SessionCard({
             {user_debt > 0 && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-destructive/10 text-destructive text-[10px] font-semibold uppercase">
                 <TrendingDown className="h-3 w-3" strokeWidth={1.5} />
-                <span>Nợ {formatCurrency(user_debt)}</span>
+                <span>Nợ {formatCurrency(user_debt, base_currency)}</span>
               </div>
             )}
             {user_owed > 0 && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-success/10 text-success text-[10px] font-semibold uppercase">
                 <TrendingUp className="h-3 w-3" strokeWidth={1.5} />
-                <span>Được {formatCurrency(user_owed)}</span>
+                <span>Được {formatCurrency(user_owed, base_currency)}</span>
               </div>
             )}
           </div>
@@ -189,9 +201,9 @@ export function SessionCard({
         {/* Footer - Total */}
         <div className="flex justify-between items-center pt-3 border-t-2 border-double border-border mt-auto">
           <div>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Total</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Tổng chi tiêu</span>
             <span className="font-bold text-lg text-foreground">
-              {formatCurrency(total_amount)}
+              {formatCurrency(total_amount, base_currency)}
             </span>
           </div>
           <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" strokeWidth={1.5} />
@@ -260,6 +272,7 @@ export function SessionCardCompact({
   status,
   total_amount,
   participants,
+  base_currency,
 }: Omit<SessionCardProps, 'location' | 'settled_amount' | 'user_debt' | 'user_owed'>) {
   const statusConfig = STATUS_CONFIG[status]
   const formattedDate = new Date(date).toLocaleDateString('vi-VN', {
@@ -285,7 +298,7 @@ export function SessionCardCompact({
           <p className="text-xs text-muted-foreground">{formattedDate}</p>
         </div>
         <div className="text-right">
-          <p className="font-bold text-sm">{formatCurrency(total_amount)}</p>
+          <p className="font-bold text-sm">{formatCurrency(total_amount, base_currency)}</p>
           <span className={cn('text-[9px]', statusConfig.className)}>
             {statusConfig.label}
           </span>

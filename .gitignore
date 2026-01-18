@@ -29,3 +29,8 @@ build/
 
 # Cursor
 .cursor
+.codex/
+.shared/
+.agent/
+.copilot-tracking/
+.windsurf/

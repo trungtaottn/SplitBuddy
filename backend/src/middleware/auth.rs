@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::api::AppState;
 use crate::config::Config;
 use crate::error::AppError;
+use sha2::{Digest, Sha256};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -43,6 +44,22 @@ pub fn create_token(config: &Config, user_id: Uuid, role: &str) -> Result<String
         &EncodingKey::from_secret(config.jwt_secret.as_bytes()),
     )
     .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to create token: {}", e)))
+}
+
+/// Generate a secure random refresh token
+pub fn generate_refresh_token() -> String {
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+    let bytes: Vec<u8> = (0..32).map(|_| rng.gen()).collect();
+    use base64::{engine::general_purpose, Engine as _};
+    general_purpose::STANDARD.encode(bytes)
+}
+
+/// Hash a refresh token for storage (SHA-256)
+pub fn hash_refresh_token(token: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(token.as_bytes());
+    format!("{:x}", hasher.finalize())
 }
 
 pub fn verify_token(config: &Config, token: &str) -> Result<Claims, AppError> {

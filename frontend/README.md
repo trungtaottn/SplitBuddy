@@ -2,6 +2,8 @@
 
 Ứng dụng web chia tiền nhậu - Ghi nhận chi tiêu nhóm và quản lý công nợ.
 
+**Last Updated:** January 2026
+
 ## Tech Stack
 
 - **Framework:** React 18 + Vite
@@ -13,6 +15,7 @@
 - **Form:** React Hook Form + Zod
 - **Animations:** Framer Motion
 - **Icons:** Lucide React
+- **Linting:** ESLint v9 (flat config)
 
 ## Design System
 
@@ -35,7 +38,13 @@ src/
 │   │   └── ...
 │   ├── layout/          # Layout components
 │   │   └── AppLayout.tsx
+│   ├── games/           # Game components
+│   │   ├── KingsCup.tsx
+│   │   └── ...
+│   ├── chat/            # Chat components
+│   │   └── FloatingChat.tsx
 │   ├── FunTooltip.tsx   # Fun tooltips with random messages
+│   ├── AiGreeting.tsx   # AI greeting component
 │   └── PageTransition.tsx
 ├── pages/               # Page components
 │   ├── DashboardPage.tsx    # Danh sách cuộc nhậu
@@ -49,15 +58,29 @@ src/
 │   ├── LoginPage.tsx
 │   └── RegisterPage.tsx
 ├── contexts/            # React contexts
-│   └── AuthContext.tsx  # Authentication state
+│   ├── AuthContext.tsx      # Authentication state
+│   ├── ThemeContext.tsx     # Theme (light/dark/system)
+│   ├── MusicContext.tsx     # Music player state
+│   ├── MoodContext.tsx      # UI mood/personality
+│   └── FeatureFlagsContext.tsx # Feature toggles
 ├── hooks/               # Custom hooks
+│   ├── useFormValidation.ts
+│   ├── useHaptic.ts
+│   ├── useOffline.ts
+│   ├── useOptimisticMutation.ts
+│   └── usePullToRefresh.ts
 ├── lib/                 # Third-party configs
 │   ├── axios.ts         # Axios instance with interceptors
-│   └── utils.ts         # cn() utility
+│   ├── queryClient.ts   # TanStack Query client
+│   ├── utils.ts         # cn() utility
+│   ├── youtube.ts       # YouTube API integration
+│   └── versionChecker.ts # App version checking
 ├── types/               # TypeScript types
 │   └── api.ts           # API response types
 ├── utils/               # Utility functions
-│   └── formatCurrency.ts
+│   ├── formatCurrency.ts
+│   ├── sounds.ts
+│   └── confetti.ts
 ├── App.tsx              # Router setup
 └── main.tsx             # Entry point
 ```
@@ -85,6 +108,45 @@ Frontend sẽ chạy tại **http://localhost:5173**
 npm run build
 ```
 
+## Scripts
+
+```bash
+npm run dev         # Start dev server (port 5173)
+npm run build       # Build for production
+npm run preview     # Preview production build locally
+npm run lint        # Run ESLint (check only)
+npm run lint:fix    # Run ESLint with auto-fix
+npm run type-check  # Run TypeScript compiler check
+```
+
+### Makefile Commands (từ root)
+
+```bash
+make check-frontend   # Check type, build (giống CI)
+make format-frontend  # Auto-fix ESLint
+make dev-frontend     # Chạy dev server
+```
+
+## ESLint Configuration
+
+Dự án sử dụng ESLint v9 với flat config:
+
+```javascript
+// eslint.config.js
+export default tseslint.config(
+  { ignores: ['dist', 'dev-dist', 'node_modules'] },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      'react-hooks/exhaustive-deps': 'warn',
+      'no-case-declarations': 'warn',
+    },
+  },
+)
+```
+
 ## Routes
 
 | Route | Page | Mô tả |
@@ -96,9 +158,9 @@ npm run build
 | `/debts` | DebtsPage | Công nợ cá nhân (tổng hợp, theo session) |
 | `/groups` | GroupsPage | Quản lý nhóm bạn nhậu |
 | `/groups/:id/debts` | GroupDebtsPage | Công nợ trong nhóm |
-| `/games` | GamesPage | Mini games (Truth or Dare, NHIE, Dice, Spin) |
+| `/games` | GamesPage | Mini games (Truth or Dare, NHIE, Dice, Spin, Kings Cup) |
 | `/profile` | ProfilePage | Thông tin cá nhân, avatar, achievements |
-| `/admin` | AdminPage | Admin dashboard (stats, users) |
+| `/admin` | AdminPage | Admin dashboard (stats, users, feature flags) |
 
 ## Key Features
 
@@ -106,6 +168,7 @@ npm run build
 - Danh sách cuộc nhậu với filter (status, month, search)
 - Tạo session mới (với group hoặc không)
 - Quick stats (tổng nợ, được nợ)
+- AI greeting với mood-based messages
 
 ### Session Detail
 - Quản lý participants (thêm user từ group hoặc guest)
@@ -132,6 +195,7 @@ npm run build
 - Challenges
 - Dice rolling
 - Spin wheel (lucky wheel)
+- Kings Cup
 - Custom questions
 - Game history & stats
 
@@ -140,6 +204,12 @@ npm run build
 - Achievements & badges
 - XP & levels
 - Wrapped stats (yearly summary)
+
+### Music Player
+- Background music player
+- YouTube integration
+- Playlist management
+- Volume control
 
 ## State Management
 
@@ -160,9 +230,13 @@ const mutation = useMutation({
 })
 ```
 
-### Auth Context
+### Contexts
 ```typescript
 const { user, login, logout, isAuthenticated } = useAuth()
+const { theme, setTheme } = useTheme()
+const { isPlaying, currentTrack, play, pause } = useMusic()
+const { mood, setMood, moodConfig } = useMood()
+const { isEnabled } = useFeatureFlags('feature_name')
 ```
 
 ## API Integration
@@ -171,22 +245,13 @@ API calls được wrap trong `lib/axios.ts`:
 - Base URL từ env hoặc relative `/api`
 - Auto attach JWT token từ localStorage
 - Response/Error interceptors
-- Token refresh handling
+- 401 redirect to login
+- Request retry logic
 
 ## Environment Variables
 
 ```env
 VITE_API_URL=http://localhost:8080    # Backend API URL (optional, defaults to /api)
-```
-
-## Scripts
-
-```bash
-npm run dev       # Start dev server (port 5173)
-npm run build     # Build for production
-npm run preview   # Preview production build locally
-npm run lint      # Run ESLint
-npm run type-check # Run TypeScript compiler check
 ```
 
 ## Code Conventions
@@ -211,6 +276,18 @@ npm run type-check # Run TypeScript compiler check
 - Controlled inputs
 - Error display inline
 
+## Git Hooks
+
+Pre-commit hook tự động:
+1. ESLint auto-fix (`eslint --fix`)
+2. TypeScript type check
+3. Build verification
+
+```bash
+# Setup (từ root)
+make setup
+```
+
 ## Troubleshooting
 
 ### CORS Issues
@@ -223,4 +300,28 @@ App auto redirect về `/login` khi 401
 ```bash
 npm run type-check  # Check TypeScript errors
 npm run lint        # Check ESLint errors
+npm run lint:fix    # Auto-fix ESLint
 ```
+
+### ESLint v9 Migration
+Nếu gặp lỗi "eslint.config not found":
+- Đảm bảo có file `eslint.config.js` (không phải `.eslintrc`)
+- Sử dụng ESLint 9.x
+
+### Hot Reload Issues
+```bash
+# Clear Vite cache
+rm -rf node_modules/.vite
+npm run dev
+```
+
+## PWA Support
+
+Ứng dụng hỗ trợ PWA (Progressive Web App):
+- Offline support với service worker
+- Install prompt
+- Push notifications (planned)
+
+## License
+
+MIT

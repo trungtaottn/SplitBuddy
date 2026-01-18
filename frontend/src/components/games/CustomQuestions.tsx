@@ -103,7 +103,7 @@ export function CustomQuestions() {
       <CardContent className="space-y-4">
         {/* Form thêm mới */}
         {showForm && (
-          <form onSubmit={handleSubmit} className="space-y-3 p-4 bg-gray-50 rounded-lg">
+          <form onSubmit={handleSubmit} className="space-y-3 p-4 bg-zinc-900 border border-white/5 rounded-lg">
             <div>
               <label className="text-sm font-medium mb-1 block">Loại trò chơi</label>
               <select
@@ -161,7 +161,7 @@ export function CustomQuestions() {
           <button
             onClick={() => setFilterGameType('')}
             className={`px-3 py-1 text-xs rounded-full transition-colors ${
-              filterGameType === '' ? 'bg-primary text-white' : 'bg-gray-100 hover:bg-gray-200'
+              filterGameType === '' ? 'bg-orange-500 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
             }`}
           >
             Tất cả
@@ -171,7 +171,7 @@ export function CustomQuestions() {
               key={opt.value}
               onClick={() => setFilterGameType(opt.value)}
               className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                filterGameType === opt.value ? 'bg-primary text-white' : 'bg-gray-100 hover:bg-gray-200'
+                filterGameType === opt.value ? 'bg-orange-500 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
               }`}
             >
               {opt.label}
@@ -183,7 +183,7 @@ export function CustomQuestions() {
         {isLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-12 bg-gray-100 animate-pulse rounded-lg" />
+              <div key={i} className="h-12 bg-zinc-800 animate-pulse rounded-lg" />
             ))}
           </div>
         ) : !questions || questions.length === 0 ? (
@@ -198,7 +198,7 @@ export function CustomQuestions() {
               return (
                 <div
                   key={q.id}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 group"
+                  className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900 border border-white/5 hover:bg-zinc-800/80 group"
                 >
                   <Icon className={`h-4 w-4 text-${gameOpt?.color || 'gray'}-500 flex-shrink-0`} />
                   <div className="flex-1 min-w-0">
@@ -208,7 +208,7 @@ export function CustomQuestions() {
                         Đã dùng {q.use_count || 0} lần
                       </span>
                       {q.is_public && (
-                        <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">
+                        <span className="text-xs bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20">
                           Công khai
                         </span>
                       )}
