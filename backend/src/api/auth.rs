@@ -225,9 +225,10 @@ async fn get_features(
     tracing::info!("get_features handler called");
 
     // Try to get from cache first
+    #[allow(dead_code)]
     const CACHE_KEY: &str = "all_public_features";
 
-    if let Some(cached) = state.cache.all_features.get(CACHE_KEY).await {
+    if let Some(cached) = state.cache.get_all_features().await {
         tracing::info!("Cache hit for features");
         // Convert cached features to public format
         let features: Vec<FeatureFlagPublic> = cached
@@ -267,11 +268,7 @@ async fn get_features(
         })
         .collect();
 
-    state
-        .cache
-        .all_features
-        .insert(CACHE_KEY.to_string(), cached_features)
-        .await;
+    state.cache.cache_all_features(cached_features).await;
 
     Ok(ok(features))
 }
@@ -592,12 +589,20 @@ pub async fn get_ws_ticket(
     use crate::cache::WsTicket;
     use chrono::Utc;
 
+    // Fetch user name from database
+    let user_name: String = sqlx::query_scalar("SELECT full_name FROM users WHERE id = $1")
+        .bind(auth_user.user_id)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap_or_else(|_| "Unknown".to_string());
+
     // Generate a unique ticket ID
     let ticket_id = Uuid::new_v4();
 
     // Create ticket with 30 second expiration
     let ticket = WsTicket {
         user_id: auth_user.user_id,
+        user_name,
         role: auth_user.role,
         expires_at: Utc::now() + chrono::Duration::seconds(30),
     };

@@ -79,6 +79,9 @@ export default {
       },
       spacing: {
         'touch': 'var(--touch-target)',
+        'header': 'var(--header-height)',
+        'safe-top': 'var(--safe-area-top)',
+        'safe-bottom': 'var(--safe-area-bottom)',
       },
       minHeight: {
         'touch': 'var(--touch-target)',

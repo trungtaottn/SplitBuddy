@@ -1,3 +1,4 @@
+import { DebtStats } from '@/types/api';
 import api from './axios'
 
 export const apiWrapper = {
@@ -39,6 +40,10 @@ export const apiWrapper = {
     whoPaysNext: (id: string) => api.get(`/sessions/${id}/who-pays-next`).then((res) => res.data.data),
     closeSession: (id: string) => api.post(`/sessions/${id}/close`).then((res) => res.data.data),
     reopenSession: (id: string) => api.post(`/sessions/${id}/reopen`).then((res) => res.data.data),
+    getDebtStats: async (sessionId: string) => {
+    const { data } = await api.get<{ data: DebtStats }>(`/sessions/${sessionId}/debt-stats`);
+    return data.data;
+  },
     updateMinimizeDebts: (id: string, minimize_debts: boolean) =>
         api.put(`/sessions/${id}/minimize-debts`, { minimize_debts }).then((res) => res.data.data),
     archiveSession: (id: string) => api.post(`/sessions/${id}/archive`).then((res) => res.data.data),
@@ -52,6 +57,28 @@ export const apiWrapper = {
     fx: {
         rateHistory: (base: string, quote: string, limit = 7) =>
             api.get(`/fx/rates/history`, { params: { base, quote, limit } }).then((res) => res.data.data),
+    },
+    notifications: {
+        list: (params?: { page?: number; limit?: number; unread_only?: boolean }) =>
+            api.get('/notifications', { params }).then((res) => res.data.data),
+        getUnreadCount: () => api.get('/notifications/unread-count').then((res) => res.data.data),
+        markAsRead: (id: string) => api.put(`/notifications/${id}/read`).then((res) => res.data.data),
+        markAllAsRead: () => api.post('/notifications/mark-all-read').then((res) => res.data.data),
+    },
+    personas: {
+        getMe: () => api.get('/personas/me').then((res) => res.data.data),
+        updateMe: (data: any) => api.put('/personas/me', data).then((res) => res.data.data),
+        getAchievements: () => api.get('/personas/achievements').then((res) => res.data.data),
+        getMyAchievements: () => api.get('/personas/achievements/me').then((res) => res.data.data),
+        checkAchievements: () => api.post('/personas/achievements/check').then((res) => res.data.data),
+        getUser: (userId: string) => api.get(`/personas/user/${userId}`).then((res) => res.data.data),
+        getLeaderboard: () => api.get('/personas/leaderboard').then((res) => res.data.data),
+    },
+    feed: {
+        get: (limit = 20, offset = 0) => api.get('/feed', { params: { limit, offset } }).then((res) => res.data),
+        toggleLike: (activityId: string) => api.post(`/feed/${activityId}/like`).then((res) => res.data.data),
+        addComment: (activityId: string, content: string) => api.post(`/feed/${activityId}/comments`, { content }).then((res) => res.data.data),
+        getComments: (activityId: string) => api.get(`/feed/${activityId}/comments`).then((res) => res.data.data),
     },
 }
 

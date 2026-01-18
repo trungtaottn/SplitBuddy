@@ -10,7 +10,9 @@ import { toast } from '@/components/ui/toaster'
 import { soundManager, vibrate, vibrationPatterns } from '@/utils/sounds'
 import type { ApiResponse } from '@/types/api'
 import { SpinWheel, DrinkingCounter, PlayerRotation, KingsCup, MostLikelyTo, CategoriesGame, HighOrLow } from '@/components/games'
+import { Leaderboard } from '@/components/games/Leaderboard'
 import { BeerIcon } from '@/components/ui/BeerIcon'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 type GameType = 'truth_or_dare' | 'never_have_i_ever' | 'challenge' | 'dice' | 'wheel'
 
@@ -411,8 +413,16 @@ export default function GamesPage() {
         </div>
       </div>
 
-      {/* Game Selection */}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+
+      <Tabs defaultValue="games" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsTrigger value="games">Trò chơi</TabsTrigger>
+          <TabsTrigger value="leaderboard">Bảng xếp hạng</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="games" className="space-y-8">
+          {/* Game Selection */}
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {/* Truth or Dare */}
         <Card 
           className="group relative overflow-hidden bg-zinc-900 border-white/5 hover:border-orange-500/30 transition-all hover:shadow-xl cursor-pointer hover:-translate-y-1"
@@ -665,6 +675,12 @@ export default function GamesPage() {
           </CardContent>
         </Card>
       </div>
+      </TabsContent>
+
+      <TabsContent value="leaderboard">
+        <Leaderboard />
+      </TabsContent>
+      </Tabs>
 
       {/* Kings Cup Modal - Rendered via Portal */}
       <AnimatePresence>

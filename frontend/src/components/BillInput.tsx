@@ -11,6 +11,8 @@ import { api } from '@/lib/axios'
 import { api as apiWrapper } from '@/lib/api'
 import { toast } from '@/components/ui/toaster'
 import type { ApiResponse, ExpenseCategory, Participant, PayerInput, SplitDetailInput, Bill, RateHistoryEntry } from '@/types/api'
+import { useWebSocket } from '@/contexts/WebSocketContext'
+
 
 // Common bill descriptions for autocomplete
 const BILL_SUGGESTIONS = [
@@ -37,6 +39,7 @@ const QUICK_AMOUNTS = [
 interface BillInputProps {
   participants: Participant[]
   baseCurrency: string
+  sessionId?: string
   defaultPayerId?: string
   onSubmit: (data: {
     description: string
@@ -59,6 +62,7 @@ interface BillInputProps {
 export function BillInput({
   participants,
   baseCurrency,
+  sessionId,
   defaultPayerId,
   onSubmit,
   onCancel,
@@ -76,6 +80,22 @@ export function BillInput({
   const [exchangeRate, setExchangeRate] = useState(initialData?.exchange_rate || '')
   const [rateHistory, setRateHistory] = useState<RateHistoryEntry[]>([])
   const [rateHistoryLoading, setRateHistoryLoading] = useState(false)
+  
+
+  
+  const { sendActivity } = useWebSocket()
+  const lastTypingSentRef = useRef(0)
+  
+  // Custom throttle for typing activity
+  const handleTyping = () => {
+    if (!sessionId) return
+    const now = Date.now()
+    if (now - lastTypingSentRef.current > 2000) {
+        sendActivity(sessionId, 'typing')
+        lastTypingSentRef.current = now
+    }
+  }
+
   // Determine split mode from initialData
   const [splitMode, setSplitMode] = useState<'EQUAL' | 'WEIGHTED' | 'CUSTOM'>(
     initialData?.split_strategy === 'CUSTOM' ? 'CUSTOM' : 
@@ -412,6 +432,7 @@ export function BillInput({
                   onChange={(e) => {
                     setDescription(e.target.value)
                     setShowSuggestions(true)
+                    handleTyping()
                   }}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
@@ -463,7 +484,10 @@ export function BillInput({
               inputMode={isZeroDecimalCurrency ? 'numeric' : 'decimal'}
               placeholder="0"
               value={formattedAmount}
-              onChange={(e) => handleAmountChange(e.target.value)}
+              onChange={(e) => {
+                  handleAmountChange(e.target.value)
+                  handleTyping()
+              }}
               className="text-lg font-semibold"
               required
             />

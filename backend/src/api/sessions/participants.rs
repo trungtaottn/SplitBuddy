@@ -7,6 +7,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::api::response::{created, ok, ApiResponse};
+use crate::api::ws::WsEvent;
 use crate::api::AppState;
 use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
@@ -138,12 +139,37 @@ pub async fn add_participant(
                 "[NOTIFICATION DEBUG] ✅ Notification {} created successfully!",
                 notification_id
             );
+
+            // Send real-time notification
+            state
+                .ws_manager
+                .send_to_user(
+                    user_id,
+                    WsEvent::NotificationReceived {
+                        notification_id,
+                        title: format!("Bạn được thêm vào session: {}", session_name),
+                        notification_type: "session_invite".to_string(),
+                    },
+                )
+                .await;
         } else {
             tracing::info!("[NOTIFICATION DEBUG] ❌ Notification NOT created - user has disabled session_invites");
         }
     } else {
         tracing::info!("[NOTIFICATION DEBUG] No user_id provided, this is a guest participant - no notification created");
     }
+
+    // Broadcast participant added event
+    state
+        .ws_manager
+        .broadcast_to_session(
+            session_id,
+            WsEvent::ParticipantChanged {
+                session_id,
+                action: "added".to_string(),
+            },
+        )
+        .await;
 
     Ok(created(participant))
 }
@@ -173,6 +199,18 @@ pub async fn update_participant(
     if payload.default_weight.is_some() || payload.is_active.is_some() {
         state.cache.invalidate_session(params.id).await;
     }
+
+    // Broadcast participant updated event
+    state
+        .ws_manager
+        .broadcast_to_session(
+            params.id,
+            WsEvent::ParticipantChanged {
+                session_id: params.id,
+                action: "updated".to_string(),
+            },
+        )
+        .await;
 
     Ok(ok(participant))
 }
@@ -231,6 +269,18 @@ pub async fn delete_participant(
 
     // Delete participant
     repo.delete_participant(params.pid).await?;
+
+    // Broadcast participant removed event
+    state
+        .ws_manager
+        .broadcast_to_session(
+            params.id,
+            WsEvent::ParticipantChanged {
+                session_id: params.id,
+                action: "removed".to_string(),
+            },
+        )
+        .await;
 
     Ok(ok(()))
 }

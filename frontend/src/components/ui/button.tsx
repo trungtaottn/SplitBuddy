@@ -69,7 +69,7 @@ const buttonVariants = cva(
         default: 'h-12 px-8', // Taller and wider for luxury feel
         sm: 'h-9 px-4 text-[10px]',
         lg: 'h-14 px-10 text-sm',
-        icon: 'h-10 w-10',
+        icon: 'h-11 w-11', // Optimized for touch target (44px)
       },
     },
     defaultVariants: {

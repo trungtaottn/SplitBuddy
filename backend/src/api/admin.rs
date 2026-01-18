@@ -262,7 +262,7 @@ async fn toggle_feature(
     .await?;
 
     // Invalidate cache when feature flag is updated
-    state.cache.invalidate_feature_flag(&key).await;
+    state.cache.invalidate_feature_flags().await;
     tracing::info!(
         "Feature flag '{}' updated to {}, cache invalidated",
         key,

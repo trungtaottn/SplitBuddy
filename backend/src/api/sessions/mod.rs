@@ -22,6 +22,7 @@ use crate::repository::session_repo::SessionRepository;
 use crate::utils::forex::normalize_currency;
 
 pub mod bills;
+pub mod debts;
 pub mod participants;
 
 use bills::{create_bill, delete_bill, list_bills, update_bill};
@@ -51,6 +52,8 @@ pub fn routes() -> Router<AppState> {
         .route("/:id/who-pays-next", get(who_pays_next))
         .route("/:id/spin", post(super::games::spin_wheel))
         .route("/:id/spin-history", get(super::games::get_spin_history))
+        .route("/:id/debt-stats", get(debts::get_debt_stats))
+        .route("/:id/debts/pending", get(debts::get_pending_debts))
 }
 
 #[derive(Serialize)]
@@ -75,7 +78,7 @@ pub struct SessionResponse {
     pub settled_amount: Decimal, // Total amount already settled
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ParticipantBasicInfo {
     pub id: Uuid,
     pub name: String,
@@ -100,7 +103,7 @@ pub struct SessionDetailResponse {
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ParticipantResponse {
     pub id: Uuid,
     pub user_id: Option<Uuid>,
@@ -343,6 +346,21 @@ async fn create_session(
         )
         .await?;
 
+    // Create Activity
+    let feed_repo = crate::repository::feed_repo::FeedRepository::new(state.pool.clone());
+    let _ = feed_repo
+        .create_activity(
+            auth_user.user_id,
+            "session_created",
+            session.id,
+            "session",
+            serde_json::json!({
+                 "name": session.name,
+                 "location": session.location
+            }),
+        )
+        .await;
+
     Ok(created(session))
 }
 
@@ -508,6 +526,18 @@ async fn update_minimize_debts(
 
     state.cache.invalidate_session(session_id).await;
 
+    state
+        .ws_manager
+        .broadcast_to_session(session_id, WsEvent::SessionUpdated { session_id })
+        .await;
+
+    // Also recalculate debts event might be useful, or implicit in SessionUpdated?
+    // SessionUpdated implies data changed. DebtsRecalculated specifically triggers debt fetch.
+    state
+        .ws_manager
+        .broadcast_to_session(session_id, WsEvent::DebtsRecalculated { session_id })
+        .await;
+
     Ok(ok(session))
 }
 
@@ -517,12 +547,33 @@ async fn archive_session(
     Path(session_id): Path<Uuid>,
 ) -> Result<Json<ApiResponse<SessionResponse>>, AppError> {
     let repo = SessionRepository::new(state.pool.clone());
+    let debt_repo = crate::repository::session::SessionDebtRepository::new(state.pool.clone());
 
     repo.verify_owner(session_id, auth_user.user_id).await?;
+
+    // Check for unsettled debts
+    if debt_repo.has_unsettled_debts(session_id).await? {
+        return Err(AppError::Validation {
+            field: "session".to_string(),
+            message: "Cannot archive session with pending debts. Please settle all debts first."
+                .to_string(),
+        });
+    }
 
     let session = repo.set_archived(session_id, true).await?;
 
     state.cache.invalidate_session(session_id).await;
+
+    state
+        .ws_manager
+        .broadcast_to_session(
+            session_id,
+            WsEvent::SessionStatusChanged {
+                session_id,
+                status: "ARCHIVED".to_string(),
+            },
+        )
+        .await;
 
     Ok(ok(session))
 }
@@ -539,6 +590,17 @@ async fn restore_session(
     let session = repo.set_archived(session_id, false).await?;
 
     state.cache.invalidate_session(session_id).await;
+
+    state
+        .ws_manager
+        .broadcast_to_session(
+            session_id,
+            WsEvent::SessionStatusChanged {
+                session_id,
+                status: "ACTIVE".to_string(),
+            },
+        )
+        .await;
 
     Ok(ok(session))
 }

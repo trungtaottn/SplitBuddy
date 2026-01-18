@@ -1,11 +1,38 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
-import { LogOut, User, Wallet, Home, Users, Sparkles, TrendingUp } from 'lucide-react'
+import { LogOut, User, Wallet, Home, Users, Sparkles, TrendingUp, Wifi, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MusicPlayer } from '@/components/ui/MusicPlayer'
 import { AnimatedOutlet } from '@/components/PageTransition'
 import { NotificationBell } from '@/components/NotificationBell'
+import { useWebSocket } from '@/contexts/WebSocketContext'
+import { MobileNav } from '@/components/layout/MobileNav'
+
+function ConnectionStatus() {
+  const { connectionStatus, reconnect } = useWebSocket()
+
+  if (connectionStatus === 'connected') return null
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-full bg-background border shadow-sm">
+      {connectionStatus === 'connecting' || connectionStatus === 'reconnecting' ? (
+        <>
+          <Wifi className="h-3 w-3 animate-pulse text-yellow-500" />
+          <span className="text-muted-foreground hidden lg:inline">Connecting...</span>
+        </>
+      ) : (
+        <button 
+            onClick={reconnect}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
+          <WifiOff className="h-3 w-3 text-destructive" />
+          <span className="text-destructive hidden lg:inline">Offline</span>
+        </button>
+      )}
+    </div>
+  )
+}
 
 /**
  * AppLayout - Dark Luxury / Portfolio Style
@@ -49,7 +76,7 @@ export default function AppLayout() {
   )
 
   return (
-    <div className="min-h-screen bg-transparent pb-24 md:pb-0">
+    <div className="min-h-screen bg-transparent pb-32 md:pb-0">
       {/* Desktop Header - Minimalist */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-white/5">
         <div className="container mx-auto flex h-20 items-center justify-between px-6">
@@ -79,6 +106,7 @@ export default function AppLayout() {
 
             {/* User Actions */}
             <div className="flex items-center gap-4">
+              <ConnectionStatus />
               {!isAdmin && <NotificationBell />}
               
               <Link to="/profile" className="flex items-center gap-3 group">
@@ -117,27 +145,8 @@ export default function AppLayout() {
       </main>
 
       {/* Mobile Bottom Navigation - Minimal Dark */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-md border-t border-white/5 md:hidden pb-safe">
-        <div className="flex h-16 items-center justify-around px-2">
-          {/* Simple Icon-only nav for mobile */}
-          <Link to="/" className={`p-3 ${isActive('/') ? 'text-primary' : 'text-muted-foreground'}`}>
-            <Home className="h-6 w-6" />
-          </Link>
-          {showGroups && (
-          <Link to="/groups" className={`p-3 ${isActive('/groups') ? 'text-primary' : 'text-muted-foreground'}`}>
-            <Users className="h-6 w-6" />
-          </Link>
-          )}
-          {showDebts && (
-          <Link to="/debts" className={`p-3 ${isActive('/debts') ? 'text-primary' : 'text-muted-foreground'}`}>
-            <Wallet className="h-6 w-6" />
-          </Link>
-          )}
-          <Link to="/profile" className={`p-3 ${isActive('/profile') ? 'text-primary' : 'text-muted-foreground'}`}>
-            <User className="h-6 w-6" />
-          </Link>
-        </div>
-      </nav>
+      <MobileNav />
+
       
       {/* Background Music Player - Keep functionality but verify style later */}
       <MusicPlayer />

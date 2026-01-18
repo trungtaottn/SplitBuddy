@@ -38,7 +38,7 @@ mod repository;
 mod scheduler;
 mod utils;
 
-use cache::AppCache;
+use cache::HybridCache;
 use config::Config;
 use openapi::ApiDoc;
 use sqlx::PgPool;
@@ -216,15 +216,22 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let pool = PgPoolOptions::new()
-        .max_connections(20)
-        .min_connections(5)
-        .acquire_timeout(Duration::from_secs(3))
-        .idle_timeout(Duration::from_secs(600))
-        .max_lifetime(Duration::from_secs(1800))
+        .max_connections(config.db_max_connections)
+        .min_connections(config.db_min_connections)
+        .acquire_timeout(Duration::from_secs(config.db_acquire_timeout_seconds))
+        .idle_timeout(Duration::from_secs(config.db_idle_timeout_seconds))
+        .max_lifetime(Duration::from_secs(config.db_max_lifetime_seconds))
         .connect(&database_url)
         .await?;
 
-    tracing::info!("Database pool configured: max=20, min=5, acquire_timeout=3s");
+    tracing::info!(
+        "Database pool configured: max={}, min={}, acquire_timeout={}s, idle_timeout={}s, max_lifetime={}s",
+        config.db_max_connections,
+        config.db_min_connections,
+        config.db_acquire_timeout_seconds,
+        config.db_idle_timeout_seconds,
+        config.db_max_lifetime_seconds
+    );
 
     tracing::info!("Running migrations...");
     sqlx::migrate!("./migrations").run(&pool).await?;
@@ -232,12 +239,15 @@ async fn main() -> anyhow::Result<()> {
     // Initialize admin user if not exists (using password from config)
     init_admin_user(&pool, &config.admin_default_password).await?;
 
-    // Initialize application cache
-    let cache = AppCache::new();
-    tracing::info!("Application cache initialized");
+    // Initialize application cache (Hybrid: Local + AWS Redis)
+    let cache = HybridCache::new(config.redis_url.as_deref()).await;
+    tracing::info!(
+        "Application cache initialized (Redis: {})",
+        cache.redis_available()
+    );
 
     // Initialize WebSocket manager for real-time updates
-    let ws_manager = api::WsManager::new();
+    let ws_manager = api::WsManager::new(config.redis_url.clone());
     tracing::info!("WebSocket manager initialized");
 
     let app_state = api::AppState::new(pool, config.clone(), cache, ws_manager);

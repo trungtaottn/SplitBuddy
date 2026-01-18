@@ -12,6 +12,7 @@ import { User, Lock, Camera, Save, Eye, EyeOff, Loader2, Palette, Sparkles, Trop
 import WrappedModal from '@/components/WrappedModal'
 import { useOnboarding } from '@/components/Onboarding'
 import { ResponsiveModal } from '@/components/ui/responsive-modal'
+import { PersonaEditor } from '@/components/profile/PersonaEditor'
 import type { ApiResponse, PersonaWithUser, UserAchievement, BankAccount, AddBankAccountDto, UpdateBankAccountDto } from '@/types/api'
 
 interface UserProfile {
@@ -27,6 +28,7 @@ export default function ProfilePage() {
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showWrapped, setShowWrapped] = useState(false)
+  const [showPersonaEditor, setShowPersonaEditor] = useState(false)
   const [appVersion, setAppVersion] = useState('')
   const [showBankModal, setShowBankModal] = useState(false)
   const [editingBank, setEditingBank] = useState<BankAccount | null>(null)
@@ -97,6 +99,20 @@ export default function ProfilePage() {
       return res.data.data
     },
   })
+
+  // Check for new achievements on mount
+  useEffect(() => {
+    api.post('/personas/achievements/check')
+      .then((res) => {
+        const newUnlocks = res.data.data as string[]
+        if (newUnlocks.length > 0) {
+           toast.success(`Bạn đã mở khóa ${newUnlocks.length} thành tích mới!`)
+           queryClient.invalidateQueries({ queryKey: ['achievements', 'me'] })
+           queryClient.invalidateQueries({ queryKey: ['persona', 'me'] })
+        }
+      })
+      .catch(() => {})
+  }, [queryClient])
   
   // Profile form state
   const [fullName, setFullName] = useState(user?.full_name || '')
@@ -586,6 +602,11 @@ export default function ProfilePage() {
                 <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
                 Cấp độ {persona?.persona.level || 1}
               </CardTitle>
+              {persona?.persona && (
+                 <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8 text-white/50 hover:text-white" onClick={() => setShowPersonaEditor(true)}>
+                     <Pencil className="h-4 w-4" />
+                 </Button>
+              )}
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="mb-2 flex justify-between text-xs font-bold text-zinc-400 uppercase tracking-widest">
@@ -746,6 +767,15 @@ export default function ProfilePage() {
         isOpen={showWrapped} 
         onClose={() => setShowWrapped(false)} 
       />
+
+      {persona && (
+        <PersonaEditor
+          isOpen={showPersonaEditor}
+          onClose={() => setShowPersonaEditor(false)}
+          initialData={persona.persona}
+          unlockedTitles={achievements?.map(a => a.name) || []}
+        />
+      )}
 
        {/* Bank Modal */}
       <ResponsiveModal

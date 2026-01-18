@@ -16,6 +16,15 @@ pub struct Config {
     pub http_connect_timeout_seconds: u64,
     // Scheduler settings
     pub recurring_expense_scheduler_interval_seconds: u64,
+    // Redis settings (optional)
+    pub redis_url: Option<String>,
+
+    // Database Pool settings
+    pub db_max_connections: u32,
+    pub db_min_connections: u32,
+    pub db_acquire_timeout_seconds: u64,
+    pub db_idle_timeout_seconds: u64,
+    pub db_max_lifetime_seconds: u64,
 }
 
 impl Config {
@@ -76,6 +85,30 @@ impl Config {
             .unwrap_or_else(|_| "300".to_string())
             .parse()
             .unwrap_or(300),
+            // Redis settings (optional - if not set, falls back to local cache only)
+            redis_url: env::var("REDIS_URL").ok(),
+
+            // Database Pool settings
+            db_max_connections: env::var("DB_MAX_CONNECTIONS")
+                .unwrap_or_else(|_| "20".to_string())
+                .parse()
+                .unwrap_or(20),
+            db_min_connections: env::var("DB_MIN_CONNECTIONS")
+                .unwrap_or_else(|_| "5".to_string())
+                .parse()
+                .unwrap_or(5),
+            db_acquire_timeout_seconds: env::var("DB_ACQUIRE_TIMEOUT_SECONDS")
+                .unwrap_or_else(|_| "3".to_string())
+                .parse()
+                .unwrap_or(3),
+            db_idle_timeout_seconds: env::var("DB_IDLE_TIMEOUT_SECONDS")
+                .unwrap_or_else(|_| "600".to_string())
+                .parse()
+                .unwrap_or(600),
+            db_max_lifetime_seconds: env::var("DB_MAX_LIFETIME_SECONDS")
+                .unwrap_or_else(|_| "1800".to_string())
+                .parse()
+                .unwrap_or(1800),
         })
     }
 }

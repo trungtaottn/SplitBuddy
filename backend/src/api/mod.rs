@@ -2,7 +2,7 @@ use axum::Router;
 use sqlx::PgPool;
 use std::time::Duration;
 
-use crate::cache::AppCache;
+use crate::cache::HybridCache;
 use crate::config::Config;
 
 pub mod admin;
@@ -12,6 +12,7 @@ pub mod auth;
 pub mod bills;
 pub mod categories;
 pub mod debts;
+pub mod feed;
 pub mod fx;
 pub mod games;
 pub mod groups;
@@ -34,14 +35,14 @@ pub use ws::WsManager;
 pub struct AppState {
     pub pool: PgPool,
     pub config: Config,
-    pub cache: AppCache,
+    pub cache: HybridCache,
     pub ws_manager: WsManager,
     pub http_client: reqwest::Client,
 }
 
 impl AppState {
     /// Create a new AppState with all dependencies initialized
-    pub fn new(pool: PgPool, config: Config, cache: AppCache, ws_manager: WsManager) -> Self {
+    pub fn new(pool: PgPool, config: Config, cache: HybridCache, ws_manager: WsManager) -> Self {
         let http_client = reqwest::Client::builder()
             .timeout(Duration::from_secs(config.http_timeout_seconds))
             .connect_timeout(Duration::from_secs(config.http_connect_timeout_seconds))
@@ -74,6 +75,7 @@ pub fn routes() -> Router<AppState> {
         .nest("/personas", personas::routes())
         .nest("/wrapped", wrapped::routes())
         .nest("/payments", payments::routes())
+        .nest("/feed", feed::routes())
         .nest("/categories", categories::routes())
         .nest("/templates", templates::routes())
         .nest("/analytics", analytics::routes())

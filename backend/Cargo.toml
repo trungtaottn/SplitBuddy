@@ -44,6 +44,10 @@ rust_decimal = { version = "1.33", features = ["serde", "serde-with-str"] }
 # Caching
 moka = { version = "0.12", features = ["future"] }
 
+# Redis (distributed cache)
+redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
+bb8-redis = "0.15"
+
 # Validation
 validator = { version = "0.16", features = ["derive"] }
 

@@ -300,6 +300,13 @@ export interface ParticipantDebt {
   balance: string
 }
 
+export interface DebtStats {
+  total_pending: string
+  total_settled: string
+  pending_count: number
+  settled_count: number
+}
+
 // Group Debt Summary
 export interface GroupDebtSummary {
   group_id: string
@@ -713,4 +720,42 @@ export interface SessionStat {
   name: string
   total_amount: number
   date: string
+}
+
+// Social Feed
+export interface FeedActivity {
+  id: string
+  user: {
+    id: string
+    name: string
+    avatar: string | null
+  }
+  type: string
+  target_id: string
+  target_type: string
+  meta_data: Record<string, any>
+  created_at: string
+  stats: {
+    likes: number
+    comments: number
+  }
+  user_interaction: {
+    has_liked: boolean
+  }
+}
+
+export interface ActivityComment {
+  id: string
+  user: {
+    id: string
+    name: string
+    avatar: string | null
+  }
+  content: string
+  created_at: string
+}
+
+export interface FeedParams {
+  limit?: number
+  offset?: number
 }

@@ -1,4 +1,4 @@
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::Json;
 use rust_decimal::{Decimal, RoundingStrategy};
 use serde::Deserialize;
@@ -10,8 +10,10 @@ use crate::api::ws::WsEvent;
 use crate::api::AppState;
 use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
+use crate::repository::session::SessionBillRepository;
 use crate::repository::session_repo::SessionRepository;
 use crate::utils::forex::{normalize_currency, resolve_exchange_rate};
+use crate::utils::pagination::{PaginatedResponse, PaginationParams};
 
 use super::{BillDetailResponse, BillResponse, PayerInput, SplitDetailInput};
 
@@ -59,16 +61,21 @@ pub async fn list_bills(
     State(state): State<AppState>,
     auth_user: AuthUser,
     Path(session_id): Path<Uuid>,
-) -> Result<Json<ApiResponse<Vec<BillDetailResponse>>>, AppError> {
+    Query(pagination): Query<PaginationParams>,
+) -> Result<Json<ApiResponse<PaginatedResponse<BillDetailResponse>>>, AppError> {
     let repo = SessionRepository::new(state.pool.clone());
+    let bill_repo = SessionBillRepository::new(state.pool.clone());
 
     repo.verify_participant(session_id, auth_user.user_id)
         .await?;
 
-    // Use the optimized N+1 fix method
-    let bills = repo.find_bills_with_details(session_id).await?;
+    let (bills, total) = bill_repo
+        .find_bills_by_session_paginated(session_id, pagination.limit(), pagination.offset())
+        .await?;
 
-    Ok(ok(bills))
+    let response = PaginatedResponse::new(bills, pagination.page(), pagination.limit(), total);
+
+    Ok(ok(response))
 }
 
 pub async fn create_bill(
@@ -186,6 +193,29 @@ pub async fn create_bill(
                 session_id,
                 bill_id: bill.id,
             },
+        )
+        .await;
+
+    // Debts are recalculated when bill is created
+    state
+        .ws_manager
+        .broadcast_to_session(session_id, WsEvent::DebtsRecalculated { session_id })
+        .await;
+
+    // Create Activity
+    let feed_repo = crate::repository::feed_repo::FeedRepository::new(state.pool.clone());
+    let _ = feed_repo
+        .create_activity(
+            auth_user.user_id,
+            "bill_created",
+            bill.id,
+            "bill",
+            serde_json::json!({
+                 "description": bill.description,
+                 "amount": bill.amount,
+                 "currency": bill.currency_code,
+                 "session_id": session_id
+            }),
         )
         .await;
 
@@ -395,6 +425,12 @@ pub async fn update_bill(
         )
         .await;
 
+    // Debts are recalculated when bill is updated
+    state
+        .ws_manager
+        .broadcast_to_session(session_id, WsEvent::DebtsRecalculated { session_id })
+        .await;
+
     Ok(ok(updated_bill))
 }
 
@@ -431,16 +467,22 @@ pub async fn delete_bill(
     // Invalidate cache
     state.cache.invalidate_session(session_id).await;
 
-    // Broadcast WebSocket event
+    // Broadcast WebSocket events
     state
         .ws_manager
         .broadcast_to_session(
             session_id,
-            WsEvent::BillUpdated {
+            WsEvent::BillDeleted {
                 session_id,
                 bill_id,
             },
         )
+        .await;
+
+    // Debts are recalculated when bill is deleted
+    state
+        .ws_manager
+        .broadcast_to_session(session_id, WsEvent::DebtsRecalculated { session_id })
         .await;
 
     Ok(ok(()))
