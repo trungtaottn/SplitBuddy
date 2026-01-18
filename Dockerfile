@@ -40,8 +40,10 @@ RUN cargo install cargo-chef --locked
 COPY --from=planner /app/recipe.json recipe.json
 COPY backend/.sqlx ./.sqlx
 
-# Build ONLY dependencies (cached layer)
-RUN cargo chef cook --release --recipe-path recipe.json
+# Build ONLY dependencies (cached layer with BuildKit mounts)
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    cargo chef cook --release --recipe-path recipe.json
 
 # ===== Stage 4: Build Backend =====
 FROM rustlang/rust:nightly-slim AS backend-builder
