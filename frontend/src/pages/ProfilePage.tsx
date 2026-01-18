@@ -12,8 +12,10 @@ import { User, Lock, Camera, Save, Eye, EyeOff, Loader2, Palette, Sparkles, Trop
 import WrappedModal from '@/components/WrappedModal'
 import { useOnboarding } from '@/components/Onboarding'
 import { ResponsiveModal } from '@/components/ui/responsive-modal'
+import { SwipeActions } from '@/components/ui/SwipeActions'
 import { PersonaEditor } from '@/components/profile/PersonaEditor'
 import type { ApiResponse, PersonaWithUser, UserAchievement, BankAccount, AddBankAccountDto, UpdateBankAccountDto } from '@/types/api'
+import { ProfileSkeleton } from '@/components/profile/ProfileSkeleton'
 
 interface UserProfile {
   id: string
@@ -32,6 +34,7 @@ export default function ProfilePage() {
   const [appVersion, setAppVersion] = useState('')
   const [showBankModal, setShowBankModal] = useState(false)
   const [editingBank, setEditingBank] = useState<BankAccount | null>(null)
+  const [deletingBankId, setDeletingBankId] = useState<string | null>(null)
   const [bankName, setBankName] = useState('')
   const [accountNumber, setAccountNumber] = useState('')
   const [accountHolder, setAccountHolder] = useState('')
@@ -126,8 +129,9 @@ export default function ProfilePage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
 
+
   // Fetch profile
-  const { data: profile } = useQuery({
+  const { data: profile, isLoading: isProfileLoading } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
       const res = await api.get<ApiResponse<UserProfile>>('/users/me')
@@ -136,7 +140,7 @@ export default function ProfilePage() {
   })
 
   // Bank accounts
-  const { data: bankAccounts } = useQuery({
+  const { data: bankAccounts, isLoading: isBankLoading } = useQuery({
     queryKey: ['bank-accounts'],
     queryFn: async () => {
       const res = await api.get<ApiResponse<BankAccount[]>>('/users/me/bank-accounts')
@@ -320,6 +324,10 @@ export default function ProfilePage() {
       .join('')
       .toUpperCase()
       .slice(0, 2)
+  }
+
+  if (isProfileLoading || isBankLoading) {
+    return <ProfileSkeleton />
   }
 
   return (
@@ -537,54 +545,73 @@ export default function ProfilePage() {
               ) : (
                 <div className="grid gap-3">
                   {bankAccounts?.map((b) => (
-                    <div
-                      key={b.id}
-                      className="group flex items-center justify-between rounded-xl bg-zinc-800/30 border border-white/5 p-4 hover:bg-zinc-800 hover:border-white/10 transition-colors"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-bold text-white truncate">{b.bank_name}</p>
-                          {b.is_default && (
-                            <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 flex items-center gap-1">
-                              Default
-                            </span>
-                          )}
-                          {b.qr_image_url && (
-                            <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 flex items-center gap-1">
-                              <QrCode className="h-3 w-3" />
-                              QR
-                            </span>
-                          )}
+                    <div key={b.id} className="overflow-hidden rounded-xl bg-zinc-800/30 border border-white/5">
+                      <SwipeActions
+                         rightActions={[
+                            {
+                                icon: <Pencil className="h-4 w-4" />,
+                                label: 'Sửa',
+                                onClick: () => openEditBank(b),
+                                color: 'blue',
+                            },
+                            {
+                                icon: <Trash2 className="h-4 w-4" />,
+                                label: 'Xóa',
+                                onClick: () => setDeletingBankId(b.id),
+                                color: 'red',
+                            }
+                         ]}
+                      >
+                        <div
+                          className="flex items-center justify-between p-4 bg-zinc-800/30 hover:bg-zinc-800 transition-colors"
+                        >
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-bold text-white truncate">{b.bank_name}</p>
+                              {b.is_default && (
+                                <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 flex items-center gap-1">
+                                  Default
+                                </span>
+                              )}
+                              {b.qr_image_url && (
+                                <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 flex items-center gap-1">
+                                  <QrCode className="h-3 w-3" />
+                                  QR
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-mono text-zinc-400 truncate">
+                              {b.account_number} <span className="mx-1 text-zinc-600">|</span> {b.account_holder_name}
+                            </p>
+                          </div>
+                          {/* Desktop Actions (Still keep for ease of use on desktop) */}
+                          <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => openEditBank(b)} 
+                              className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeletingBankId(b.id)}
+                              className="h-8 w-8 text-red-500/70 hover:text-red-500 hover:bg-red-500/10 rounded-lg"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <p className="text-sm font-mono text-zinc-400 truncate">
-                          {b.account_number} <span className="mx-1 text-zinc-600">|</span> {b.account_holder_name}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => openEditBank(b)} 
-                          className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteBankAccount.mutate(b.id)}
-                          className="h-8 w-8 text-red-500/70 hover:text-red-500 hover:bg-red-500/10 rounded-lg"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      </SwipeActions>
                     </div>
                   ))}
                 </div>
               )}
               <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/10 text-blue-400 text-xs">
                 <Lightbulb className="h-4 w-4 shrink-0 mt-0.5" />
-                <p>Tài khoản được đánh dấu "Default" sẽ được dùng để tạo mã VietQR tự động khi thanh toán.</p>
+                <p>Vuốt sang trái để chỉnh sửa hoặc xóa nhanh.</p>
               </div>
             </CardContent>
           </Card>
@@ -877,7 +904,33 @@ export default function ProfilePage() {
               </form>
          </div>
       </ResponsiveModal>
-      
+
+      {/* Delete Bank Confirmation */}
+      <ResponsiveModal
+        isOpen={!!deletingBankId}
+        onClose={() => setDeletingBankId(null)}
+        title="Xóa tài khoản ngân hàng?"
+        description="Hành động này không thể hoàn tác."
+        desktopClassName="max-w-sm"
+      >
+        <div className="flex justify-end gap-3 mt-4">
+             <Button variant="ghost" onClick={() => setDeletingBankId(null)}>
+                Hủy
+             </Button>
+             <Button 
+                variant="destructive" 
+                onClick={() => {
+                    if(deletingBankId) {
+                        deleteBankAccount.mutate(deletingBankId)
+                        setDeletingBankId(null)
+                    }
+                }}
+             >
+                Xóa
+             </Button>
+        </div>
+      </ResponsiveModal>
+
       {/* Support Info */}
       <div className="text-center pb-8 opacity-50 hover:opacity-100 transition-opacity">
         <ResetOnboardingButton />

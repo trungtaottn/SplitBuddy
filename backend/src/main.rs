@@ -36,6 +36,7 @@ mod middleware;
 mod openapi;
 mod repository;
 mod scheduler;
+mod services;
 mod utils;
 
 use cache::HybridCache;

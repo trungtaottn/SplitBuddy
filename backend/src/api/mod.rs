@@ -31,6 +31,8 @@ pub mod ws;
 
 pub use ws::WsManager;
 
+use crate::services::push_service::PushService;
+
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
@@ -38,6 +40,7 @@ pub struct AppState {
     pub cache: HybridCache,
     pub ws_manager: WsManager,
     pub http_client: reqwest::Client,
+    pub push_service: std::sync::Arc<PushService>,
 }
 
 impl AppState {
@@ -49,12 +52,15 @@ impl AppState {
             .build()
             .expect("Failed to create HTTP client");
 
+        let push_service = std::sync::Arc::new(PushService::new(pool.clone()));
+
         Self {
             pool,
             config,
             cache,
             ws_manager,
             http_client,
+            push_service,
         }
     }
 }
