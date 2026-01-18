@@ -75,11 +75,12 @@ generate_version() {
             echo "$version" > "$VERSION_FILE"
             return 0
         fi
-        # No tag, use commit hash as patch version
+        # No tag, use commit hash as build metadata (semver compliant: 0.1.0+commit)
         local current=$(get_current_version)
-        local base_version=$(echo "$current" | sed 's/\.[0-9]*$//')
-        update_version "${base_version}.${commit_hash}"
-        echo "${base_version}.${commit_hash}" > "$VERSION_FILE"
+        # Remove any existing build metadata first
+        local base_version=$(echo "$current" | sed 's/+.*//')
+        update_version "${base_version}+${commit_hash}"
+        echo "${base_version}+${commit_hash}" > "$VERSION_FILE"
         return 0
     fi
     
@@ -101,11 +102,11 @@ generate_version() {
                 return 0
             fi
         fi
-        # Update with commit hash
+        # Update with commit hash as build metadata
         local current=$(get_current_version)
-        local base_version=$(echo "$current" | sed 's/\.[0-9]*$//')
-        update_version "${base_version}.${commit_hash}"
-        echo "${base_version}.${commit_hash}" > "$VERSION_FILE"
+        local base_version=$(echo "$current" | sed 's/+.*//')
+        update_version "${base_version}+${commit_hash}"
+        echo "${base_version}+${commit_hash}" > "$VERSION_FILE"
         echo "$(git rev-parse HEAD)" > "$VERSION_FILE.commit"
         return 0
     fi
