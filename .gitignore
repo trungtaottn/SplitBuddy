@@ -32,3 +32,5 @@ build/
 .codex/
 .shared/
 .agent/
+.copilot-tracking/
+.windsurf/
