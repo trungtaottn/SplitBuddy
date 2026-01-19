@@ -12,7 +12,7 @@ RUN npm run build
 
 # ===== Stage 2: Cargo Chef Planner =====
 # Plan Rust dependencies for better caching
-FROM rustlang/rust:nightly-slim AS planner
+FROM rustlang/rust:nightly-bookworm AS planner
 WORKDIR /app
 
 RUN cargo install cargo-chef --locked
@@ -22,7 +22,7 @@ COPY backend/src ./src
 RUN cargo chef prepare --recipe-path recipe.json
 
 # ===== Stage 3: Cargo Chef Cook (Cache Dependencies) =====
-FROM rustlang/rust:nightly-slim AS cacher
+FROM rustlang/rust:nightly-bookworm AS cacher
 WORKDIR /app
 
 ENV SQLX_OFFLINE=true
@@ -46,7 +46,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo chef cook --release --recipe-path recipe.json
 
 # ===== Stage 4: Build Backend =====
-FROM rustlang/rust:nightly-slim AS backend-builder
+FROM rustlang/rust:nightly-bookworm AS backend-builder
 WORKDIR /app
 
 ENV SQLX_OFFLINE=true
