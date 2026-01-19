@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, ArrowUpRight, ArrowDownLeft, Search, ChevronLeft, ChevronRight, LayoutTemplate } from 'lucide-react'
-import { formatCurrency } from '@/utils/formatCurrency'
 import { CURRENCY_OPTIONS } from '@/utils/currency'
 import { toast } from '@/components/ui/toaster'
 import AiGreeting from '@/components/AiGreeting'
@@ -18,7 +17,7 @@ import { SessionCard } from '@/components/SessionCard'
 import { EmptyState } from '@/components/EmptyState'
 import { SessionListSkeleton } from '@/components/ui/skeleton'
 import { useOnboarding } from '@/components/Onboarding'
-import { staggerContainer, staggerItem } from '@/components/PageTransition'
+import { staggerContainer, staggerItem, CountUp } from '@/components/PageTransition'
 import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupDetail, PaginatedResponse } from '@/types/api'
 
@@ -240,7 +239,8 @@ export default function DashboardPage() {
                 <div>
                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Bạn cần trả</h3>
                    <p className="text-3xl font-heading font-bold text-white tracking-tight">
-                    {debts ? formatCurrency(debts.total_i_owe) : '0đ'}
+                    {debts ? <CountUp value={Number(debts.total_i_owe)} className="text-white" /> : '0'}
+                    <span className="text-sm ml-1 text-muted-foreground">đ</span>
                    </p>
                 </div>
                 <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center">
@@ -257,7 +257,8 @@ export default function DashboardPage() {
                 <div>
                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Cần trả bạn</h3>
                    <p className="text-3xl font-heading font-bold text-white tracking-tight">
-                    {debts ? formatCurrency(debts.total_owed_to_me) : '0đ'}
+                    {debts ? <CountUp value={Number(debts.total_owed_to_me)} className="text-white" /> : '0'}
+                    <span className="text-sm ml-1 text-muted-foreground">đ</span>
                    </p>
                 </div>
                 <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
@@ -583,7 +584,7 @@ export default function DashboardPage() {
 
       {/* Floating Action Buttons - Rendered via Portal */}
       {typeof document !== 'undefined' && createPortal(
-        <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-3">
+        <div className="fixed bottom-24 right-4 md:bottom-4 z-[100] flex flex-col gap-3">
           <Button
             onClick={() => navigate('/templates')}
             variant="outline"

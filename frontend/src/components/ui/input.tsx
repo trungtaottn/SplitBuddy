@@ -20,8 +20,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       default: [
         'flex h-14 w-full',
         'bg-transparent',
-        'border-0 border-b border-white/20',
-        'hover:border-white/40', // Hover state
+        'border-0 border-b border-border', // Use semantic border
+        'hover:border-white/40', // Keep hover bright
         'rounded-none',
         'px-0 py-4',
         'text-lg text-foreground font-body',
@@ -34,7 +34,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       underline: [
         'flex h-14 w-full',
         'bg-transparent',
-        'border-0 border-b border-white/20',
+        'border-0 border-b border-border',
         'rounded-none',
         'px-0 py-4',
         'text-lg text-foreground font-body',
@@ -45,7 +45,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       // Glass: Soft box
       glass: [
         'flex h-12 w-full rounded-md',
-        'bg-white/5 border border-white/10',
+        'bg-white/5 border border-border',
         'px-4 py-3',
         'text-base text-foreground font-body',
         'placeholder:text-muted-foreground/50',

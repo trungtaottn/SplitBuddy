@@ -159,9 +159,18 @@ async fn confirm_settle(
         }
     };
 
-    auto_archive_if_settled(&state.pool, debt.session_id)
-        .await
-        .ok();
+    if let Ok(true) = auto_archive_if_settled(&state.pool, debt.session_id).await {
+        state
+            .ws_manager
+            .broadcast_to_session(
+                debt.session_id,
+                WsEvent::SessionStatusChanged {
+                    session_id: debt.session_id,
+                    status: "ARCHIVED".to_string(),
+                },
+            )
+            .await;
+    }
 
     // Broadcast WebSocket event
     state
@@ -239,6 +248,19 @@ async fn confirm_settle(
                 }))
                 .execute(&state.pool)
                 .await?;
+
+                // Broadcast notification to debtor
+                state
+                    .ws_manager
+                    .send_to_user(
+                        user_id,
+                        WsEvent::NotificationReceived {
+                            notification_id,
+                            title: "Thanh toán đã được xác nhận".to_string(),
+                            notification_type: "settlement_confirmed".to_string(),
+                        },
+                    )
+                    .await;
             }
         }
     }
@@ -261,9 +283,18 @@ async fn settle_guest_debt(
 
     let debt = repo.settle_guest_debt(debt_id, auth_user.user_id).await?;
 
-    auto_archive_if_settled(&state.pool, debt.session_id)
-        .await
-        .ok();
+    if let Ok(true) = auto_archive_if_settled(&state.pool, debt.session_id).await {
+        state
+            .ws_manager
+            .broadcast_to_session(
+                debt.session_id,
+                WsEvent::SessionStatusChanged {
+                    session_id: debt.session_id,
+                    status: "ARCHIVED".to_string(),
+                },
+            )
+            .await;
+    }
 
     // Broadcast WebSocket event
     state
@@ -284,7 +315,7 @@ async fn settle_guest_debt(
     }))
 }
 
-async fn auto_archive_if_settled(pool: &sqlx::PgPool, session_id: Uuid) -> Result<(), AppError> {
+async fn auto_archive_if_settled(pool: &sqlx::PgPool, session_id: Uuid) -> Result<bool, AppError> {
     #[derive(sqlx::FromRow)]
     struct DebtCountRow {
         total: i64,
@@ -306,7 +337,8 @@ async fn auto_archive_if_settled(pool: &sqlx::PgPool, session_id: Uuid) -> Resul
     if counts.total > 0 && counts.unsettled == 0 {
         let repo = SessionRepository::new(pool.clone());
         let _ = repo.set_archived(session_id, true).await?;
+        return Ok(true);
     }
 
-    Ok(())
+    Ok(false)
 }

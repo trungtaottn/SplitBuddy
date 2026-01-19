@@ -23,6 +23,7 @@ pub fn routes() -> Router<AppState> {
         .route("/mark-all-read", post(mark_all_as_read))
         .route("/push/subscribe", post(subscribe_push))
         .route("/push/unsubscribe", post(unsubscribe_push))
+        .route("/push/test", post(send_test_push))
         .route("/preferences", get(get_preferences).put(update_preferences))
 }
 
@@ -379,4 +380,32 @@ pub async fn update_preferences(
     .await?;
 
     Ok(ok(prefs))
+}
+
+#[derive(Deserialize)]
+pub struct TestPushRequest {
+    pub title: String,
+    pub body: String,
+}
+
+/// Send a test push notification to self
+pub async fn send_test_push(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Json(payload): Json<TestPushRequest>,
+) -> Result<Json<ApiResponse<MessageResponse>>, AppError> {
+    let count = state
+        .push_service
+        .send_notification(
+            auth_user.user_id,
+            &payload.title,
+            &payload.body,
+            Some("/"), // Click action URL
+            None,      // Extra data
+        )
+        .await?;
+
+    Ok(ok(MessageResponse {
+        message: format!("Sent push notification to {} devices", count),
+    }))
 }

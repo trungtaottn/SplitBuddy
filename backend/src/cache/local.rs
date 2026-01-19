@@ -19,7 +19,7 @@ pub struct CachedFeatureFlag {
 }
 
 /// Cached session detail data
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CachedSession {
     pub id: Uuid,
     pub name: String,
@@ -37,10 +37,21 @@ pub struct CachedSession {
     pub participants: Vec<ParticipantResponse>,
 }
 
+/// Cached user profile data
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CachedUser {
+    pub id: Uuid,
+    pub email: String,
+    pub full_name: String,
+    pub avatar_url: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
 /// WebSocket ticket data
 #[derive(Clone, Debug)]
 pub struct WsTicket {
     pub user_id: Uuid,
+    pub user_name: String,
     #[allow(dead_code)]
     pub role: String,
     pub expires_at: chrono::DateTime<chrono::Utc>,
@@ -57,6 +68,8 @@ pub struct AppCache {
     pub sessions: Cache<Uuid, CachedSession>,
     /// Cache for WebSocket tickets - key is ticket UUID (short-lived, single-use)
     pub ws_tickets: Cache<Uuid, WsTicket>,
+    /// Cache for user profiles - key is user UUID
+    pub users: Cache<Uuid, CachedUser>,
 }
 
 impl AppCache {
@@ -83,6 +96,11 @@ impl AppCache {
                 .time_to_live(Duration::from_secs(30))
                 .max_capacity(1000)
                 .build(),
+            // User profiles cache - 5 minute TTL, max 1000 entries
+            users: Cache::builder()
+                .time_to_live(Duration::from_secs(300))
+                .max_capacity(1000)
+                .build(),
         }
     }
 
@@ -93,6 +111,7 @@ impl AppCache {
     }
 
     /// Invalidate a specific feature flag
+    #[allow(dead_code)]
     pub async fn invalidate_feature_flag(&self, key: &str) {
         self.feature_flags.invalidate(key).await;
         self.all_features.invalidate_all();
@@ -121,6 +140,21 @@ impl AppCache {
     /// Get and consume a WebSocket ticket (removes it after use)
     pub async fn consume_ws_ticket(&self, ticket_id: Uuid) -> Option<WsTicket> {
         self.ws_tickets.remove(&ticket_id).await
+    }
+
+    /// Get cached user
+    pub async fn get_user(&self, user_id: Uuid) -> Option<CachedUser> {
+        self.users.get(&user_id).await
+    }
+
+    /// Cache a user
+    pub async fn cache_user(&self, user: CachedUser) {
+        self.users.insert(user.id, user).await;
+    }
+
+    /// Invalidate a specific user cache
+    pub async fn invalidate_user(&self, user_id: Uuid) {
+        self.users.invalidate(&user_id).await;
     }
 }
 

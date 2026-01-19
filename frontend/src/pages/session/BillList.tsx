@@ -8,6 +8,7 @@ import { haptics } from '@/utils/haptics'
 import { Trash2, Download, Banknote, Users, Pencil } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
 import type { Bill, ExpenseCategory } from '@/types/api'
+import { BillCardSkeleton } from '@/components/ui/skeleton'
 
 interface BillListProps {
     bills: Bill[]
@@ -16,9 +17,10 @@ interface BillListProps {
     deletingBillId: string | null
     categoriesById: Record<string, ExpenseCategory>
     baseCurrency: string
+    isLoading?: boolean
 }
 
-export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesById, baseCurrency }: BillListProps) {
+export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesById, baseCurrency, isLoading }: BillListProps) {
     const [selectedBill, setSelectedBill] = useState<Bill | null>(null)
     const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false)
     const longPressTimer = useRef<number | null>(null)
@@ -62,6 +64,16 @@ export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesBy
             cancelLongPress()
         }
     }, [cancelLongPress])
+
+    if (isLoading) {
+        return (
+            <div className="space-y-4 p-4">
+                <BillCardSkeleton />
+                <BillCardSkeleton />
+                <BillCardSkeleton />
+            </div>
+        )
+    }
 
     if (bills.length === 0) {
         return (

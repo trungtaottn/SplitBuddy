@@ -456,54 +456,76 @@ impl GroupRepository {
         // Get per-session amounts for each member
         let mut session_debts: Vec<GroupSessionDebt> = Vec::new();
 
+        // Batched loading of session details
+        let session_ids: Vec<Uuid> = sessions.iter().map(|s| s.id).collect();
+
+        // Batch get payers
+        #[derive(sqlx::FromRow)]
+        struct BatchPayerRow {
+            session_id: Uuid,
+            user_id: Uuid,
+            name: String,
+            amount_paid: Decimal,
+        }
+
+        let all_payers: Vec<BatchPayerRow> = sqlx::query_as(
+            r#"
+            SELECT 
+                sp.session_id,
+                sp.user_id,
+                COALESCE(u.full_name, 'Unknown') as name,
+                COALESCE(SUM(bp.amount_paid), 0) as amount_paid
+            FROM session_participants sp
+            JOIN bill_payers bp ON bp.participant_id = sp.id
+            JOIN bills b ON bp.bill_id = b.id AND b.session_id = sp.session_id
+            LEFT JOIN users u ON sp.user_id = u.id
+            WHERE sp.session_id = ANY($1) AND sp.user_id IS NOT NULL
+            GROUP BY sp.session_id, sp.user_id, u.full_name
+            HAVING SUM(bp.amount_paid) > 0
+            "#,
+        )
+        .bind(&session_ids)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // Batch get member amounts (owed)
+        #[derive(sqlx::FromRow)]
+        struct BatchMemberAmountRow {
+            session_id: Uuid,
+            user_id: Uuid,
+            amount_owed: Decimal,
+        }
+
+        let all_member_amounts: Vec<BatchMemberAmountRow> = sqlx::query_as(
+            r#"
+            SELECT 
+                sp.session_id,
+                sp.user_id,
+                COALESCE(SUM(bs.amount_owed), 0) as amount_owed
+            FROM session_participants sp
+            LEFT JOIN bill_splits bs ON bs.participant_id = sp.id
+            WHERE sp.session_id = ANY($1) AND sp.user_id IS NOT NULL
+            GROUP BY sp.session_id, sp.user_id
+            "#,
+        )
+        .bind(&session_ids)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // Group by session_id in maps
+        let mut payers_map: HashMap<Uuid, Vec<BatchPayerRow>> = HashMap::new();
+        for p in all_payers {
+            payers_map.entry(p.session_id).or_default().push(p);
+        }
+
+        let mut member_amounts_map: HashMap<Uuid, Vec<BatchMemberAmountRow>> = HashMap::new();
+        for m in all_member_amounts {
+            member_amounts_map.entry(m.session_id).or_default().push(m);
+        }
+
         for session in sessions {
-            #[derive(sqlx::FromRow)]
-            struct MemberAmountRow {
-                user_id: Uuid,
-                amount_owed: Decimal,
-            }
-
-            #[derive(sqlx::FromRow)]
-            struct PayerRow {
-                user_id: Uuid,
-                name: String,
-                amount_paid: Decimal,
-            }
-
-            // Get payers for this session
-            let payers: Vec<PayerRow> = sqlx::query_as(
-                r#"
-                SELECT 
-                    sp.user_id,
-                    COALESCE(u.full_name, 'Unknown') as name,
-                    COALESCE(SUM(bp.amount_paid), 0) as amount_paid
-                FROM session_participants sp
-                JOIN bill_payers bp ON bp.participant_id = sp.id
-                JOIN bills b ON bp.bill_id = b.id AND b.session_id = $1
-                LEFT JOIN users u ON sp.user_id = u.id
-                WHERE sp.session_id = $1 AND sp.user_id IS NOT NULL
-                GROUP BY sp.user_id, u.full_name
-                HAVING SUM(bp.amount_paid) > 0
-                "#,
-            )
-            .bind(session.id)
-            .fetch_all(&self.pool)
-            .await?;
-
-            let member_amounts: Vec<MemberAmountRow> = sqlx::query_as(
-                r#"
-                SELECT 
-                    sp.user_id,
-                    COALESCE(SUM(bs.amount_owed), 0) as amount_owed
-                FROM session_participants sp
-                LEFT JOIN bill_splits bs ON bs.participant_id = sp.id
-                WHERE sp.session_id = $1 AND sp.user_id IS NOT NULL
-                GROUP BY sp.user_id
-                "#,
-            )
-            .bind(session.id)
-            .fetch_all(&self.pool)
-            .await?;
+            let payers = payers_map.remove(&session.id).unwrap_or_default();
+            let member_amounts = member_amounts_map.remove(&session.id).unwrap_or_default();
 
             session_debts.push(GroupSessionDebt {
                 session_id: session.id,

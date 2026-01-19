@@ -47,20 +47,29 @@ jobs:
             backend:
               - 'backend/**'
             frontend:
-              - 'frontend/**'
+              - 'frontend/src/**'
+              - 'frontend/package*.json'
+              - 'frontend/vite.config.ts'
+              - 'frontend/tsconfig*.json'
             docker:
               - 'Dockerfile'
               - '.dockerignore'
             ci:
               - '.github/workflows/**'
+            docs-only:
+              - 'docs/**'
+              - 'README.md'
+              - 'LICENSE'
+              - 'AGENTS.md'
+              - '*.md'
 
   # ============================================
-  # Backend: Lint, Build and Test (Combined)
+  # Backend: Lint (runs in parallel with test-backend)
   # ============================================
-  test-backend:
+  lint-backend:
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.backend == 'true' || github.ref == 'refs/heads/main'
+    if: needs.changes.outputs.backend == 'true'
     defaults:
       run:
         working-directory: ./backend
@@ -72,19 +81,73 @@ jobs:
         with:
           components: clippy, rustfmt
       
-      # Use Swatinem/rust-cache for better caching
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend -> target
+          cache-on-failure: true
+          shared-key: "rust-lint"
+      
+      - name: Check formatting
+        run: cargo fmt -- --check
+        
+      - name: Clippy
+        run: cargo clippy --release -- -D warnings
+
+  # ============================================
+  # Backend: Build and Test (runs in parallel with lint-backend)
+  # ============================================
+  test-backend:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      # Use Swatinem/rust-cache for registry/git cache
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: backend -> target
           cache-on-failure: true
           shared-key: "rust-cache"
-            
-      - name: Check formatting
-        run: cargo fmt -- --check
-        
-      - name: Clippy
-        run: cargo clippy --release -- -D warnings
+      
+      # sccache for compiler caching (40-60% faster)
+      # Note: continue-on-error because GitHub cache service can be temporarily unavailable
+      # DISABLED due to GitHub Actions Cache Service outage (HTTP 400)
+      # - name: Setup sccache
+      #   id: sccache
+      #   uses: mozilla-actions/sccache-action@v0.0.6
+      #   continue-on-error: true
+      
+      # - name: Configure sccache (if available)
+      #   if: steps.sccache.outcome == 'success'
+      #   run: |
+      #     echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+      #     echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+      #     echo "✅ sccache enabled"
+      
+      # - name: Fallback without sccache
+      #   if: steps.sccache.outcome != 'success'
+      #   run: |
+      #     echo "⚠️ sccache setup failed, continuing without compiler cache"
+      #     echo "RUSTC_WRAPPER=" >> $GITHUB_ENV
+      
+      # mold linker (30-50% faster linking)
+      - name: Install mold linker
+        uses: rui314/setup-mold@v1
+        with:
+          make-default: true
+      
+      # Install cargo-nextest for faster tests
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
       
       - name: Update version (main branch only)
         if: github.ref == 'refs/heads/main'
@@ -96,7 +159,7 @@ jobs:
         run: cargo build --release
         
       - name: Run tests
-        run: cargo test --release
+        run: cargo nextest run --release
 
   # ============================================
   # Frontend: Lint and Build
@@ -104,7 +167,7 @@ jobs:
   test-frontend:
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.frontend == 'true' || github.ref == 'refs/heads/main'
+    if: needs.changes.outputs.frontend == 'true'
     defaults:
       run:
         working-directory: ./frontend
@@ -129,12 +192,6 @@ jobs:
         
       - name: Type check
         run: npm run type-check || true
-        
-      - name: Update version (main branch only)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          git fetch --tags || true
-          node scripts/update-version.js
       
       - name: Build
         run: npm run build
@@ -143,12 +200,13 @@ jobs:
   # Deploy to Heroku (main branch only)
   # ============================================
   deploy:
-    needs: [changes, test-backend, test-frontend]
+    needs: [changes, lint-backend, test-backend, test-frontend]
     # Run if all tests pass OR if tests were skipped (no changes)
     if: |
       always() && 
       github.ref == 'refs/heads/main' && 
       github.event_name == 'push' &&
+      (needs.lint-backend.result == 'success' || needs.lint-backend.result == 'skipped') &&
       (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped') &&
       (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped')
     runs-on: ubuntu-latest

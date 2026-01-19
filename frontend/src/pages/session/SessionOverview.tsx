@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Check, X, Pencil, Trash2, Users, Ghost, UserPlus } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
-import type { SessionDetail, GroupDetail, WhoPaysNextResponse } from '@/types/api'
+import type { SessionDetail, GroupDetail, WhoPaysNextResponse, DebtStats } from '@/types/api'
 import { useState } from 'react'
 
 interface SessionOverviewProps {
@@ -22,6 +22,7 @@ interface SessionOverviewProps {
     isOwner: boolean
     whoPaysNext?: WhoPaysNextResponse
     onQuickCreate: () => void
+    debtStats?: DebtStats
 }
 
 export function SessionOverview({
@@ -38,6 +39,7 @@ export function SessionOverview({
     isOwner,
     whoPaysNext,
     onQuickCreate,
+    debtStats,
 }: SessionOverviewProps) {
     const [editingParticipant, setEditingParticipant] = useState<{ id: string; name: string; weight: number; active: boolean } | null>(null)
     const [deletingParticipantId, setDeletingParticipantId] = useState<string | null>(null)
@@ -126,6 +128,30 @@ export function SessionOverview({
                         <p>Cấn trừ: hệ thống gộp trả/nhận để giảm số giao dịch, tổng cuối mỗi người không đổi.</p>
                         <p>Trực tiếp: giữ nguyên ai trả theo từng hóa đơn, số giao dịch có thể nhiều hơn.</p>
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* Debt Health Card */}
+            <Card>
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-muted-foreground">Tình trạng nợ</p>
+                            <div className="flex items-baseline gap-2 mt-1">
+                                <span className="text-2xl font-bold">{debtStats?.pending_count || 0}</span>
+                                <span className="text-sm text-muted-foreground">khoản chưa trả</span>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                             <p className="text-sm text-muted-foreground">Đã thanh toán</p>
+                             <p className="text-lg font-semibold text-green-600">{debtStats?.settled_count || 0}</p>
+                        </div>
+                    </div>
+                    {debtStats && debtStats.pending_count > 0 && (
+                         <div className="mt-4 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs text-yellow-600 dark:text-yellow-400">
+                            Cần thanh toán hết để lưu trữ cuộc nhậu.
+                         </div>
+                    )}
                 </CardContent>
             </Card>
 

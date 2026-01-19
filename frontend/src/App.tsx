@@ -5,6 +5,7 @@ import { MoodProvider } from './contexts/MoodContext'
 import { MusicProvider } from './contexts/MusicContext'
 import { FeatureFlagsProvider } from './contexts/FeatureFlagsContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { WebSocketProvider } from './contexts/WebSocketContext'
 import { Toaster } from './components/ui/toaster'
 import { MoodEffects } from './components/MoodEffects'
 import { InstallPrompt } from './components/InstallPrompt'
@@ -26,6 +27,7 @@ const GamesPage = lazy(() => import('./pages/GamesPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const TemplatesPage = lazy(() => import('./pages/TemplatesPage'))
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'))
+const FeedPage = lazy(() => import('./pages/FeedPage'))
 
 // Loading fallback component
 function PageLoader() {
@@ -74,8 +76,9 @@ function App() {
       <FeatureFlagsProvider>
         <MoodProvider>
           <MusicProvider>
-          <OnboardingProvider>
-          {/* PWA Indicators */}
+            <WebSocketProvider>
+              <OnboardingProvider>
+                {/* PWA Indicators */}
           <OfflineIndicator />
           
           {/* Global Error Boundary */}
@@ -162,6 +165,14 @@ function App() {
                   </Suspense>
                 }
               />
+              <Route
+                path="feed"
+                element={
+                  <Suspense fallback={<PageLoader />}>
+                    <FeedPage />
+                  </Suspense>
+                }
+              />
               <Route 
                 path="admin" 
                 element={
@@ -179,7 +190,8 @@ function App() {
           
           {/* PWA Install Prompt */}
           <InstallPrompt />
-          </OnboardingProvider>
+              </OnboardingProvider>
+            </WebSocketProvider>
           </MusicProvider>
         </MoodProvider>
       </FeatureFlagsProvider>

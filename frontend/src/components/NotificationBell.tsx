@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Bell } from 'lucide-react'
-import { api } from '@/lib/axios'
+import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { NotificationDropdown } from '@/components/NotificationDropdown'
-import type { ApiResponse, UnreadCountResponse } from '@/types/api'
+
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false)
@@ -12,10 +12,7 @@ export function NotificationBell() {
 
   const { data } = useQuery({
     queryKey: ['notifications', 'unread-count'],
-    queryFn: async () => {
-      const res = await api.get<ApiResponse<UnreadCountResponse>>('/notifications/unread-count')
-      return res.data.data
-    },
+    queryFn: () => api.notifications.getUnreadCount(),
     refetchInterval: 30000,
     retry: (failureCount, error: any) => {
         if (error?.response?.status === 429) return false

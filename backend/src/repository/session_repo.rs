@@ -258,7 +258,7 @@ impl SessionRepository {
     }
 
     /// Get basic participant info for session cards (max 5)
-    async fn get_session_participants_basic(
+    pub async fn get_session_participants_basic(
         &self,
         session_id: Uuid,
     ) -> Result<Vec<ParticipantBasicInfo>, AppError> {
@@ -297,7 +297,7 @@ impl SessionRepository {
     }
 
     /// Get user's debt/owed amounts in a session
-    async fn get_user_debt_in_session(
+    pub async fn get_user_debt_in_session(
         &self,
         session_id: Uuid,
         user_id: Uuid,
@@ -346,7 +346,7 @@ impl SessionRepository {
     }
 
     /// Get total settled amount in a session
-    async fn get_session_settled_amount(&self, session_id: Uuid) -> Result<Decimal, AppError> {
+    pub async fn get_session_settled_amount(&self, session_id: Uuid) -> Result<Decimal, AppError> {
         let settled: Decimal = sqlx::query_scalar(
             r#"
             SELECT COALESCE(SUM(amount), 0)
@@ -362,7 +362,7 @@ impl SessionRepository {
     }
 
     /// Batch get participants for multiple sessions (max 5 per session)
-    async fn batch_get_participants(
+    pub async fn batch_get_participants(
         &self,
         session_ids: &[Uuid],
     ) -> Result<std::collections::HashMap<Uuid, Vec<ParticipantBasicInfo>>, AppError> {
@@ -422,7 +422,7 @@ impl SessionRepository {
     }
 
     /// Batch get user's debt/owed amounts in multiple sessions
-    async fn batch_get_user_debts(
+    pub async fn batch_get_user_debts(
         &self,
         session_ids: &[Uuid],
         user_id: Uuid,
@@ -471,7 +471,7 @@ impl SessionRepository {
     }
 
     /// Batch get settled amounts for multiple sessions
-    async fn batch_get_settled_amounts(
+    pub async fn batch_get_settled_amounts(
         &self,
         session_ids: &[Uuid],
     ) -> Result<std::collections::HashMap<Uuid, Decimal>, AppError> {
@@ -1574,7 +1574,7 @@ impl SessionRepository {
         Ok(())
     }
 
-    async fn recalculate_debts(
+    pub async fn recalculate_debts(
         tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
         session_id: Uuid,
     ) -> Result<(), AppError> {
@@ -1599,7 +1599,7 @@ impl SessionRepository {
         Self::recalculate_direct_debts(tx, session_id).await
     }
 
-    async fn recalculate_minimized_debts(
+    pub async fn recalculate_minimized_debts(
         tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
         session_id: Uuid,
     ) -> Result<(), AppError> {
@@ -1669,7 +1669,7 @@ impl SessionRepository {
         Ok(())
     }
 
-    async fn recalculate_direct_debts(
+    pub async fn recalculate_direct_debts(
         tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
         session_id: Uuid,
     ) -> Result<(), AppError> {

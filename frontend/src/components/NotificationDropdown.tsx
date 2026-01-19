@@ -1,11 +1,12 @@
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/axios'
+import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { toast } from '@/components/ui/toaster'
 import { showError } from '@/utils/errorHandler'
 import { cn } from '@/lib/utils'
-import type { ApiResponse, NotificationListResponse, NotificationItem } from '@/types/api'
+import type { NotificationItem } from '@/types/api'
 
 export function NotificationDropdown({
   onClose,
@@ -13,21 +14,16 @@ export function NotificationDropdown({
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   const { data, isLoading } = useQuery({
     queryKey: ['notifications', 'list'],
-    queryFn: async () => {
-      const params = new URLSearchParams()
-      params.set('page', '1')
-      params.set('limit', '20')
-      const res = await api.get<ApiResponse<NotificationListResponse>>(`/notifications?${params.toString()}`)
-      return res.data.data
-    },
+    queryFn: () => api.notifications.list({ page: 1, limit: 20 }),
   })
 
   const markAsRead = useMutation({
     mutationFn: async (id: string) => {
-      await api.put(`/notifications/${id}/read`)
+      await api.notifications.markAsRead(id)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
@@ -37,7 +33,7 @@ export function NotificationDropdown({
 
   const markAllRead = useMutation({
     mutationFn: async () => {
-      await api.post('/notifications/mark-all-read')
+      await api.notifications.markAllAsRead()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
@@ -83,6 +79,18 @@ export function NotificationDropdown({
                 )}
                 onClick={() => {
                   if (!n.is_read) markAsRead.mutate(n.id)
+                  
+                  // Deep linking
+                  if (n.data && typeof n.data === 'object') {
+                      const data = n.data as any
+                      if (n.type === 'settlement_confirmed' && data.session_id) {
+                          navigate(`/session/${data.session_id}?tab=debts`)
+                          onClose()
+                      } else if (n.type === 'session_invite' && data.session_id) {
+                          navigate(`/session/${data.session_id}`)
+                          onClose()
+                      }
+                  }
                 }}
               >
                 <div className="flex items-start justify-between gap-3">

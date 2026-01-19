@@ -26,15 +26,15 @@
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
+| Layer        | Technology                                                         |
+| ------------ | ------------------------------------------------------------------ |
 | **Frontend** | React 18, TypeScript, Vite, TailwindCSS, shadcn/ui, TanStack Query |
-| **Backend** | Rust (Nightly), Axum 0.7, SQLx |
-| **Database** | PostgreSQL 16 |
-| **Auth** | JWT + Argon2 |
-| **AI** | Google Gemini API |
-| **Deploy** | Heroku (Docker) |
-| **CI/CD** | GitHub Actions (optimized with path filtering & caching) |
+| **Backend**  | Rust (Nightly), Axum 0.7, SQLx                                     |
+| **Database** | PostgreSQL 16                                                      |
+| **Auth**     | JWT + Argon2                                                       |
+| **AI**       | Google Gemini API                                                  |
+| **Deploy**   | Heroku (Docker)                                                    |
+| **CI/CD**    | GitHub Actions (optimized with path filtering & caching)           |
 
 ## Quick Start
 
@@ -59,11 +59,15 @@ cd SplitBuddy
 make setup
 ```
 
-### 3. Setup Database
+### 3. Setup Database & Redis
 
 ```bash
-# Start PostgreSQL với Docker
+# Start PostgreSQL + Redis với Docker
 docker-compose up -d
+
+# Verify services are running
+docker ps
+# Should show: splitbuddy-db (postgres) and splitbuddy-redis (redis)
 ```
 
 ### 4. Setup Backend
@@ -162,15 +166,15 @@ SplitBuddy/
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [Backend README](./backend/README.md) | Backend API documentation, endpoints, setup |
-| [Frontend README](./frontend/README.md) | Frontend documentation, components, routes |
-| [Contributing](./CONTRIBUTING.md) | How to contribute to this project |
-| [Deployment](./docs/DEPLOYMENT.md) | Deployment & CI/CD guide |
-| [Setup](./docs/SETUP.md) | Detailed setup guide |
-| [Project Guidelines](./docs/PROJECT_GUIDELINES.md) | Coding conventions & standards |
-| [Architecture](./docs/Architecture%20Plan.md) | System architecture overview |
+| Document                                           | Description                                 |
+| -------------------------------------------------- | ------------------------------------------- |
+| [Backend README](./backend/README.md)              | Backend API documentation, endpoints, setup |
+| [Frontend README](./frontend/README.md)            | Frontend documentation, components, routes  |
+| [Contributing](./CONTRIBUTING.md)                  | How to contribute to this project           |
+| [Deployment](./docs/DEPLOYMENT.md)                 | Deployment & CI/CD guide                    |
+| [Setup](./docs/SETUP.md)                           | Detailed setup guide                        |
+| [Project Guidelines](./docs/PROJECT_GUIDELINES.md) | Coding conventions & standards              |
+| [Architecture](./docs/Architecture%20Plan.md)      | System architecture overview                |
 
 ## Development Workflow
 
@@ -184,11 +188,13 @@ main          # Production - auto deploy to Heroku
 ```
 
 **Branches:**
+
 - `main` - Production code, auto-deploy khi merge
 - `revert` - Giữ last known good state, tự động sync với main khi deploy thành công
 - `dev` - Development branch, tạo PR từ đây vào main
 
 **Quy tắc:**
+
 - KHÔNG merge trực tiếp dev → main bằng `git merge`
 - Luôn tạo **Pull Request** từ dev → main
 - Đợi CI pass trước khi merge
@@ -212,11 +218,13 @@ type(scope): message
 GitHub Actions tự động chạy khi push:
 
 **Path-based job execution:**
+
 - `test-backend` - Chỉ chạy khi thay đổi `backend/**`
 - `test-frontend` - Chỉ chạy khi thay đổi `frontend/**`
 - `deploy` - Chỉ chạy trên `main` branch
 
 **Features:**
+
 - ✅ Auto-cancel in-progress runs on new commits
 - ✅ Intelligent caching (Rust dependencies, npm)
 - ✅ Path filtering (skip irrelevant jobs)
@@ -227,6 +235,7 @@ GitHub Actions tự động chạy khi push:
 ### Git Hooks
 
 Pre-commit hook tự động:
+
 - Format Rust code (`cargo fmt`)
 - Fix ESLint issues (`eslint --fix`)
 - Check clippy warnings
@@ -253,28 +262,59 @@ git commit -m "chore: update sqlx cache"
 ### Backend (.env)
 
 ```env
+# Database
 DATABASE_URL=postgres://user:pass@localhost:5432/splitbuddy
+
+# Redis (optional - for WebSocket scaling)
+REDIS_URL=redis://localhost:6379
+
+# JWT
 JWT_SECRET=your-secret-key
 JWT_EXPIRATION_HOURS=24
+
+# Server
 HOST=0.0.0.0
 PORT=8080
 RUST_LOG=debug
-GEMINI_API_KEY=your-api-key  # Optional, for AI features
+
+# Push Notifications (generate at https://vapidkeys.com)
+VAPID_PRIVATE_KEY=your-base64-private-key
+VAPID_SUBJECT=mailto:admin@splitbuddy.com
+
+# AI Features
+GEMINI_API_KEY=your-api-key  # Optional
 ```
 
 ### Frontend (.env)
 
 ```env
-VITE_API_URL=http://localhost:8080  # Optional, defaults to /api
+VITE_API_URL=http://localhost:8080
+VITE_VAPID_PUBLIC_KEY=your-base64-public-key  # For push notifications
 ```
 
 ## Deployment
 
 ### Heroku (Production)
 
+**Required Addons:**
+
+```bash
+# Add Heroku Postgres (if not already added)
+heroku addons:create heroku-postgresql:essential-0 -a splitbuddy
+
+# Add Heroku Redis (for WebSocket Pub/Sub and caching)
+heroku addons:create heroku-redis:mini -a splitbuddy
+
+# Set environment variables
+heroku config:set VAPID_PRIVATE_KEY=your-key -a splitbuddy
+heroku config:set VAPID_SUBJECT=mailto:admin@splitbuddy.com -a splitbuddy
+```
+
+**Deployment Flow:**
+
 1. Push to `main` branch
-2. CI runs tests (path-filtered)
-3. Docker image built with 5-stage build
+2. CI runs tests (path-filtered, parallel jobs)
+3. Docker image built with 5-stage build (cargo-chef + BuildKit)
 4. Image pushed to Heroku Container Registry
 5. Health check verification
 6. `revert` branch synced

@@ -289,17 +289,34 @@ async fn check_achievements(
         }
     }
 
-    // Add XP for newly unlocked achievements
+    // Add XP and create feed activity for newly unlocked achievements
+    let feed_repo = crate::repository::feed_repo::FeedRepository::new(state.pool.clone());
+
     for code in &newly_unlocked {
-        let xp: Option<(i32,)> =
-            sqlx::query_as("SELECT xp_reward FROM achievements WHERE code = $1")
+        let achievement_info: Option<(String, i32)> =
+            sqlx::query_as("SELECT name, xp_reward FROM achievements WHERE code = $1")
                 .bind(code)
                 .fetch_optional(&state.pool)
                 .await
                 .unwrap_or(None);
 
-        if let Some((xp_reward,)) = xp {
+        if let Some((name, xp_reward)) = achievement_info {
             add_xp(&state.pool, auth_user.user_id, xp_reward).await;
+
+            // Create Activity
+            let _ = feed_repo
+                .create_activity(
+                    auth_user.user_id,
+                    "achievement_unlocked",
+                    auth_user.user_id, // Target is the user themselves vs specific achievement ID? Or maybe just user_id works.
+                    "user_achievement",
+                    serde_json::json!({
+                         "achievement_code": code,
+                         "achievement_name": name,
+                         "xp_reward": xp_reward
+                    }),
+                )
+                .await;
         }
     }
 

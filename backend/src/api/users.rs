@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::api::response::{ok, ApiResponse};
 use crate::api::AppState;
+use crate::cache::CachedUser;
 use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::repository::user_repo::UserRepository;
@@ -59,12 +60,35 @@ async fn get_me(
 ) -> Result<Json<ApiResponse<UserProfileResponse>>, AppError> {
     let repo = UserRepository::new(state.pool.clone());
 
+    // Check cache first
+    if let Some(cached) = state.cache.get_user(auth_user.user_id).await {
+        return Ok(ok(UserProfileResponse {
+            id: cached.id,
+            email: cached.email,
+            full_name: cached.full_name,
+            avatar_url: cached.avatar_url,
+            created_at: cached.created_at,
+        }));
+    }
+
     let user = repo
         .find_by_id(auth_user.user_id)
         .await?
         .ok_or(AppError::UserNotFound {
             user_id: auth_user.user_id,
         })?;
+
+    // Cache the result
+    state
+        .cache
+        .cache_user(CachedUser {
+            id: user.id,
+            email: user.email.clone(),
+            full_name: user.full_name.clone(),
+            avatar_url: user.avatar_url.clone(),
+            created_at: user.created_at,
+        })
+        .await;
 
     Ok(ok(UserProfileResponse {
         id: user.id,
@@ -88,6 +112,9 @@ async fn update_me(
         .ok_or(AppError::UserNotFound {
             user_id: auth_user.user_id,
         })?;
+
+    // Invalidate cache
+    state.cache.invalidate_user(auth_user.user_id).await;
 
     Ok(ok(UserProfileResponse {
         id: user.id,
@@ -129,6 +156,9 @@ async fn change_password(
     let new_hash = hash_password(&payload.new_password)?;
 
     repo.update_password(auth_user.user_id, new_hash).await?;
+
+    // Invalidate cache (security best practice)
+    state.cache.invalidate_user(auth_user.user_id).await;
 
     Ok(ok(MessageResponse {
         message: "Đổi mật khẩu thành công".to_string(),
