@@ -120,23 +120,24 @@ jobs:
       
       # sccache for compiler caching (40-60% faster)
       # Note: continue-on-error because GitHub cache service can be temporarily unavailable
-      - name: Setup sccache
-        id: sccache
-        uses: mozilla-actions/sccache-action@v0.0.6
-        continue-on-error: true
+      # DISABLED due to GitHub Actions Cache Service outage (HTTP 400)
+      # - name: Setup sccache
+      #   id: sccache
+      #   uses: mozilla-actions/sccache-action@v0.0.6
+      #   continue-on-error: true
       
-      - name: Configure sccache (if available)
-        if: steps.sccache.outcome == 'success'
-        run: |
-          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-          echo "✅ sccache enabled"
+      # - name: Configure sccache (if available)
+      #   if: steps.sccache.outcome == 'success'
+      #   run: |
+      #     echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+      #     echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+      #     echo "✅ sccache enabled"
       
-      - name: Fallback without sccache
-        if: steps.sccache.outcome != 'success'
-        run: |
-          echo "⚠️ sccache setup failed, continuing without compiler cache"
-          echo "RUSTC_WRAPPER=" >> $GITHUB_ENV
+      # - name: Fallback without sccache
+      #   if: steps.sccache.outcome != 'success'
+      #   run: |
+      #     echo "⚠️ sccache setup failed, continuing without compiler cache"
+      #     echo "RUSTC_WRAPPER=" >> $GITHUB_ENV
       
       # mold linker (30-50% faster linking)
       - name: Install mold linker
