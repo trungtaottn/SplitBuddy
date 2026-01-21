@@ -21,6 +21,7 @@ import { ImportExportModal } from "./session/ImportExportModal";
 import { TypingIndicator } from "@/components/TypingIndicator";
 import { GameHistory } from "@/components/games/GameHistory";
 import { SessionDrinkingStats as DrinkingStats } from "@/components/games/DrinkingStats";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -420,8 +421,8 @@ export default function SessionDetailPage() {
 
   if (isSessionLoading || !session) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <div className="container mx-auto max-w-2xl px-4 py-6 pb-24">
+        <PageSkeleton type="detail" />
       </div>
     );
   }
@@ -465,12 +466,12 @@ export default function SessionDetailPage() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
-          <TabsTrigger value="bills">Hoá đơn</TabsTrigger>
-          <TabsTrigger value="debts">Chia tiền</TabsTrigger>
-          <TabsTrigger value="recurring">Định kỳ</TabsTrigger>
-          <TabsTrigger value="stats">Thống kê</TabsTrigger>
+        <TabsList className="flex w-full overflow-x-auto no-scrollbar sm:grid sm:grid-cols-5 h-auto p-1 gap-1 bg-muted/50 rounded-xl">
+          <TabsTrigger value="overview" className="flex-shrink-0 min-w-[90px] data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all rounded-lg">Tổng quan</TabsTrigger>
+          <TabsTrigger value="bills" className="flex-shrink-0 min-w-[90px] data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all rounded-lg">Hoá đơn</TabsTrigger>
+          <TabsTrigger value="debts" className="flex-shrink-0 min-w-[90px] data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all rounded-lg">Chia tiền</TabsTrigger>
+          <TabsTrigger value="recurring" className="flex-shrink-0 min-w-[90px] data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all rounded-lg">Định kỳ</TabsTrigger>
+          <TabsTrigger value="stats" className="flex-shrink-0 min-w-[90px] data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all rounded-lg">Thống kê</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">

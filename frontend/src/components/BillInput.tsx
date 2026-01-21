@@ -508,7 +508,7 @@ export function BillInput({
                     variant="outline"
                     size="sm"
                     className={cn(
-                      "text-xs px-3",
+                      "text-xs px-4 h-10",
                       amount === String(qa.value) && "bg-primary text-white border-primary"
                     )}
                     onClick={() => setAmount(String(qa.value))}
@@ -580,7 +580,7 @@ export function BillInput({
             <select
               value={selectedCategoryId}
               onChange={(e) => setSelectedCategoryId(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="w-full h-12 rounded-md border border-input bg-background px-3 text-sm"
               disabled={categoriesLoading}
             >
               <option value="">
@@ -606,7 +606,7 @@ export function BillInput({
                   type="button"
                   onClick={() => setSelectedPayer(p.id)}
                   className={cn(
-                    "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                    "px-4 py-3 rounded-full text-sm font-medium transition-all min-h-[44px] flex items-center",
                     selectedPayer === p.id
                       ? "bg-primary text-white shadow-md scale-105"
                       : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600"
@@ -774,7 +774,7 @@ export function BillInput({
                   variant={splitMode === 'EQUAL' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSplitMode('EQUAL')}
-                  className="flex-1"
+                  className="flex-1 h-11"
                 >
                   Chia đều
                 </Button>
@@ -783,7 +783,7 @@ export function BillInput({
                   variant={splitMode === 'WEIGHTED' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSplitMode('WEIGHTED')}
-                  className="flex-1"
+                  className="flex-1 h-11"
                   title="Chia theo trọng số (weight) của từng người"
                 >
                   Theo tỷ lệ
@@ -798,7 +798,7 @@ export function BillInput({
                     participants.forEach(p => { initial[p.id] = '' })
                     setCustomSplits(initial)
                   }}
-                  className="flex-1"
+                  className="flex-1 h-11"
                 >
                   Tuỳ chỉnh
                 </Button>

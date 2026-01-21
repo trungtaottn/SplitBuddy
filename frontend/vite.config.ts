@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineConfig({
   plugins: [
@@ -93,6 +94,12 @@ export default defineConfig({
         enabled: false, // Disable in dev to avoid issues
       },
     }),
+    visualizer({
+      open: false,
+      gzipSize: true,
+      brotliSize: true,
+      filename: 'stats.html'
+    }),
   ],
   resolve: {
     alias: {
@@ -115,5 +122,16 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-slot', 'class-variance-authority', 'clsx', 'tailwind-merge'],
+          'vendor-utils': ['date-fns', 'axios'],
+          'vendor-charts': ['recharts'],
+          'vendor-framer': ['framer-motion'],
+        },
+      },
+    },
   },
 })

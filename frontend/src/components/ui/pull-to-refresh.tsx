@@ -90,12 +90,12 @@ export const PullToRefresh = ({ onRefresh, children }: PullToRefreshProps) => {
     <div ref={containerRef} className="relative min-h-screen">
       {/* Loading Indicator */}
       <motion.div
-        className="fixed left-0 right-0 top-0 z-50 flex justify-center pt-4 pointer-events-none"
+        className="fixed left-0 right-0 top-0 z-[100] flex justify-center pt-4 pointer-events-none"
         style={{ y, opacity }}
         animate={controls}
       >
         <motion.div 
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-background shadow-lg border border-border"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-background/90 backdrop-blur shadow-lg border border-border"
           style={{ rotate }}
         >
           {isRefreshing ? (

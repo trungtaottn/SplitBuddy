@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
+import { visualizer } from 'rollup-plugin-visualizer';
 export default defineConfig({
     plugins: [
         react(),
@@ -61,6 +62,21 @@ export default defineConfig({
                         },
                     },
                     {
+                        urlPattern: /\/api\/(auth\/me|sessions|groups|debts\/me|notifications\/unread-count)/,
+                        handler: 'NetworkFirst',
+                        options: {
+                            cacheName: 'api-data-cache',
+                            expiration: {
+                                maxEntries: 50,
+                                maxAgeSeconds: 60 * 60 * 24, // 1 day
+                            },
+                            networkTimeoutSeconds: 3, // Fallback to cache after 3s
+                            cacheableResponse: {
+                                statuses: [0, 200],
+                            },
+                        },
+                    },
+                    {
                         urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
                         handler: 'CacheFirst',
                         options: {
@@ -76,6 +92,12 @@ export default defineConfig({
             devOptions: {
                 enabled: false, // Disable in dev to avoid issues
             },
+        }),
+        visualizer({
+            open: false,
+            gzipSize: true,
+            brotliSize: true,
+            filename: 'stats.html'
         }),
     ],
     resolve: {
@@ -99,5 +121,16 @@ export default defineConfig({
     },
     build: {
         chunkSizeWarningLimit: 1000,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+                    'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-slot', 'class-variance-authority', 'clsx', 'tailwind-merge'],
+                    'vendor-utils': ['date-fns', 'axios'],
+                    'vendor-charts': ['recharts'],
+                    'vendor-framer': ['framer-motion'],
+                },
+            },
+        },
     },
 });

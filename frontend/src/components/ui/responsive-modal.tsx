@@ -68,7 +68,7 @@ export function ResponsiveModal({
 
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className={contentClassName}>
+      <DrawerContent className={cn("max-h-[90vh] overflow-y-auto", contentClassName)}>
         {(title || description) && (
           <DrawerHeader className="text-left">
             {title && <DrawerTitle>{title}</DrawerTitle>}

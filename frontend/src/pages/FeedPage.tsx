@@ -1,7 +1,5 @@
 import React from 'react'
 import { FeedList } from '@/components/feed/FeedList'
-import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
 import { PullToRefresh } from '@/components/ui/pull-to-refresh'
 import { useQueryClient } from '@tanstack/react-query'
 

@@ -30,7 +30,10 @@ import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupD
  * - Orange/Red Accent Gradients
  */
 
+import { useWebSocket } from '@/contexts/WebSocketContext'
+
 export default function DashboardPage() {
+  const { subscribeToSession, unsubscribeFromSession } = useWebSocket()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newSessionName, setNewSessionName] = useState('')
   const [newSessionLocation, setNewSessionLocation] = useState('')
@@ -96,6 +99,21 @@ export default function DashboardPage() {
   const sessions = sessionsData?.data
   const pagination = sessionsData?.meta
 
+  // Subscribe to visible sessions for real-time updates
+  useEffect(() => {
+    if (!sessions) return
+
+    sessions.forEach(session => {
+      subscribeToSession(session.id)
+    })
+
+    return () => {
+      sessions.forEach(session => {
+        unsubscribeFromSession(session.id)
+      })
+    }
+  }, [sessions, subscribeToSession, unsubscribeFromSession])
+
   const settledSessionIds = useMemo(() => {
     if (!sessions) return []
     return sessions
@@ -146,10 +164,44 @@ export default function DashboardPage() {
       const res = await api.post<ApiResponse<Session>>('/sessions', data)
       return res.data.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] })
-      queryClient.invalidateQueries({ queryKey: ['groups'] })
-      queryClient.invalidateQueries({ queryKey: ['debts'] })
+    onMutate: async (newSessionData) => {
+      // 1. Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['sessions'] })
+
+      // 2. Snapshot the previous value
+      const previousSessions = queryClient.getQueryData(['sessions', debouncedSearch, statusFilter, includeArchived, currentPage])
+
+      // 3. Optimistically update to the new value
+      queryClient.setQueryData(['sessions', debouncedSearch, statusFilter, includeArchived, currentPage], (old: PaginatedResponse<Session[]> | undefined) => {
+        if (!old) return old
+
+        const optimisticSession: Session = {
+          id: `temp-${Date.now()}`,
+          name: newSessionData.name,
+          location: newSessionData.location || null,
+          session_date: newSessionData.session_date || new Date().toISOString(),
+          status: 'active',
+          created_at: new Date().toISOString(),
+          created_by: 'me', // distinct for UI if needed
+          total_amount: '0',
+          settled_amount: '0',
+          base_currency: newSessionData.base_currency || 'VND',
+          participants: [], // Simplified
+          my_debt: '0',
+          my_owed: '0',
+          participant_count: 0,
+          minimize_debts: true,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          archived_at: null,
+        }
+
+        return {
+          ...old,
+          data: [optimisticSession, ...old.data]
+        }
+      })
+
+      // Close modal immediately for "instant" feel
       setShowCreateModal(false)
       setNewSessionName('')
       setNewSessionLocation('')
@@ -158,10 +210,25 @@ export default function DashboardPage() {
       setGuestNames([])
       setNewGuestName('')
       setNewSessionCurrency('VND')
-      toast.success('Session Created.')
+
+      // Return a context object with the snapshotted value
+      return { previousSessions }
     },
-    onError: () => {
+    onError: (_err, _newTodo, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousSessions) {
+        queryClient.setQueryData(['sessions', debouncedSearch, statusFilter, includeArchived, currentPage], context.previousSessions)
+      }
       toast.error('Error creating session.')
+    },
+    onSuccess: () => {
+        toast.success('Session Created.')
+    },
+    onSettled: () => {
+      // Always refetch after error or success:
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
     },
   })
 
@@ -386,7 +453,7 @@ export default function DashboardPage() {
                 size="icon"
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="rounded-full w-10 h-10"
+                className="rounded-full"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -398,7 +465,7 @@ export default function DashboardPage() {
                 size="icon"
                 onClick={() => setCurrentPage(p => Math.min(pagination.total_pages, p + 1))}
                 disabled={currentPage === pagination.total_pages}
-                className="rounded-full w-10 h-10"
+                className="rounded-full"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -592,7 +659,7 @@ export default function DashboardPage() {
       </ResponsiveModal>
 
       {/* Floating Action Buttons - Rendered via Portal */}
-      {typeof document !== 'undefined' && createPortal(
+      {typeof document !== 'undefined' && !showCreateModal && createPortal(
         <div className="fixed bottom-24 right-4 md:bottom-4 z-[100] flex flex-col gap-3">
           <Button
             onClick={() => navigate('/templates')}
