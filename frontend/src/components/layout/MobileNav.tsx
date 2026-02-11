@@ -21,7 +21,7 @@ export function MobileNav() {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden pb-safe-bottom">
       {/* Glass Effect Background */}
       <div className="absolute inset-0 bg-background/80 backdrop-blur-xl border-t border-white/10" />
 
@@ -36,7 +36,7 @@ export function MobileNav() {
               key={item.path}
               to={item.path}
               className={cn(
-                "relative flex flex-col items-center justify-center p-2 transition-colors duration-300",
+                "relative flex flex-1 flex-col items-center justify-center p-2 transition-colors duration-300",
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >

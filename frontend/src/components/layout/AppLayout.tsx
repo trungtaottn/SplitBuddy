@@ -8,6 +8,7 @@ import { AnimatedOutlet } from '@/components/PageTransition'
 import { NotificationBell } from '@/components/NotificationBell'
 import { useWebSocket } from '@/contexts/WebSocketContext'
 import { MobileNav } from '@/components/layout/MobileNav'
+import { ClosureNoticeBanner } from '@/components/ClosureNoticeBanner'
 
 function ConnectionStatus() {
   const { connectionStatus, reconnect } = useWebSocket()
@@ -77,8 +78,12 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen bg-transparent pb-32 md:pb-0">
-      {/* Desktop Header - Minimalist */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-white/5">
+      {/* Sticky top group: Closure Notice + Header */}
+      <div className="sticky top-0 z-50">
+        <ClosureNoticeBanner />
+
+        {/* Desktop Header - Minimalist */}
+        <header className="bg-background/95 backdrop-blur-sm border-b border-white/5">
         <div className="container mx-auto flex h-20 items-center justify-between px-6">
           {/* Brand - Text Only */}
           <Link to={isAdmin ? "/admin" : "/"} className="flex flex-col">
@@ -138,6 +143,7 @@ export default function AppLayout() {
           </div>
         </div>
       </header>
+      </div>
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12 relative z-10 w-full max-w-7xl">

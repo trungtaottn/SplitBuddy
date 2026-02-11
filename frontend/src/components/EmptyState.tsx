@@ -41,8 +41,8 @@ const EMPTY_STATES: Record<EmptyStateType, {
     description: 'Tạo cuộc nhậu mới để bắt đầu chia tiền với bạn bè.',
     illustration: (
       <div className="relative">
-        <div className="text-5xl">📋</div>
-        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-xs text-muted-foreground">
+        <Beer className="h-24 w-24 text-muted-foreground/20" strokeWidth={1} />
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-xs text-muted-foreground whitespace-nowrap">
           ~ trống trơn ~
         </div>
       </div>
@@ -54,8 +54,8 @@ const EMPTY_STATES: Record<EmptyStateType, {
     description: 'Thêm hóa đơn đầu tiên bằng nút + ở trên.',
     illustration: (
       <div className="relative">
-        <div className="text-5xl">🧾</div>
-        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-xs text-muted-foreground">
+        <Receipt className="h-24 w-24 text-muted-foreground/20" strokeWidth={1} />
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-xs text-muted-foreground whitespace-nowrap">
           ~ trống ~
         </div>
       </div>
@@ -67,8 +67,8 @@ const EMPTY_STATES: Record<EmptyStateType, {
     description: 'Không có khoản nợ nào cần thanh toán. Tuyệt vời!',
     illustration: (
       <div className="relative">
-        <div className="text-5xl">✓</div>
-        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-xs text-success">
+        <Wallet className="h-24 w-24 text-success/20" strokeWidth={1} />
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-xs text-success whitespace-nowrap">
           ~ xong xuôi ~
         </div>
       </div>
@@ -79,10 +79,8 @@ const EMPTY_STATES: Record<EmptyStateType, {
     title: 'Chưa có nhóm nào',
     description: 'Tạo nhóm để quản lý các thành viên dễ dàng hơn.',
     illustration: (
-      <div className="relative flex gap-1">
-        <span className="text-4xl opacity-30"></span>
-        <span className="text-4xl opacity-50"></span>
-        <span className="text-4xl opacity-30"></span>
+      <div className="relative flex gap-1 justify-center">
+        <Users className="h-24 w-24 text-muted-foreground/20" strokeWidth={1} />
       </div>
     ),
   },
@@ -92,7 +90,7 @@ const EMPTY_STATES: Record<EmptyStateType, {
     description: 'Thử tìm kiếm với từ khóa khác xem sao.',
     illustration: (
       <div className="relative">
-        <div className="text-5xl opacity-50">🔍</div>
+        <Search className="h-24 w-24 text-muted-foreground/20" strokeWidth={1} />
       </div>
     ),
   },
@@ -101,10 +99,8 @@ const EMPTY_STATES: Record<EmptyStateType, {
     title: 'Sẵn sàng chơi!',
     description: 'Chọn một trò chơi để bắt đầu cuộc vui.',
     illustration: (
-      <div className="relative flex gap-2">
-        <span className="text-3xl">🎲</span>
-        <span className="text-3xl">🃏</span>
-        <span className="text-3xl">🎯</span>
+      <div className="relative flex gap-2 justify-center">
+        <Sparkles className="h-24 w-24 text-primary/20" strokeWidth={1} />
       </div>
     ),
   },

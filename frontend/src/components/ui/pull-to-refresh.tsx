@@ -1,125 +1,134 @@
-import { useState, useRef, useCallback, ReactNode } from 'react'
-import { RefreshCw } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useEffect, useRef, useState } from 'react'
+import { motion, useAnimation, useMotionValue, useTransform } from 'framer-motion'
 
 interface PullToRefreshProps {
   onRefresh: () => Promise<void>
-  children: ReactNode
-  className?: string
-  disabled?: boolean
+  children: React.ReactNode
 }
 
-const PULL_THRESHOLD = 80
-const MAX_PULL = 120
-
-export function PullToRefresh({ 
-  onRefresh, 
-  children, 
-  className,
-  disabled = false 
-}: PullToRefreshProps) {
-  const [pullDistance, setPullDistance] = useState(0)
-  const [isRefreshing, setIsRefreshing] = useState(false)
+export const PullToRefresh = ({ onRefresh, children }: PullToRefreshProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const startY = useRef(0)
-  const isPulling = useRef(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const y = useMotionValue(0)
+  const controls = useAnimation()
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (disabled || isRefreshing) return
-    
+  // Transform y value to rotation for spinner
+  const rotate = useTransform(y, [0, 100], [0, 360])
+  const opacity = useTransform(y, [0, 50], [0, 1])
+
+  useEffect(() => {
     const container = containerRef.current
-    if (!container || container.scrollTop > 0) return
-    
-    startY.current = e.touches[0].clientY
-    isPulling.current = true
-  }, [disabled, isRefreshing])
+    if (!container) return
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isPulling.current || disabled || isRefreshing) return
-    
-    const container = containerRef.current
-    if (!container || container.scrollTop > 0) {
-      isPulling.current = false
-      setPullDistance(0)
-      return
-    }
+    let startY = 0
+    let isDragging = false
 
-    const currentY = e.touches[0].clientY
-    const diff = currentY - startY.current
-
-    if (diff > 0) {
-      e.preventDefault()
-      const distance = Math.min(diff * 0.5, MAX_PULL)
-      setPullDistance(distance)
-    }
-  }, [disabled, isRefreshing])
-
-  const handleTouchEnd = useCallback(async () => {
-    if (!isPulling.current) return
-    isPulling.current = false
-
-    if (pullDistance >= PULL_THRESHOLD && !isRefreshing) {
-      setIsRefreshing(true)
-      setPullDistance(60)
-      
-      try {
-        await onRefresh()
-      } finally {
-        setIsRefreshing(false)
-        setPullDistance(0)
+    const handleTouchStart = (e: TouchEvent) => {
+      if (window.scrollY === 0) {
+        startY = e.touches[0].clientY
+        isDragging = true
       }
-    } else {
-      setPullDistance(0)
     }
-  }, [pullDistance, isRefreshing, onRefresh])
 
-  const progress = Math.min(pullDistance / PULL_THRESHOLD, 1)
-  const shouldTrigger = pullDistance >= PULL_THRESHOLD
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDragging) return
+      
+      const currentY = e.touches[0].clientY
+      const diff = currentY - startY
+
+      if (diff > 0 && window.scrollY === 0) {
+        // Resistance effect
+        const dampenedDiff = Math.min(diff * 0.5, 120)
+        y.set(dampenedDiff)
+        
+        // Prevent default only if we are pulling down at the top
+        if (diff > 5) e.preventDefault()
+      } else {
+        isDragging = false
+        y.set(0)
+      }
+    }
+
+    const handleTouchEnd = async () => {
+      if (!isDragging) return
+      isDragging = false
+
+      if (y.get() > 80) {
+        // Trigger refresh
+        setIsRefreshing(true)
+        controls.start({ y: 60 })
+        
+        try {
+          // Haptic feedback if available
+          if (navigator.vibrate) navigator.vibrate(50)
+          
+          await onRefresh()
+        } finally {
+          setIsRefreshing(false)
+          controls.start({ y: 0 })
+          y.set(0)
+        }
+      } else {
+        // Reset
+        controls.start({ y: 0 })
+        y.set(0)
+      }
+    }
+
+    container.addEventListener('touchstart', handleTouchStart, { passive: true })
+    container.addEventListener('touchmove', handleTouchMove, { passive: false })
+    container.addEventListener('touchend', handleTouchEnd)
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart)
+      container.removeEventListener('touchmove', handleTouchMove)
+      container.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [onRefresh, controls, y])
 
   return (
-    <div 
-      ref={containerRef}
-      className={cn('relative overflow-auto', className)}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      {/* Pull indicator */}
-      <div 
-        className={cn(
-          'absolute left-0 right-0 flex justify-center items-center transition-all duration-200 z-10',
-          pullDistance > 0 ? 'opacity-100' : 'opacity-0'
-        )}
-        style={{ 
-          top: pullDistance - 50,
-          height: 50
-        }}
+    <div ref={containerRef} className="relative min-h-screen">
+      {/* Loading Indicator */}
+      <motion.div
+        className="fixed left-0 right-0 top-0 z-[100] flex justify-center pt-4 pointer-events-none"
+        style={{ y, opacity }}
+        animate={controls}
       >
-        <div className={cn(
-          'flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-lg',
-          shouldTrigger && !isRefreshing && 'bg-primary/10'
-        )}>
-          <RefreshCw 
-            className={cn(
-              'h-5 w-5 text-primary transition-transform',
-              isRefreshing && 'animate-spin'
-            )}
-            style={{ 
-              transform: isRefreshing ? undefined : `rotate(${progress * 180}deg)`,
-            }}
-          />
-        </div>
-      </div>
+        <motion.div 
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-background/90 backdrop-blur shadow-lg border border-border"
+          style={{ rotate }}
+        >
+          {isRefreshing ? (
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-primary"
+            >
+              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+              <path d="M16 21h5v-5" />
+            </svg>
+          )}
+        </motion.div>
+      </motion.div>
 
-      {/* Content with pull effect */}
-      <div 
-        className="transition-transform duration-200"
-        style={{ 
-          transform: pullDistance > 0 ? `translateY(${pullDistance}px)` : undefined 
-        }}
+      {/* Content */}
+      <motion.div
+        animate={controls}
+        className="min-h-screen"
       >
         {children}
-      </div>
+      </motion.div>
     </div>
   )
 }

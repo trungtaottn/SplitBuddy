@@ -31,6 +31,6 @@ build/
 .cursor
 .codex/
 .shared/
-.agent/
+# .agent/
 .copilot-tracking/
 .windsurf/

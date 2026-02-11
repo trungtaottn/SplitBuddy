@@ -51,28 +51,30 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
       case 'BillUpdated':
       case 'BillDeleted':
-        queryClient.invalidateQueries({ queryKey: ['bills', event.session_id] })
-        queryClient.invalidateQueries({ queryKey: ['sessions', event.session_id] }) // Update total amount
+        queryClient.invalidateQueries({ queryKey: ['session-bills', event.session_id] })
+        queryClient.invalidateQueries({ queryKey: ['session', event.session_id] }) // Detail view
+        queryClient.invalidateQueries({ queryKey: ['sessions'] }) // List view (total amounts)
         break
 
       case 'DebtsRecalculated':
-        queryClient.invalidateQueries({ queryKey: ['debts', event.session_id] })
-        // Also refetch session details as my_debt might change
-        queryClient.invalidateQueries({ queryKey: ['sessions', event.session_id] })
+        queryClient.invalidateQueries({ queryKey: ['debts'] }) // My debts
+        queryClient.invalidateQueries({ queryKey: ['session', event.session_id] }) // Detail
         break
         
       case 'DebtUpdated':
-         queryClient.invalidateQueries({ queryKey: ['debts', event.session_id] })
+         queryClient.invalidateQueries({ queryKey: ['debts'] })
+         queryClient.invalidateQueries({ queryKey: ['session', event.session_id] })
          break
 
       case 'ParticipantChanged':
-        queryClient.invalidateQueries({ queryKey: ['sessions', event.session_id] })
-        queryClient.invalidateQueries({ queryKey: ['debts', event.session_id] })
+        queryClient.invalidateQueries({ queryKey: ['session', event.session_id] })
+        queryClient.invalidateQueries({ queryKey: ['debts'] })
         break
 
       case 'SessionStatusChanged':
       case 'SessionUpdated':
-        queryClient.invalidateQueries({ queryKey: ['sessions', event.session_id] })
+        queryClient.invalidateQueries({ queryKey: ['session', event.session_id] })
+        queryClient.invalidateQueries({ queryKey: ['sessions'] })
         if (event.type === 'SessionStatusChanged' && event.status === 'ARCHIVED') {
           toast.info('Session has been archived.')
         }

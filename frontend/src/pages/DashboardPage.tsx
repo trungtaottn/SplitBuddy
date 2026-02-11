@@ -19,6 +19,7 @@ import { SessionListSkeleton } from '@/components/ui/skeleton'
 import { useOnboarding } from '@/components/Onboarding'
 import { staggerContainer, staggerItem, CountUp } from '@/components/PageTransition'
 import { ResponsiveModal } from '@/components/ui/responsive-modal'
+import { PullToRefresh } from '@/components/ui/pull-to-refresh'
 import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupDetail, PaginatedResponse } from '@/types/api'
 
 /**
@@ -29,7 +30,10 @@ import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupD
  * - Orange/Red Accent Gradients
  */
 
+import { useWebSocket } from '@/contexts/WebSocketContext'
+
 export default function DashboardPage() {
+  const { subscribeToSession, unsubscribeFromSession } = useWebSocket()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newSessionName, setNewSessionName] = useState('')
   const [newSessionLocation, setNewSessionLocation] = useState('')
@@ -95,6 +99,21 @@ export default function DashboardPage() {
   const sessions = sessionsData?.data
   const pagination = sessionsData?.meta
 
+  // Subscribe to visible sessions for real-time updates
+  useEffect(() => {
+    if (!sessions) return
+
+    sessions.forEach(session => {
+      subscribeToSession(session.id)
+    })
+
+    return () => {
+      sessions.forEach(session => {
+        unsubscribeFromSession(session.id)
+      })
+    }
+  }, [sessions, subscribeToSession, unsubscribeFromSession])
+
   const settledSessionIds = useMemo(() => {
     if (!sessions) return []
     return sessions
@@ -145,10 +164,44 @@ export default function DashboardPage() {
       const res = await api.post<ApiResponse<Session>>('/sessions', data)
       return res.data.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] })
-      queryClient.invalidateQueries({ queryKey: ['groups'] })
-      queryClient.invalidateQueries({ queryKey: ['debts'] })
+    onMutate: async (newSessionData) => {
+      // 1. Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['sessions'] })
+
+      // 2. Snapshot the previous value
+      const previousSessions = queryClient.getQueryData(['sessions', debouncedSearch, statusFilter, includeArchived, currentPage])
+
+      // 3. Optimistically update to the new value
+      queryClient.setQueryData(['sessions', debouncedSearch, statusFilter, includeArchived, currentPage], (old: PaginatedResponse<Session[]> | undefined) => {
+        if (!old) return old
+
+        const optimisticSession: Session = {
+          id: `temp-${Date.now()}`,
+          name: newSessionData.name,
+          location: newSessionData.location || null,
+          session_date: newSessionData.session_date || new Date().toISOString(),
+          status: 'active',
+          created_at: new Date().toISOString(),
+          created_by: 'me', // distinct for UI if needed
+          total_amount: '0',
+          settled_amount: '0',
+          base_currency: newSessionData.base_currency || 'VND',
+          participants: [], // Simplified
+          my_debt: '0',
+          my_owed: '0',
+          participant_count: 0,
+          minimize_debts: true,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          archived_at: null,
+        }
+
+        return {
+          ...old,
+          data: [optimisticSession, ...old.data]
+        }
+      })
+
+      // Close modal immediately for "instant" feel
       setShowCreateModal(false)
       setNewSessionName('')
       setNewSessionLocation('')
@@ -157,10 +210,25 @@ export default function DashboardPage() {
       setGuestNames([])
       setNewGuestName('')
       setNewSessionCurrency('VND')
-      toast.success('Session Created.')
+
+      // Return a context object with the snapshotted value
+      return { previousSessions }
     },
-    onError: () => {
+    onError: (_err, _newTodo, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousSessions) {
+        queryClient.setQueryData(['sessions', debouncedSearch, statusFilter, includeArchived, currentPage], context.previousSessions)
+      }
       toast.error('Error creating session.')
+    },
+    onSuccess: () => {
+        toast.success('Session Created.')
+    },
+    onSettled: () => {
+      // Always refetch after error or success:
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      queryClient.invalidateQueries({ queryKey: ['debts'] })
     },
   })
 
@@ -217,186 +285,194 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-12">
-      {/* AI Greeting - Top priority for mood setting */}
-      <div className="-mt-4">
-         <AiGreeting
-          onCreateSession={() => setShowCreateModal(true)}
-          onViewDebts={() => navigate('/debts')}
-        />
-      </div>
-
-      {/* Financial Overview - Compact & Horizontal */}
-      <motion.div
-        className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch"
-        variants={staggerContainer}
-        initial="hidden"
-        animate="show"
-      >
-        {/* Debt Owed Card */}
-        <motion.div variants={staggerItem}>
-            <Card variant="default" className="bg-card hover:bg-card/80 transition-colors border-l-4 border-l-orange-500 rounded-[4px]">
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                   <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Bạn cần trả</h3>
-                   <p className="text-3xl font-heading font-bold text-white tracking-tight">
-                    {debts ? <CountUp value={Number(debts.total_i_owe)} className="text-white" /> : '0'}
-                    <span className="text-sm ml-1 text-muted-foreground">đ</span>
-                   </p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center">
-                   <ArrowUpRight className="h-6 w-6 text-orange-500" />
-                </div>
-              </CardContent>
-            </Card>
-        </motion.div>
-
-        {/* Debt Owing Card */}
-        <motion.div variants={staggerItem}>
-            <Card variant="default" className="bg-card hover:bg-card/80 transition-colors border-l-4 border-l-green-500 rounded-[4px]">
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                   <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Cần trả bạn</h3>
-                   <p className="text-3xl font-heading font-bold text-white tracking-tight">
-                    {debts ? <CountUp value={Number(debts.total_owed_to_me)} className="text-white" /> : '0'}
-                    <span className="text-sm ml-1 text-muted-foreground">đ</span>
-                   </p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                   <ArrowDownLeft className="h-6 w-6 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
-        </motion.div>
-      </motion.div>
-
-      {/* Recent Sessions Filter Bar */}
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-white/5 pb-4">
-           <h2 className="text-xl font-bold font-heading text-white tracking-tight">CUỘC NHẬU GẦN ĐÂY</h2>
-           
-           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-             <div className="relative flex-1 md:w-64">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  variant="default" // Underline
-                  className="pl-9 h-10 text-sm"
-                  placeholder="Tìm kiếm..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-             </div>
-             
-             <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-transparent text-sm font-bold uppercase tracking-widest text-muted-foreground focus:outline-none cursor-pointer hover:text-white transition-colors"
-             >
-                <option value="">Tất cả</option>
-                <option value="active">Đang mở</option>
-                <option value="closed">Đã chốt</option>
-             </select>
-             
-             <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-white cursor-pointer transition-colors">
-                <input
-                  type="checkbox"
-                  checked={includeArchived}
-                  onChange={(e) => setIncludeArchived(e.target.checked)}
-                  className="rounded border-white/20 bg-transparent text-primary focus:ring-primary h-4 w-4"
-                />
-                Lưu trữ
-             </label>
-           </div>
+      <PullToRefresh onRefresh={async () => {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['sessions'] }),
+          queryClient.invalidateQueries({ queryKey: ['debts'] }),
+          queryClient.invalidateQueries({ queryKey: ['groups'] })
+        ])
+      }}>
+        {/* AI Greeting - Top priority for mood setting */}
+        <div className="-mt-4">
+           <AiGreeting
+            onCreateSession={() => setShowCreateModal(true)}
+            onViewDebts={() => navigate('/debts')}
+          />
         </div>
 
-        {settledSessionIds.length > 0 && !includeArchived && (
-           <div className="flex justify-end">
-             <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-muted-foreground hover:text-white"
-                onClick={() => bulkArchiveSettled.mutate()}
-                disabled={bulkArchiveSettled.isPending}
-              >
-                {bulkArchiveSettled.isPending ? 'ĐANG LƯU TRỮ...' : 'LƯU TRỮ CÁC KHOẢN ĐÃ XONG'}
-              </Button>
-           </div>
-        )}
+        {/* Financial Overview - Compact & Horizontal */}
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch mt-8"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="show"
+        >
+          {/* Debt Owed Card */}
+          <motion.div variants={staggerItem}>
+              <Card variant="default" className="bg-card hover:bg-card/80 transition-colors border-l-4 border-l-orange-500 rounded-[4px]">
+                <CardContent className="p-6 flex items-center justify-between">
+                  <div>
+                     <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Bạn cần trả</h3>
+                     <p className="text-3xl font-heading font-bold text-white tracking-tight">
+                      {debts ? <CountUp value={Number(debts.total_i_owe)} className="text-white" /> : '0'}
+                      <span className="text-sm ml-1 text-muted-foreground">đ</span>
+                     </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center">
+                     <ArrowUpRight className="h-6 w-6 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
+          </motion.div>
 
-        {/* Sessions Grid */}
-        {sessionsLoading ? (
-            <SessionListSkeleton count={3} />
-        ) : sessions?.length === 0 ? (
-            debouncedSearch ? (
-              <EmptyState
-                type="search"
-                searchTerm={debouncedSearch}
-                action={{
-                  label: 'Xóa tìm kiếm',
-                  onClick: () => setSearchTerm(''),
-                }}
-              />
-            ) : (
-              <EmptyState
-                type="sessions"
-                action={{
-                  label: 'Thêm cuộc nhậu',
-                  onClick: () => setShowCreateModal(true),
-                }}
-                secondaryAction={{
-                  label: 'Quản lý nhóm',
-                  onClick: () => navigate('/groups'),
-                }}
-              />
-            )
-        ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {sessions?.map((session) => (
-                    <SessionCard
-                      key={session.id}
-                      id={session.id}
-                      name={session.name}
-                      location={session.location}
-                      date={session.session_date}
-                      status={session.status === 'closed' ? 'settled' : 'active'}
-                      total_amount={Number(session.total_amount) || 0}
-                      base_currency={session.base_currency}
-                      participants={session.participants || []}
-                      user_debt={Number(session.my_debt) || 0}
-                      user_owed={Number(session.my_owed) || 0}
-                      settled_amount={Number(session.settled_amount) || 0}
-                      archived_at={session.archived_at}
-                    />
-              ))}
-            </div>
-        )}
+          {/* Debt Owing Card */}
+          <motion.div variants={staggerItem}>
+              <Card variant="default" className="bg-card hover:bg-card/80 transition-colors border-l-4 border-l-green-500 rounded-[4px]">
+                <CardContent className="p-6 flex items-center justify-between">
+                  <div>
+                     <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Cần trả bạn</h3>
+                     <p className="text-3xl font-heading font-bold text-white tracking-tight">
+                      {debts ? <CountUp value={Number(debts.total_owed_to_me)} className="text-white" /> : '0'}
+                      <span className="text-sm ml-1 text-muted-foreground">đ</span>
+                     </p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
+                     <ArrowDownLeft className="h-6 w-6 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+          </motion.div>
+        </motion.div>
 
-        {/* Pagination */}
-        {pagination && pagination.total_pages > 1 && (
-          <div className="flex items-center justify-center gap-4 pt-8 border-t border-white/5">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="rounded-full w-10 h-10"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm font-bold font-mono">
-              {currentPage} / {pagination.total_pages}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setCurrentPage(p => Math.min(pagination.total_pages, p + 1))}
-              disabled={currentPage === pagination.total_pages}
-              className="rounded-full w-10 h-10"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+        {/* Recent Sessions Filter Bar */}
+        <div className="space-y-6 mt-12 pb-24">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-white/5 pb-4">
+             <h2 className="text-xl font-bold font-heading text-white tracking-tight">CUỘC NHẬU GẦN ĐÂY</h2>
+             
+             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+               <div className="relative flex-1 md:w-64">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    variant="default" // Underline
+                    className="pl-9 h-10 text-sm"
+                    placeholder="Tìm kiếm..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+               </div>
+               
+               <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-transparent text-sm font-bold uppercase tracking-widest text-muted-foreground focus:outline-none cursor-pointer hover:text-white transition-colors"
+               >
+                  <option value="">Tất cả</option>
+                  <option value="active">Đang mở</option>
+                  <option value="closed">Đã chốt</option>
+               </select>
+               
+               <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-white cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={includeArchived}
+                    onChange={(e) => setIncludeArchived(e.target.checked)}
+                    className="rounded border-white/20 bg-transparent text-primary focus:ring-primary h-4 w-4"
+                  />
+                  Lưu trữ
+               </label>
+             </div>
           </div>
-        )}
-      </div>
+
+          {settledSessionIds.length > 0 && !includeArchived && (
+             <div className="flex justify-end">
+               <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground hover:text-white"
+                  onClick={() => bulkArchiveSettled.mutate()}
+                  disabled={bulkArchiveSettled.isPending}
+                >
+                  {bulkArchiveSettled.isPending ? 'ĐANG LƯU TRỮ...' : 'LƯU TRỮ CÁC KHOẢN ĐÃ XONG'}
+                </Button>
+             </div>
+          )}
+
+          {/* Sessions Grid */}
+          {sessionsLoading ? (
+              <SessionListSkeleton count={3} />
+          ) : sessions?.length === 0 ? (
+              debouncedSearch ? (
+                <EmptyState
+                  type="search"
+                  searchTerm={debouncedSearch}
+                  action={{
+                    label: 'Xóa tìm kiếm',
+                    onClick: () => setSearchTerm(''),
+                  }}
+                />
+              ) : (
+                <EmptyState
+                  type="sessions"
+                  action={{
+                    label: 'Thêm cuộc nhậu',
+                    onClick: () => setShowCreateModal(true),
+                  }}
+                  secondaryAction={{
+                    label: 'Quản lý nhóm',
+                    onClick: () => navigate('/groups'),
+                  }}
+                />
+              )
+          ) : (
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {sessions?.map((session) => (
+                      <SessionCard
+                        key={session.id}
+                        id={session.id}
+                        name={session.name}
+                        location={session.location}
+                        date={session.session_date}
+                        status={session.status === 'closed' ? 'settled' : 'active'}
+                        total_amount={Number(session.total_amount) || 0}
+                        base_currency={session.base_currency}
+                        participants={session.participants || []}
+                        user_debt={Number(session.my_debt) || 0}
+                        user_owed={Number(session.my_owed) || 0}
+                        settled_amount={Number(session.settled_amount) || 0}
+                        archived_at={session.archived_at}
+                      />
+                ))}
+              </div>
+          )}
+
+          {/* Pagination */}
+          {pagination && pagination.total_pages > 1 && (
+            <div className="flex items-center justify-center gap-4 pt-8 border-t border-white/5">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="rounded-full"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-bold font-mono">
+                {currentPage} / {pagination.total_pages}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentPage(p => Math.min(pagination.total_pages, p + 1))}
+                disabled={currentPage === pagination.total_pages}
+                className="rounded-full"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </PullToRefresh>
 
       {/* Creation Modal */}
       <ResponsiveModal
@@ -583,7 +659,7 @@ export default function DashboardPage() {
       </ResponsiveModal>
 
       {/* Floating Action Buttons - Rendered via Portal */}
-      {typeof document !== 'undefined' && createPortal(
+      {typeof document !== 'undefined' && !showCreateModal && createPortal(
         <div className="fixed bottom-24 right-4 md:bottom-4 z-[100] flex flex-col gap-3">
           <Button
             onClick={() => navigate('/templates')}

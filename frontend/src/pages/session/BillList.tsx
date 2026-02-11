@@ -88,10 +88,12 @@ export function BillList({ bills, onEdit, onDelete, deletingBillId, categoriesBy
     }
 
     return (
-        <div style={{ height: '600px', width: '100%' }}>
+        <div className="w-full">
             <Virtuoso
-                data={bills}
-                itemContent={(_, bill) => (
+            useWindowScroll
+            data={bills}
+            className="w-full"
+            itemContent={(_, bill) => (
                     <div className="pb-2">
                         <SwipeActions
                             leftActions={[
