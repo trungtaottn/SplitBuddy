@@ -449,13 +449,13 @@ export function BillInput({
                   <button
                     key={i}
                     type="button"
-                    className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-900 dark:text-gray-100"
+                    className="w-full px-4 py-3 min-h-[44px] text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-sm text-gray-900 dark:text-gray-100"
                     onClick={() => {
                       setDescription(s.label)
                       setShowSuggestions(false)
                     }}
                   >
-                    <span>{s.icon}</span>
+                    <span className="text-base">{s.icon}</span>
                     <span>{s.label}</span>
                   </button>
                 ))}
@@ -556,7 +556,7 @@ export function BillInput({
                         <button
                           key={`${entry.rate_date}-${entry.rate_source}`}
                           type="button"
-                          className="rounded-full border px-2 py-1 text-[11px] hover:border-primary hover:text-primary"
+                          className="rounded-full border px-3 py-2.5 min-h-[44px] text-xs hover:border-primary hover:text-primary transition-colors"
                           onClick={() => setExchangeRate(entry.rate)}
                         >
                           {entry.rate} ({new Date(entry.rate_date).toLocaleDateString('vi-VN')})
@@ -758,9 +758,9 @@ export function BillInput({
           <button
             type="button"
             onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-            className="w-full flex items-center justify-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 py-1"
+            className="w-full flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 py-3 min-h-[44px] -mx-2 px-2 rounded-lg active:bg-gray-100 dark:active:bg-gray-800 transition-colors"
           >
-            {isAdvancedOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {isAdvancedOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
             {isAdvancedOpen ? 'Ẩn tùy chọn' : 'Tùy chọn nâng cao'}
           </button>
 
@@ -825,16 +825,16 @@ export function BillInput({
                         type="button"
                         onClick={() => toggleParticipant(p.id)}
                         className={cn(
-                          "flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-all",
+                          "flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg text-sm transition-all",
                           selectedSplitParticipants.includes(p.id)
                             ? "bg-primary/10 text-primary border border-primary/30"
                             : "bg-gray-100 dark:bg-gray-700 text-gray-500 line-through"
                         )}
                       >
                         {selectedSplitParticipants.includes(p.id) ? (
-                          <Check className="h-3 w-3" />
+                          <Check className="h-4 w-4" />
                         ) : (
-                          <X className="h-3 w-3" />
+                          <X className="h-4 w-4" />
                         )}
                         {p.display_name}
                       </button>
