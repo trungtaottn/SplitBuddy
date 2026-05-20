@@ -6,6 +6,7 @@
 [![Deploy](https://img.shields.io/badge/deploy-Heroku-purple)](https://splitbuddy-c4cac22ac498.herokuapp.com)
 [![Frontend](https://img.shields.io/badge/frontend-React%2018-blue)](./frontend)
 [![Backend](https://img.shields.io/badge/backend-Rust%20Axum-orange)](./backend)
+[![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
 ## Giới thiệu
 
@@ -21,20 +22,38 @@
 - **Mini Games** - Truth or Dare, Never Have I Ever, Challenges, Spin Wheel, Kings Cup
 - **Music Player** - Phát nhạc trong khi nhậu với playlist từ YouTube
 - **Avatar & Achievements** - Gamification với XP, levels, badges
-- **Wrapped Stats** - Thống kê hoạt động theo năm
-- **AI Chat** - Chat với AI để được tư vấn
+- **Wrapped Stats** - Thống kê hoạt động theo năm (kiểu Spotify Wrapped)
+- **AI Chat** - Chat với AI (Google Gemini) để được tư vấn
+- **Social Feed** - Dòng thời gian hoạt động của nhóm bạn
+- **VietQR Payments** - Thanh toán nhanh qua mã QR ngân hàng Việt Nam
+- **Push Notifications** - Nhận thông báo realtime qua trình duyệt (VAPID/Web Push)
+- **WebSocket Real-time** - Cập nhật dữ liệu tức thời giữa các thành viên
+- **Multi-currency** - Hỗ trợ đa tiền tệ với tỷ giá FX tự động
+- **Recurring Expenses** - Chi phí định kỳ tự động tạo bill
+- **Templates** - Lưu mẫu bill thường dùng để tạo nhanh
+- **Import/Export CSV** - Nhập dữ liệu từ Splitwise, xuất CSV v2
+- **Analytics** - Biểu đồ & phân tích chi tiêu chi tiết
+- **PWA** - Cài đặt như app native, hỗ trợ offline & pull-to-refresh
+- **Dark Mode** - Chế độ tối/sáng/tự động
+
+## Demo
+
+🔗 **Live:** [https://splitbuddy-c4cac22ac498.herokuapp.com](https://splitbuddy-c4cac22ac498.herokuapp.com)
 
 ## Tech Stack
 
-| Layer        | Technology                                                         |
-| ------------ | ------------------------------------------------------------------ |
-| **Frontend** | React 18, TypeScript, Vite, TailwindCSS, shadcn/ui, TanStack Query |
-| **Backend**  | Rust (Nightly), Axum 0.7, SQLx                                     |
-| **Database** | PostgreSQL 16                                                      |
-| **Auth**     | JWT + Argon2                                                       |
-| **AI**       | Google Gemini API                                                  |
-| **Deploy**   | Heroku (Docker)                                                    |
-| **CI/CD**    | GitHub Actions (optimized with path filtering & caching)           |
+| Layer          | Technology                                                          |
+| -------------- | ------------------------------------------------------------------- |
+| **Frontend**   | React 18, TypeScript, Vite, TailwindCSS, shadcn/ui, TanStack Query |
+| **Backend**    | Rust (Nightly), Axum 0.7, SQLx                                     |
+| **Database**   | PostgreSQL 16                                                       |
+| **Cache**      | Redis (HybridCache: Redis + Local)                                  |
+| **Auth**       | JWT + Argon2                                                        |
+| **Real-time**  | WebSocket (Axum WS + Redis Pub/Sub)                                 |
+| **AI**         | Google Gemini API                                                   |
+| **Payments**   | VietQR                                                              |
+| **Deploy**     | Heroku (Docker multi-stage build)                                   |
+| **CI/CD**      | GitHub Actions (path filtering, sccache, mold linker)               |
 
 ## Quick Start
 
@@ -122,6 +141,32 @@ make docker-build   # Build Docker image
 make clean          # Dọn dẹp build artifacts
 ```
 
+## API Endpoints
+
+| Endpoint                | Description                          |
+| ----------------------- | ------------------------------------ |
+| `/api/auth`             | Đăng ký, đăng nhập, JWT             |
+| `/api/users`            | Quản lý user, profile, avatar       |
+| `/api/sessions`         | CRUD buổi nhậu, participants, bills |
+| `/api/debts`            | Công nợ, settlement, smart netting  |
+| `/api/groups`           | Quản lý nhóm bạn nhậu              |
+| `/api/payments`         | VietQR payment transactions         |
+| `/api/games`            | Mini games (ToD, NHIE, Kings Cup…)  |
+| `/api/ai`               | AI chat (Gemini)                    |
+| `/api/analytics`        | Biểu đồ & phân tích chi tiêu       |
+| `/api/feed`             | Social feed hoạt động               |
+| `/api/notifications`    | Push notifications (VAPID)          |
+| `/api/fx`               | Tỷ giá ngoại tệ                    |
+| `/api/recurring-expenses` | Chi phí định kỳ                   |
+| `/api/templates`        | Mẫu bill                            |
+| `/api/categories`       | Danh mục chi tiêu                   |
+| `/api/wrapped`          | Wrapped stats theo năm              |
+| `/api/uploads`          | Upload file/ảnh                     |
+| `/api/personas`         | AI personas                         |
+| `/api/admin`            | Admin dashboard                     |
+| `/api/ws`               | WebSocket real-time                  |
+| `/api/health`           | Health check                         |
+
 ## Project Structure
 
 ```
@@ -131,7 +176,10 @@ SplitBuddy/
 │   │   ├── api/            # Route handlers (auth, sessions, debts, games, etc.)
 │   │   ├── domain/         # Business logic & models
 │   │   ├── repository/     # Database layer (SQLx queries)
-│   │   └── middleware/     # Auth middleware
+│   │   ├── middleware/     # Auth, rate limiting
+│   │   ├── services/      # Business services (PushService)
+│   │   ├── cache/          # Redis & local caching (HybridCache)
+│   │   └── scheduler.rs   # Background job scheduler
 │   ├── migrations/         # SQL migrations
 │   └── .sqlx/              # SQLx offline query cache
 │
@@ -139,27 +187,31 @@ SplitBuddy/
 │   ├── src/
 │   │   ├── components/     # UI components (shadcn/ui customized)
 │   │   ├── pages/          # Page components
-│   │   ├── contexts/       # React contexts (Auth, Theme, Music, Mood)
-│   │   ├── hooks/          # Custom hooks
+│   │   ├── contexts/       # React contexts (Auth, Theme, Music, Mood, WebSocket)
+│   │   ├── hooks/          # Custom hooks (TanStack Query mutations)
 │   │   ├── types/          # TypeScript types
 │   │   └── lib/            # Utilities (axios, queryClient)
 │   └── public/
+│       └── sw.js           # Service Worker for Push Notifications
 │
 ├── docs/                   # Documentation
 │   ├── DEPLOYMENT.md       # Deployment guide
 │   ├── SETUP.md            # Setup guide
+│   ├── RELEASE_NOTES.md    # Release notes
 │   ├── PROJECT_GUIDELINES.md
 │   └── ...
 │
 ├── .github/workflows/      # GitHub Actions CI/CD
-│   └── ci.yml              # Optimized CI/CD pipeline
+│   ├── ci.yml              # Main CI/CD pipeline
+│   └── cache-cleanup.yml   # Auto cleanup caches
 │
 ├── .githooks/              # Git hooks
 │   ├── pre-commit          # Auto-format code before commit
 │   └── setup.sh            # Setup script
 │
 ├── Dockerfile              # Multi-stage Docker build (5 stages)
-├── docker-compose.yml      # Local development (PostgreSQL)
+├── docker-compose.yml      # Local development (PostgreSQL + Redis)
+├── docker-compose.prod.yml # Production Docker config
 ├── Makefile                # Development commands
 └── heroku.yml              # Heroku deployment config
 ```
@@ -173,6 +225,7 @@ SplitBuddy/
 | [Contributing](./CONTRIBUTING.md)                  | How to contribute to this project           |
 | [Deployment](./docs/DEPLOYMENT.md)                 | Deployment & CI/CD guide                    |
 | [Setup](./docs/SETUP.md)                           | Detailed setup guide                        |
+| [Release Notes](./docs/RELEASE_NOTES.md)           | Version history & changelog                 |
 | [Project Guidelines](./docs/PROJECT_GUIDELINES.md) | Coding conventions & standards              |
 | [Architecture](./docs/Architecture%20Plan.md)      | System architecture overview                |
 
@@ -219,18 +272,22 @@ GitHub Actions tự động chạy khi push:
 
 **Path-based job execution:**
 
-- `test-backend` - Chỉ chạy khi thay đổi `backend/**`
-- `test-frontend` - Chỉ chạy khi thay đổi `frontend/**`
-- `deploy` - Chỉ chạy trên `main` branch
+- `lint-backend` - Chỉ chạy khi thay đổi `backend/**` (fmt + clippy)
+- `test-backend` - Chỉ chạy khi thay đổi `backend/**` (build + nextest)
+- `test-frontend` - Chỉ chạy khi thay đổi `frontend/**` (type-check + build)
+- `deploy` - Chỉ chạy trên `main` branch (Docker build + Heroku)
+- `security-scan` - Trivy vulnerability scan trên `main`
 
-**Features:**
+**Optimizations:**
 
-- ✅ Auto-cancel in-progress runs on new commits
-- ✅ Intelligent caching (Rust dependencies, npm)
-- ✅ Path filtering (skip irrelevant jobs)
-- ✅ Security scanning with Trivy
-- ✅ Auto-sync `revert` branch
-- ✅ Health check verification after deploy
+- sccache - Compiler caching (40-60% faster)
+- mold linker - Faster linking (30-50% faster)
+- cargo nextest - Parallel test runner (2-3x faster)
+- Path filtering - Skip irrelevant jobs
+- Auto-cancel in-progress runs on new commits
+- Cache cleanup every 3 days
+- Auto-sync `revert` branch after successful deploy
+- Health check verification after deploy
 
 ### Git Hooks
 
@@ -265,7 +322,7 @@ git commit -m "chore: update sqlx cache"
 # Database
 DATABASE_URL=postgres://user:pass@localhost:5432/splitbuddy
 
-# Redis (optional - for WebSocket scaling)
+# Redis (optional - for WebSocket scaling & caching)
 REDIS_URL=redis://localhost:6379
 
 # JWT
@@ -344,9 +401,14 @@ make check
 
 # Backend tests
 cd backend && cargo test
+# Hoặc dùng nextest (nhanh hơn)
+cd backend && cargo nextest run
 
 # Frontend type check
 cd frontend && npm run type-check
+
+# Frontend build
+cd frontend && npm run build
 
 # Frontend lint
 cd frontend && npm run lint:fix
@@ -371,4 +433,4 @@ MIT License - Xem [LICENSE](./LICENSE) để biết thêm chi tiết.
 
 Made with 🍺 and code by the SplitBuddy team
 
-**Last Updated:** January 2026
+**Last Updated:** May 2026
