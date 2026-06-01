@@ -1,7 +1,15 @@
 # SplitBuddy Documentation Hub (Living Index)
 
-**Last Reviewed / Organized:** 2026-05-31 (triệt để scout + reorganization trước /brainstorm)  
+**Last Reviewed / Organized:** 2026-06-01 (root canonical docs refresh)  
 **Mục đích:** Single source of truth cho toàn bộ tài liệu dự án. Giúp developer nhanh chóng tìm living docs thay vì các plan cũ đã drift.
+
+## Canonical Documents (Current)
+
+- [project-overview-pdr.md](./project-overview-pdr.md) — Product scope, requirements, risks, acceptance criteria.
+- [codebase-summary.md](./codebase-summary.md) — Current repo structure, modules, verified counts, blockers.
+- [code-standards.md](./code-standards.md) — Practical coding/CI standards and current violations.
+- [system-architecture.md](./system-architecture.md) — Runtime topology, layers, flows, security, data architecture.
+- [project-roadmap.md](./project-roadmap.md) — P0/P1/P2 roadmap and 5 core development focus points.
 
 ## Cấu trúc mới (sau reorganization)
 
@@ -10,6 +18,11 @@
   - [PROJECT_GUIDELINES.md](./guidelines/PROJECT_GUIDELINES.md) — Coding conventions, Decimal rule, no unwrap/any, DoD, API envelope, Git workflow (bắt buộc tuân thủ).
 
 - **Architecture & Summaries (Single Source of Truth)**
+  - [project-overview-pdr.md](./project-overview-pdr.md)
+  - [codebase-summary.md](./codebase-summary.md)
+  - [code-standards.md](./code-standards.md)
+  - [system-architecture.md](./system-architecture.md)
+  - [project-roadmap.md](./project-roadmap.md)
   - [system-architecture.md](./architecture/system-architecture.md) — Kiến trúc layers thực tế vs ideal DDD, critical flows (recurring, WS, push, authz), tradeoffs, gaps.
   - [codebase-summary.md](./summaries/codebase-summary.md) — Tổng quan project hiện tại, feature status table, tech debt P0, key modules, risks.
   - [project-roadmap.md](./summaries/project-roadmap.md) — Phased plan P0 (money safety + any + unwraps) → P1 (modularize) → P2 (features), milestones, verification gates.

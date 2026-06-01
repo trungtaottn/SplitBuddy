@@ -505,8 +505,8 @@ async fn get_simplified_debts(
         .collect();
 
     // Sort by amount (largest first) for optimal settlement
-    creditors.sort_by(|a, b| b.2.cmp(&a.2));
-    debtors.sort_by(|a, b| b.2.cmp(&a.2));
+    creditors.sort_by_key(|b| std::cmp::Reverse(b.2));
+    debtors.sort_by_key(|b| std::cmp::Reverse(b.2));
 
     // Calculate simplified debts using greedy algorithm
     let mut simplified_debts: Vec<SimplifiedDebt> = Vec::new();

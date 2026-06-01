@@ -97,7 +97,7 @@ impl SplitCalculator {
         let mut allocated: i128 = bases.iter().sum();
         let mut leftover = total_minor - allocated;
 
-        remainders.sort_by(|a, b| b.1.cmp(&a.1));
+        remainders.sort_by_key(|b| std::cmp::Reverse(b.1));
 
         let step = if leftover < 0 { -1 } else { 1 };
         let mut i = 0usize;
@@ -157,8 +157,8 @@ impl SplitCalculator {
             })
             .collect();
 
-        creditors.sort_by(|a, b| b.balance.cmp(&a.balance));
-        debtors.sort_by(|a, b| b.balance.cmp(&a.balance));
+        creditors.sort_by_key(|b| std::cmp::Reverse(b.balance));
+        debtors.sort_by_key(|b| std::cmp::Reverse(b.balance));
 
         let mut debts = Vec::new();
 

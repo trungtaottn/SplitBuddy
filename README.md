@@ -168,10 +168,12 @@ SplitBuddy/
 
 **Xem [docs/README.md](./docs/README.md) — Documentation Hub (Living Index)** để navigation đầy đủ + phân biệt Living vs Historical documents.
 
-### Living Documents (Single Source of Truth – cập nhật 2026-05-31)
-- [Codebase Summary](./docs/summaries/codebase-summary.md) — Tổng quan hiện trạng, feature status, P0 debt.
-- [System Architecture](./docs/architecture/system-architecture.md) — Layers thực tế, flows quan trọng, tradeoffs.
-- [Project Roadmap](./docs/summaries/project-roadmap.md) — Phased P0 (money + any + unwraps) trước khi scale feature.
+### Living Documents (Single Source of Truth – cập nhật 2026-06-01)
+- [Project Overview & PDR](./docs/project-overview-pdr.md) — Product scope, requirements, risks, acceptance criteria.
+- [Codebase Summary](./docs/codebase-summary.md) — Tổng quan hiện trạng, feature status, P0 debt.
+- [Code Standards](./docs/code-standards.md) — Standards thực tế + current violations.
+- [System Architecture](./docs/system-architecture.md) — Layers thực tế, flows quan trọng, tradeoffs.
+- [Project Roadmap](./docs/project-roadmap.md) — Phased P0 (money + any + unwraps) trước khi scale feature.
 - [Deep Codebase Review 2026](./docs/reviews/CODEBASE_DEEP_REVIEW_OPTIMIZATION_2026.md) — Audit triệt để toàn bộ (god objects, 33 migrations, frontend any/decimal, security... với exact file:line).
 - [Project Guidelines](./docs/guidelines/PROJECT_GUIDELINES.md) — Bắt buộc: Decimal money, no unwrap/any, DDD, DoD, conventional commits.
 - Deployment & Setup: [DEPLOYMENT.md](./docs/deployment/DEPLOYMENT.md) | [SETUP.md](./docs/deployment/SETUP.md)

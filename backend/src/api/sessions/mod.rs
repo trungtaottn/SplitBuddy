@@ -1876,7 +1876,7 @@ async fn who_pays_next(
         .collect();
 
     // Lowest balance (most negative) should pay next
-    balances.sort_by(|a, b| a.balance.cmp(&b.balance));
+    balances.sort_by_key(|a| a.balance);
     let suggested = balances.first().cloned();
 
     Ok(ok(WhoPaysNextResponse {

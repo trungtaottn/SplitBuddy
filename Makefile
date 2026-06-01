@@ -1,7 +1,7 @@
 # SplitBuddy Makefile
 # Các lệnh tiện ích cho development
 
-.PHONY: setup check format check-backend check-frontend lint-backend test-backend format-backend format-frontend clean docker-up docker-down
+.PHONY: setup check format check-backend check-frontend check-money lint-backend test-backend format-backend format-frontend clean docker-up docker-down
 
 # ============================================
 # Setup
@@ -48,7 +48,7 @@ format-frontend:
 # ============================================
 
 ## Check tất cả (giống CI - chạy tuần tự)
-check: lint-backend test-backend check-frontend
+check: lint-backend test-backend check-frontend check-money
 	@echo ""
 	@echo "✅ All checks passed! Ready to push."
 
@@ -80,10 +80,16 @@ check-frontend:
 	@echo "  → npm ci"
 	cd frontend && npm ci --prefer-offline
 	@echo "  → type-check"
-	cd frontend && npm run type-check || true
+	cd frontend && npm run type-check
 	@echo "  → npm run build"
 	cd frontend && npm run build
 	@echo "✅ Frontend checks passed!"
+
+check-money:
+	@echo "🔍 Checking money guardrails..."
+	@! rg "\bf(32|64)\b|from_f64|Decimal::from_str\(&amount" backend/src/domain/recurring_expense.rs backend/src/api/recurring_expenses.rs backend/src/repository/recurring_expense_repo.rs backend/src/scheduler.rs
+	@! rg "parseFloat|:\s*any|as any" frontend/src/components/BillInput.tsx frontend/src/pages/SessionDetailPage.tsx frontend/src/pages/session/DebtBreakdown.tsx frontend/src/pages/DebtsPage.tsx frontend/src/pages/session/RecurringExpenses.tsx frontend/src/lib/api.ts
+	@echo "✅ Money guardrails passed!"
 
 # ============================================
 # Development

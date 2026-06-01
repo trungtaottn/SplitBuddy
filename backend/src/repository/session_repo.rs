@@ -1497,9 +1497,7 @@ impl SessionRepository {
         if participant_count > 0 {
             let split_amounts = SplitCalculator::calculate_equal_split(amount, participant_count);
 
-            for (participant_id, split_amount) in
-                participants.into_iter().zip(split_amounts.into_iter())
-            {
+            for (participant_id, split_amount) in participants.into_iter().zip(split_amounts) {
                 sqlx::query!(
                     r#"
                     INSERT INTO bill_splits (id, bill_id, participant_id, amount_owed)
@@ -1556,7 +1554,7 @@ impl SessionRepository {
             SplitCalculator::calculate_weighted_split_with_scale(amount, &weights, 2);
 
         // Insert bill splits
-        for (participant, split_amount) in participants.into_iter().zip(split_amounts.into_iter()) {
+        for (participant, split_amount) in participants.into_iter().zip(split_amounts) {
             sqlx::query(
                 r#"
                 INSERT INTO bill_splits (id, bill_id, participant_id, amount_owed)
@@ -1628,8 +1626,8 @@ impl SessionRepository {
             .filter(|b| b.balance < Decimal::ZERO)
             .collect();
 
-        creditors.sort_by(|a, b| b.balance.cmp(&a.balance));
-        debtors.sort_by(|a, b| a.balance.cmp(&b.balance));
+        creditors.sort_by_key(|b| std::cmp::Reverse(b.balance));
+        debtors.sort_by_key(|a| a.balance);
 
         let mut c_idx = 0;
         let mut d_idx = 0;
@@ -1749,7 +1747,7 @@ impl SessionRepository {
                     2,
                 );
 
-                for (payer, amount) in bill_payers.iter().zip(allocations.into_iter()) {
+                for (payer, amount) in bill_payers.iter().zip(allocations) {
                     if split.participant_id == payer.participant_id {
                         continue;
                     }

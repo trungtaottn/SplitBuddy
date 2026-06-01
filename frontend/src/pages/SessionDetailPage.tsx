@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Upload } from "lucide-react";
-import type { Bill, ExpenseCategory } from "@/types/api";
+import type { Bill, CreateBillDto, ExpenseCategory, SessionDetail, UpdateBillDto } from "@/types/api";
 import { ResponsiveModal } from "@/components/ui/responsive-modal";
 import { BillInput } from "@/components/BillInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSessionPresence } from "@/contexts/WebSocketContext";
+import { addMoney, subtractMoney } from "@/utils/money";
+import { getErrorMessage } from "@/utils/errorHandler";
 
 // Sub-components
 import { SessionOverview } from "./session/SessionOverview";
@@ -22,6 +24,8 @@ import { TypingIndicator } from "@/components/TypingIndicator";
 import { GameHistory } from "@/components/games/GameHistory";
 import { SessionDrinkingStats as DrinkingStats } from "@/components/games/DrinkingStats";
 import { PageSkeleton } from "@/components/ui/skeleton";
+
+type BillsCache = { data: Bill[]; meta?: unknown };
 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -40,13 +44,13 @@ export default function SessionDetailPage() {
   const uniquePresence = presence.filter((v, i, a) => a.findIndex(t => t.user_id === v.user_id) === i);
 
   // Queries
-  const { data: session, isLoading: isSessionLoading } = useQuery({
+  const { data: session, isLoading: isSessionLoading } = useQuery<SessionDetail>({
     queryKey: ["session", id],
     queryFn: () => api.getSession(id!),
     enabled: !!id,
   });
 
-  const { data: bills, isLoading: isBillsLoading } = useQuery({
+  const { data: bills, isLoading: isBillsLoading } = useQuery<BillsCache>({
     queryKey: ["session-bills", id],
     queryFn: () => api.inputs.listBills(id!),
     enabled: !!id,
@@ -131,16 +135,16 @@ export default function SessionDetailPage() {
   });
 
   const createBill = useMutation({
-    mutationFn: (data: any) => api.inputs.createBill(id!, data),
+    mutationFn: (data: CreateBillDto) => api.inputs.createBill(id!, data),
     onMutate: async (newBillData) => {
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
       await queryClient.cancelQueries({ queryKey: ["session-bills", id] });
 
       // Snapshot the previous value
-      const previousBills = queryClient.getQueryData(["session-bills", id]);
+      const previousBills = queryClient.getQueryData<BillsCache>(["session-bills", id]);
 
       // Optimistically update to the new value
-      queryClient.setQueryData(["session-bills", id], (old: any) => {
+      queryClient.setQueryData<BillsCache>(["session-bills", id], (old) => {
         if (!old) return { data: [], meta: {} };
 
         // Construct optimistic bill
@@ -159,14 +163,14 @@ export default function SessionDetailPage() {
           created_at: new Date().toISOString(),
           category_id: newBillData.category_id,
           receipt_url: newBillData.receipt_url,
-          payers: newBillData.payers.map((p: any) => ({
+          payers: newBillData.payers.map((p) => ({
             participant_id: p.participant_id,
-            name: session?.participants.find((sp: any) => sp.id === p.participant_id)?.display_name || 'Unknown',
+            name: session?.participants.find((sp) => sp.id === p.participant_id)?.display_name || 'Unknown',
             amount_paid: p.amount,
           })),
-          participants: newBillData.split_details?.map((p: any) => ({
+          participants: newBillData.split_details?.map((p) => ({
              participant_id: p.participant_id,
-             name: session?.participants.find((sp: any) => sp.id === p.participant_id)?.display_name || 'Unknown',
+             name: session?.participants.find((sp) => sp.id === p.participant_id)?.display_name || 'Unknown',
              amount_owed: p.amount,
           })) || [],
         };
@@ -175,14 +179,12 @@ export default function SessionDetailPage() {
       });
       
       // Also update session total amount optimistically
-      const previousSession = queryClient.getQueryData(["session", id]);
-      queryClient.setQueryData(["session", id], (oldSession: any) => {
+      const previousSession = queryClient.getQueryData<SessionDetail>(["session", id]);
+      queryClient.setQueryData<SessionDetail>(["session", id], (oldSession) => {
         if (!oldSession) return oldSession;
-        const currentTotal = parseFloat(oldSession.total_amount || "0");
-        const newTotal = currentTotal + parseFloat(newBillData.total_amount || "0");
         return {
             ...oldSession,
-            total_amount: newTotal.toString(),
+            total_amount: addMoney(oldSession.total_amount || "0", newBillData.total_amount || "0", oldSession.base_currency),
             // We can't easily calculate my_debt/my_owed without complex logic, so leave them stale until refetch
         };
       });
@@ -193,7 +195,7 @@ export default function SessionDetailPage() {
     onSuccess: () => {
        setShowBillInput(false);
     },
-    onError: (error: any, _newBill, context) => {
+    onError: (error: unknown, _newBill, context) => {
       // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousBills) {
         queryClient.setQueryData(["session-bills", id], context.previousBills);
@@ -203,7 +205,7 @@ export default function SessionDetailPage() {
       }
       toast.error(
         "Lỗi khi tạo hóa đơn: " +
-          (error.response?.data?.message || error.message)
+          getErrorMessage(error)
       );
     },
     onSettled: () => {
@@ -216,12 +218,15 @@ export default function SessionDetailPage() {
   });
 
   const updateBill = useMutation({
-    mutationFn: (data: any) => api.inputs.updateBill(id!, data.billId, data),
+    mutationFn: (data: UpdateBillDto) => {
+      const { billId, ...payload } = data;
+      return api.inputs.updateBill(id!, billId, payload);
+    },
     onMutate: async (newBillData) => {
       await queryClient.cancelQueries({ queryKey: ["session-bills", id] });
-      const previousBills = queryClient.getQueryData(["session-bills", id]);
+      const previousBills = queryClient.getQueryData<BillsCache>(["session-bills", id]);
 
-      queryClient.setQueryData(["session-bills", id], (old: any) => {
+      queryClient.setQueryData<BillsCache>(["session-bills", id], (old) => {
         if (!old || !old.data) return old;
         return {
           ...old,
@@ -232,17 +237,17 @@ export default function SessionDetailPage() {
                   description: newBillData.description,
                   amount: newBillData.total_amount,
                   amount_original: newBillData.total_amount,
-                  currency_code: newBillData.currency_code,
+                  currency_code: newBillData.currency_code || bill.currency_code,
                   category_id: newBillData.category_id,
                   receipt_url: newBillData.receipt_url,
-                  payers: newBillData.payers.map((p: any) => ({
+                  payers: newBillData.payers.map((p) => ({
                     participant_id: p.participant_id,
-                    name: session?.participants.find((sp: any) => sp.id === p.participant_id)?.display_name || 'Unknown',
+                    name: session?.participants.find((sp) => sp.id === p.participant_id)?.display_name || 'Unknown',
                     amount_paid: p.amount,
                   })),
-                  participants: newBillData.split_details?.map((p: any) => ({
+                  participants: newBillData.split_details?.map((p) => ({
                     participant_id: p.participant_id,
-                    name: session?.participants.find((sp: any) => sp.id === p.participant_id)?.display_name || 'Unknown',
+                    name: session?.participants.find((sp) => sp.id === p.participant_id)?.display_name || 'Unknown',
                     amount_owed: p.amount,
                  })) || bill.participants, // Fallback if no split change
                };
@@ -253,22 +258,19 @@ export default function SessionDetailPage() {
       });
 
       // Update session total
-      const previousSession = queryClient.getQueryData(["session", id]);
-      queryClient.setQueryData(["session", id], (oldSession: any) => {
+      const previousSession = queryClient.getQueryData<SessionDetail>(["session", id]);
+      queryClient.setQueryData<SessionDetail>(["session", id], (oldSession) => {
         if (!oldSession) return oldSession;
         // Need to find old bill amount to subtract? 
         // We know newBillData.total_amount, but we need the diff.
         // We can find old bill in previousBills.
         // Type assertion as previousBills might be unknown structure
-        const prevData = previousBills as { data: Bill[] } | undefined;
-        const oldBill = prevData?.data?.find((b: Bill) => b.id === newBillData.billId);
-        const oldAmount = oldBill ? parseFloat(oldBill.amount) : 0;
-        const newAmount = parseFloat(newBillData.total_amount || "0");
-        const currentTotal = parseFloat(oldSession.total_amount || "0");
+        const oldBill = previousBills?.data?.find((b: Bill) => b.id === newBillData.billId);
+        const oldAmount = oldBill?.amount || "0";
         
         return {
             ...oldSession,
-            total_amount: (currentTotal - oldAmount + newAmount).toString()
+            total_amount: addMoney(subtractMoney(oldSession.total_amount || "0", oldAmount, oldSession.base_currency), newBillData.total_amount || "0", oldSession.base_currency)
         };
       });
 
@@ -299,9 +301,9 @@ export default function SessionDetailPage() {
     mutationFn: (billId: string) => api.inputs.deleteBill(id!, billId),
     onMutate: async (billId) => {
       await queryClient.cancelQueries({ queryKey: ["session-bills", id] });
-      const previousBills = queryClient.getQueryData(["session-bills", id]);
+      const previousBills = queryClient.getQueryData<BillsCache>(["session-bills", id]);
 
-      queryClient.setQueryData(["session-bills", id], (old: any) => {
+      queryClient.setQueryData<BillsCache>(["session-bills", id], (old) => {
          if (!old || !old.data) return old;
          return {
             ...old,
@@ -309,18 +311,16 @@ export default function SessionDetailPage() {
          };
       });
       
-      const previousSession = queryClient.getQueryData(["session", id]);
-      queryClient.setQueryData(["session", id], (oldSession: any) => {
+      const previousSession = queryClient.getQueryData<SessionDetail>(["session", id]);
+      queryClient.setQueryData<SessionDetail>(["session", id], (oldSession) => {
         if (!oldSession) return oldSession;
         // Find deleted bill amount
-        const prevData = previousBills as { data: Bill[] } | undefined;
-        const deletedBill = prevData?.data?.find((b: Bill) => b.id === billId);
-        const amount = deletedBill ? parseFloat(deletedBill.amount) : 0;
-        const currentTotal = parseFloat(oldSession.total_amount || "0");
+        const deletedBill = previousBills?.data?.find((b: Bill) => b.id === billId);
+        const amount = deletedBill?.amount || "0";
         
         return {
              ...oldSession,
-             total_amount: (currentTotal - amount).toString()
+             total_amount: subtractMoney(oldSession.total_amount || "0", amount, oldSession.base_currency)
         };
       });
 
@@ -391,8 +391,8 @@ export default function SessionDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['debts'] })
       toast.success('Xóa thành viên thành công')
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Không thể xóa thành viên");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error) || "Không thể xóa thành viên");
     },
   });
 

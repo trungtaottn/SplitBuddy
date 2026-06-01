@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
 import { formatCurrency } from '@/utils/formatCurrency'
+import { absMoney, addMoney, compareMoney, subtractMoney, sumMoney } from '@/utils/money'
 import { toast } from '@/components/ui/toaster'
 import { showError } from '@/utils/errorHandler'
 import { cn } from '@/lib/utils'
@@ -25,7 +26,7 @@ type TabType = 'summary' | 'sessions'
 interface NettedDebt {
   counterpartId: string
   counterpartName: string
-  netAmount: number // positive = I owe them, negative = they owe me
+  netAmount: string // positive = I owe them, negative = they owe me
 }
 
 // DebtCard Component - Modern Dark Luxury style
@@ -239,19 +240,19 @@ export default function DebtsPage() {
   const nettedDebts = useMemo<NettedDebt[]>(() => {
     if (!debts) return []
     
-    const netMap = new Map<string, { name: string; amount: number }>()
+    const netMap = new Map<string, { name: string; amount: string }>()
     
     // I owe them (+)
     debts.i_owe.forEach(debt => {
-      const current = netMap.get(debt.counterpart_id) || { name: debt.counterpart_name, amount: 0 }
-      current.amount += parseFloat(debt.amount)
+      const current = netMap.get(debt.counterpart_id) || { name: debt.counterpart_name, amount: '0' }
+      current.amount = addMoney(current.amount, debt.amount)
       netMap.set(debt.counterpart_id, current)
     })
     
     // They owe me (-)
     debts.owed_to_me.forEach(debt => {
-      const current = netMap.get(debt.counterpart_id) || { name: debt.counterpart_name, amount: 0 }
-      current.amount -= parseFloat(debt.amount)
+      const current = netMap.get(debt.counterpart_id) || { name: debt.counterpart_name, amount: '0' }
+      current.amount = subtractMoney(current.amount, debt.amount)
       netMap.set(debt.counterpart_id, current)
     })
     
@@ -262,12 +263,12 @@ export default function DebtsPage() {
         counterpartName: data.name,
         netAmount: data.amount
       }))
-      .filter(d => Math.abs(d.netAmount) > 0.01)
-      .sort((a, b) => Math.abs(b.netAmount) - Math.abs(a.netAmount))
+      .filter(d => compareMoney(absMoney(d.netAmount), '0.01') > 0)
+      .sort((a, b) => compareMoney(absMoney(b.netAmount), absMoney(a.netAmount)))
   }, [debts])
 
-  const totalNetIOwe = nettedDebts.filter(d => d.netAmount > 0).reduce((sum, d) => sum + d.netAmount, 0)
-  const totalNetOwedToMe = nettedDebts.filter(d => d.netAmount < 0).reduce((sum, d) => sum + Math.abs(d.netAmount), 0)
+  const totalNetIOwe = sumMoney(nettedDebts.filter(d => compareMoney(d.netAmount, '0') > 0).map(d => d.netAmount))
+  const totalNetOwedToMe = sumMoney(nettedDebts.filter(d => compareMoney(d.netAmount, '0') < 0).map(d => absMoney(d.netAmount)))
 
   const requestSettle = useMutation({
     mutationFn: async (debtId: string) => {
@@ -380,7 +381,7 @@ export default function DebtsPage() {
           ) : (
             sessionDebts?.map((session) => {
               // Calculate session totals
-              const totalPaid = session.participants.reduce((sum, p) => sum + parseFloat(p.total_paid), 0)
+              const totalPaid = sumMoney(session.participants.map((p) => p.total_paid))
               
               return (
                 <FunTooltip key={session.session_id} messages={FUN_MESSAGES.sessionCard}>
@@ -413,9 +414,8 @@ export default function DebtsPage() {
                       {/* Mobile-friendly card grid */}
                       <div className="grid gap-2 sm:grid-cols-2">
                         {session.participants.map((p) => {
-                          const balance = parseFloat(p.balance)
-                          const isPositive = balance > 0
-                          const isNegative = balance < 0
+                          const isPositive = compareMoney(p.balance, '0') > 0
+                          const isNegative = compareMoney(p.balance, '0') < 0
                           
                           return (
                             <div 
@@ -518,7 +518,7 @@ export default function DebtsPage() {
                         key={debt.counterpartId}
                         className={cn(
                           "flex items-center justify-between p-4 rounded-xl border transition-all hover:bg-zinc-800/80 animate-in slide-in-from-bottom-2",
-                          debt.netAmount > 0 
+                          compareMoney(debt.netAmount, '0') > 0
                             ? "bg-red-500/5 border-red-500/20" 
                             : "bg-emerald-500/5 border-emerald-500/20"
                         )}
@@ -527,7 +527,7 @@ export default function DebtsPage() {
                         <div className="flex items-center gap-3">
                           <div className={cn(
                             "w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm font-body ring-2 ring-offset-2 ring-offset-[#0E0E0E]",
-                            debt.netAmount > 0 
+                            compareMoney(debt.netAmount, '0') > 0
                               ? "bg-gradient-to-br from-red-500 to-red-700 text-white ring-red-500/20" 
                               : "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white ring-emerald-500/20"
                           )}>
@@ -536,7 +536,7 @@ export default function DebtsPage() {
                           <div>
                             <p className="font-bold text-sm font-heading text-white">{debt.counterpartName}</p>
                             <p className="text-xs text-zinc-400 font-body mt-0.5">
-                              {debt.netAmount > 0 ? (
+                              {compareMoney(debt.netAmount, '0') > 0 ? (
                                 <span className="flex items-center gap-1.5">
                                   <ArrowUpRight className="h-3.5 w-3.5 text-red-500" />
                                   Bạn cần trả
@@ -554,14 +554,14 @@ export default function DebtsPage() {
                         <div className="text-right">
                           <span className={cn(
                             "text-lg font-bold font-mono tracking-tight block",
-                            debt.netAmount > 0 ? "text-red-500" : "text-emerald-500"
+                            compareMoney(debt.netAmount, '0') > 0 ? "text-red-500" : "text-emerald-500"
                           )}>
-                            {formatCurrency(Math.abs(debt.netAmount))}
+                            {formatCurrency(absMoney(debt.netAmount))}
                           </span>
                           
                           <div className="mt-2 flex justify-end">
                             {/* Settlement action for netted debts */}
-                            {debt.netAmount > 0 ? (
+                            {compareMoney(debt.netAmount, '0') > 0 ? (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -595,7 +595,7 @@ export default function DebtsPage() {
                                       onClick={() => {
                                         setQrModal({
                                           open: true,
-                                          amount: String(Math.round(Math.abs(debt.netAmount))),
+                                          amount: absMoney(debt.netAmount, 'VND'),
                                           note: `Thanh toan no - ${debt.counterpartName}`,
                                         })
                                       }}
