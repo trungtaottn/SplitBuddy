@@ -103,7 +103,12 @@ impl PushService {
                 web_push::URL_SAFE_NO_PAD,
                 &subscription_info,
             )
-            .expect("Failed to create VAPID signature builder");
+            .map_err(|e| {
+                AppError::Internal(anyhow::anyhow!(
+                    "Failed to create VAPID signature builder: {}",
+                    e
+                ))
+            })?;
 
             sig_builder.add_claim("sub", vapid_subject.clone());
 
@@ -113,10 +118,11 @@ impl PushService {
 
             builder.set_vapid_signature(signature);
 
-            match client
-                .send(builder.build().expect("Failed to build message"))
-                .await
-            {
+            let message = builder.build().map_err(|e| {
+                AppError::Internal(anyhow::anyhow!("Failed to build push message: {}", e))
+            })?;
+
+            match client.send(message).await {
                 Ok(_) => {
                     success_count += 1;
                 }

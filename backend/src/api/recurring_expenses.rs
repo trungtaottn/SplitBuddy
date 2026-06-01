@@ -13,7 +13,9 @@ use axum::{
     Json, Router,
 };
 use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
@@ -36,7 +38,7 @@ pub struct ExceptionResponse {
 pub struct CreateRecurringExpenseRequest {
     pub name: String,
     pub description: Option<String>,
-    pub amount: f64,
+    pub amount: String,
     pub currency_code: Option<String>,
     pub category_id: Option<Uuid>,
     pub split_strategy: String,
@@ -53,7 +55,7 @@ pub struct CreateRecurringExpenseRequest {
 pub struct UpdateRecurringExpenseRequest {
     pub name: Option<String>,
     pub description: Option<String>,
-    pub amount: Option<f64>,
+    pub amount: Option<String>,
     pub category_id: Option<Uuid>,
     pub split_strategy: Option<String>,
     pub frequency: Option<RecurringFrequency>,
@@ -70,7 +72,7 @@ pub struct RecurringExpenseResponse {
     pub session_id: Uuid,
     pub name: String,
     pub description: Option<String>,
-    pub amount: f64,
+    pub amount: String,
     pub currency_code: String,
     pub category_id: Option<Uuid>,
     pub split_strategy: String,
@@ -94,7 +96,7 @@ impl From<RecurringExpense> for RecurringExpenseResponse {
             session_id: expense.session_id,
             name: expense.name,
             description: expense.description,
-            amount: expense.amount,
+            amount: expense.amount.to_string(),
             currency_code: expense.currency_code,
             category_id: expense.category_id,
             split_strategy: expense.split_strategy,
@@ -111,6 +113,22 @@ impl From<RecurringExpense> for RecurringExpenseResponse {
             updated_at: expense.updated_at,
         }
     }
+}
+
+fn parse_positive_money(field: &str, value: &str) -> Result<Decimal, AppError> {
+    let amount = Decimal::from_str(value.trim()).map_err(|_| AppError::Validation {
+        field: field.to_string(),
+        message: "Amount must be a valid decimal string".to_string(),
+    })?;
+
+    if amount <= Decimal::ZERO {
+        return Err(AppError::Validation {
+            field: field.to_string(),
+            message: "Amount must be positive".to_string(),
+        });
+    }
+
+    Ok(amount)
 }
 
 /// Create a new recurring expense for a session
@@ -145,12 +163,7 @@ pub async fn create_recurring_expense(
     }
 
     // Validate request
-    if req.amount <= 0.0 {
-        return Err(AppError::Validation {
-            field: "amount".to_string(),
-            message: "Amount must be positive".to_string(),
-        });
-    }
+    let amount = parse_positive_money("amount", &req.amount)?;
 
     let interval_count = req.interval_count.unwrap_or(1);
     if interval_count <= 0 {
@@ -219,7 +232,7 @@ pub async fn create_recurring_expense(
         session_id,
         req.name,
         req.description,
-        req.amount,
+        amount,
         currency_code,
         req.category_id,
         req.split_strategy,
@@ -243,7 +256,7 @@ pub async fn create_recurring_expense(
     .metadata(serde_json::json!({
         "name": recurring_expense.name,
         "frequency": recurring_expense.frequency,
-        "amount": recurring_expense.amount,
+        "amount": recurring_expense.amount.to_string(),
     }))
     .log(pool)
     .await
@@ -364,14 +377,11 @@ pub async fn update_recurring_expense(
     }
 
     // Validate updates
-    if let Some(amount) = req.amount {
-        if amount <= 0.0 {
-            return Err(AppError::Validation {
-                field: "amount".to_string(),
-                message: "Amount must be positive".to_string(),
-            });
-        }
-    }
+    let amount = req
+        .amount
+        .as_deref()
+        .map(|amount| parse_positive_money("amount", amount))
+        .transpose()?;
 
     if let Some(interval_count) = req.interval_count {
         if interval_count <= 0 {
@@ -397,7 +407,7 @@ pub async fn update_recurring_expense(
         recurring_id,
         req.name,
         req.description.map(Some),
-        req.amount,
+        amount,
         req.category_id.map(Some),
         req.split_strategy,
         req.frequency,

@@ -195,7 +195,7 @@ export interface RecurringExpense {
   session_id: string
   name: string
   description?: string | null
-  amount: number
+  amount: string
   currency_code: string
   category_id?: string | null
   split_strategy: string
@@ -230,6 +230,10 @@ export interface CreateBillDto {
   receipt_url?: string | null
   currency_code?: string
   exchange_rate?: string
+}
+
+export interface UpdateBillDto extends CreateBillDto {
+  billId: string
 }
 
 // Group types

@@ -5,6 +5,17 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, X, Check, Users, Banknote, ChevronDown, ChevronUp, Upload, Image as ImageIcon } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
+import {
+  divideMoney,
+  isPositiveMoney,
+  isWithinMoneyTolerance,
+  multiplyMoney,
+  normalizeMoney,
+  normalizeMoneyInput,
+  splitEqual,
+  sumMoney,
+  toDisplayNumber,
+} from '@/utils/money'
 import { CURRENCY_OPTIONS } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/axios'
@@ -121,16 +132,12 @@ export function BillInput({
 
         if (initialData.split_strategy === 'CUSTOM') {
           const splits: Record<string, string> = {}
-          const rate = parseFloat(initialData.exchange_rate || '1')
-          const useRate = initialData.currency_code && initialData.currency_code !== baseCurrency && rate > 0
-          const decimals = ['VND', 'JPY', 'KRW', 'IDR'].includes(initialData.currency_code || '')
-            ? 0
-            : 2
+          const useRate = initialData.currency_code && initialData.currency_code !== baseCurrency && isPositiveMoney(initialData.exchange_rate || '1')
 
           initialData.participants.forEach(p => {
-            const baseAmount = parseFloat(p.amount_owed || '0')
-            const originalAmount = useRate ? baseAmount / rate : baseAmount
-            splits[p.participant_id] = decimals === 0 ? Math.round(originalAmount).toString() : originalAmount.toFixed(decimals)
+            splits[p.participant_id] = useRate
+              ? divideMoney(p.amount_owed || '0', initialData.exchange_rate || '1', initialData.currency_code || currencyCode)
+              : normalizeMoney(p.amount_owed || '0', initialData.currency_code || currencyCode)
           })
           setCustomSplits(splits)
         }
@@ -213,17 +220,7 @@ export function BillInput({
     : amount
 
   const handleAmountChange = (rawValue: string) => {
-    if (isZeroDecimalCurrency) {
-      const value = rawValue.replace(/[^\d]/g, '')
-      setAmount(value)
-      return
-    }
-
-    const normalized = rawValue.replace(/,/g, '.')
-    const cleaned = normalized.replace(/[^0-9.]/g, '')
-    const parts = cleaned.split('.')
-    const value = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : cleaned
-    setAmount(value)
+    setAmount(normalizeMoneyInput(rawValue, isZeroDecimalCurrency))
   }
 
 
@@ -268,20 +265,16 @@ export function BillInput({
 
   // Calculate split preview
   const splitPreview = useMemo(() => {
-    const numAmount = parseFloat(amount) || 0
-    if (numAmount === 0 || selectedSplitParticipants.length === 0) return null
+    if (!isPositiveMoney(amount) || selectedSplitParticipants.length === 0) return null
 
     if (splitMode === 'EQUAL') {
-      const perPersonRaw = numAmount / selectedSplitParticipants.length
-      const perPerson = isZeroDecimalCurrency
-        ? Math.round(perPersonRaw)
-        : parseFloat(perPersonRaw.toFixed(2))
+      const shares = splitEqual(amount, selectedSplitParticipants, currencyCode)
       return selectedSplitParticipants.map(pid => {
         const p = participants.find(x => x.id === pid)
         return {
           id: pid,
           name: p?.display_name || 'Unknown',
-          amount: perPerson,
+          amount: shares[pid] || normalizeMoney(0, currencyCode),
         }
       })
     } else if (splitMode === 'WEIGHTED') {
@@ -294,36 +287,36 @@ export function BillInput({
       if (totalWeight === 0) return null
 
       return activeParticipants.map(p => {
-        if (!p) return { id: '', name: 'Unknown', amount: 0 }
-        const weightRatio = p.default_weight / totalWeight
-        const weightedAmount = numAmount * weightRatio
-        const amount = isZeroDecimalCurrency
-          ? Math.round(weightedAmount)
-          : parseFloat(weightedAmount.toFixed(2))
+        if (!p) return { id: '', name: 'Unknown', amount: normalizeMoney(0, currencyCode) }
+        const participantAmount = multiplyMoney(
+          amount,
+          divideMoney(String(p.default_weight), String(totalWeight), currencyCode),
+          currencyCode
+        )
         return {
           id: p.id,
           name: p.display_name,
-          amount,
+          amount: participantAmount,
         }
       })
     } else {
       return Object.entries(customSplits)
-        .filter(([, amt]) => parseFloat(amt) > 0)
+        .filter(([, amt]) => isPositiveMoney(amt))
         .map(([pid, amt]) => {
           const p = participants.find(x => x.id === pid)
           return {
             id: pid,
             name: p?.display_name || 'Unknown',
-            amount: parseFloat(amt) || 0,
+            amount: normalizeMoney(amt, currencyCode),
           }
         })
     }
-  }, [amount, selectedSplitParticipants, splitMode, customSplits, participants, isZeroDecimalCurrency])
+  }, [amount, selectedSplitParticipants, splitMode, customSplits, participants, currencyCode])
 
   // Custom split total
   const customSplitTotal = useMemo(() => {
-    return Object.values(customSplits).reduce((sum, v) => sum + (parseFloat(v) || 0), 0)
-  }, [customSplits])
+    return sumMoney(Object.values(customSplits), currencyCode)
+  }, [customSplits, currencyCode])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -333,10 +326,10 @@ export function BillInput({
 
     let split_details: SplitDetailInput[] | undefined
     if (splitMode === 'EQUAL') {
-      const perPerson = (parseFloat(amount) / selectedSplitParticipants.length).toFixed(0)
+      const shares = splitEqual(amount, selectedSplitParticipants, currencyCode)
       split_details = selectedSplitParticipants.map(pid => ({
         participant_id: pid,
-        amount: perPerson,
+        amount: shares[pid] || normalizeMoney(0, currencyCode),
       }))
     } else if (splitMode === 'WEIGHTED') {
       // For weighted mode, backend calculates split based on participant weights
@@ -344,10 +337,10 @@ export function BillInput({
       split_details = undefined
     } else {
       split_details = Object.entries(customSplits)
-        .filter(([, amt]) => parseFloat(amt) > 0)
+        .filter(([, amt]) => isPositiveMoney(amt))
         .map(([pid, amt]) => ({
           participant_id: pid,
-          amount: amt,
+          amount: normalizeMoney(amt, currencyCode),
         }))
     }
 
@@ -540,7 +533,7 @@ export function BillInput({
               />
               {amount && exchangeRate && (
                 <p className="text-xs text-muted-foreground">
-                  Ước tính: {formatCurrency((parseFloat(amount) * parseFloat(exchangeRate)).toFixed(2), baseCurrency)}
+                  Ước tính: {formatCurrency(multiplyMoney(amount, exchangeRate, baseCurrency), baseCurrency)}
                 </p>
               )}
 
@@ -630,9 +623,7 @@ export function BillInput({
                 {splitMode === 'EQUAL' && (
                   <span className="text-primary font-mono font-semibold text-sm bg-primary/10 px-2 py-0.5 rounded-lg">
                     {formatCurrency(
-                      isZeroDecimalCurrency
-                        ? Math.round(parseFloat(amount) / selectedSplitParticipants.length)
-                        : parseFloat((parseFloat(amount) / selectedSplitParticipants.length).toFixed(2)),
+                      divideMoney(amount, String(selectedSplitParticipants.length), currencyCode),
                       currencyCode
                     )}/người
                   </span>
@@ -645,7 +636,7 @@ export function BillInput({
               {/* Visual breakdown with progress bars */}
               <div className="space-y-2">
                 {splitPreview.slice(0, 6).map((p, index) => {
-                  const percentage = (p.amount / parseFloat(amount)) * 100
+                  const percentage = toDisplayNumber(multiplyMoney(divideMoney(p.amount, amount, currencyCode), '100', currencyCode))
                   return (
                     <div key={p.id} className="space-y-1 animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${index * 50}ms` }}>
                       <div className="flex justify-between items-center text-sm">
@@ -682,12 +673,12 @@ export function BillInput({
                   <span className="text-muted-foreground font-body">Tổng cộng:</span>
                   <span className={cn(
                     "font-mono font-bold flex items-center gap-1",
-                    splitMode === 'CUSTOM' && Math.abs(customSplitTotal - parseFloat(amount || '0')) >= 1
+                    splitMode === 'CUSTOM' && !isWithinMoneyTolerance(customSplitTotal, amount || '0', currencyCode)
                       ? "text-destructive"
                       : "text-success"
                   )}>
-                    {formatCurrency(splitPreview.reduce((sum, p) => sum + p.amount, 0), currencyCode)} / {formatCurrency(amount, currencyCode)}
-                    {(splitMode === 'EQUAL' || Math.abs(customSplitTotal - parseFloat(amount || '0')) < 1) && (
+                    {formatCurrency(sumMoney(splitPreview.map((p) => p.amount), currencyCode), currencyCode)} / {formatCurrency(amount, currencyCode)}
+                    {(splitMode === 'EQUAL' || isWithinMoneyTolerance(customSplitTotal, amount || '0', currencyCode)) && (
                       <Check className="h-4 w-4" />
                     )}
                   </span>
@@ -892,12 +883,12 @@ export function BillInput({
                   </div>
                   <div className={cn(
                     "text-sm font-medium text-right",
-                    Math.abs(customSplitTotal - parseFloat(amount || '0')) < 1
+                    isWithinMoneyTolerance(customSplitTotal, amount || '0', currencyCode)
                       ? "text-green-600"
                       : "text-red-600"
                   )}>
                     Tổng: {formatCurrency(customSplitTotal, currencyCode)} / {formatCurrency(amount || '0', currencyCode)}
-                    {Math.abs(customSplitTotal - parseFloat(amount || '0')) < 1 && ' ✓'}
+                    {isWithinMoneyTolerance(customSplitTotal, amount || '0', currencyCode) && ' ✓'}
                   </div>
                 </div>
               )}

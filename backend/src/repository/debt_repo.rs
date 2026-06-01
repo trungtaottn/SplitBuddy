@@ -370,7 +370,7 @@ impl DebtRepository {
         }
 
         let mut sessions: Vec<SessionDebtResponse> = sessions_map.into_values().collect();
-        sessions.sort_by(|a, b| b.session_id.cmp(&a.session_id));
+        sessions.sort_by_key(|b| std::cmp::Reverse(b.session_id));
 
         Ok(sessions)
     }

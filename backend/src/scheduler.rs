@@ -1,7 +1,6 @@
 use chrono::Utc;
 use rust_decimal::Decimal;
 use sqlx::PgPool;
-use std::str::FromStr;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -113,7 +112,7 @@ impl RecurringExpenseScheduler {
             session_id: Uuid,
             name: String,
             description: Option<String>,
-            amount: f64,
+            amount: Decimal,
             currency_code: String,
             category_id: Option<Uuid>,
             split_strategy: String,
@@ -320,9 +319,8 @@ impl RecurringExpenseScheduler {
             );
         }
 
-        // For scheduler, use exchange_rate = 1.0 (same currency assumed)
-        let exchange_rate = Decimal::from_str("1.0").unwrap();
-        let amount_decimal = Decimal::from_str(&amount.to_string()).unwrap_or(Decimal::ZERO);
+        let exchange_rate = Decimal::ONE;
+        let amount_decimal = amount;
 
         // Create payers (split equally among all active participants by default)
         let payer_share = amount_decimal / Decimal::from(participants.len() as i64);
@@ -375,8 +373,13 @@ impl RecurringExpenseScheduler {
         // Create the bill
         let session_repo = SessionRepository::new(self.pool.clone());
 
-        // Note: created_by will be the first participant (or we could use a system user)
-        let created_by = participants.first().map(|(id, _, _, _)| *id).unwrap();
+        let created_by = participants
+            .first()
+            .map(|(id, _, _, _)| *id)
+            .ok_or_else(|| AppError::Validation {
+                field: "session".to_string(),
+                message: "No active participants in session".to_string(),
+            })?;
 
         let bill_description = description.clone().unwrap_or_else(|| name.clone());
 
@@ -457,7 +460,7 @@ impl RecurringExpenseScheduler {
             "recurring_expense_id": id,
             "name": name,
             "description": description,
-            "amount": amount,
+            "amount": amount.to_string(),
             "currency_code": currency_code,
             "category_id": category_id,
             "split_strategy": split_strategy,
@@ -513,7 +516,7 @@ impl RecurringExpenseScheduler {
         .entity_id(id)
         .metadata(serde_json::json!({
             "bill_id": bill_id,
-            "amount": amount,
+            "amount": amount.to_string(),
             "scheduled_for": next_run,
             "executed_at": Utc::now(),
             "next_run": new_next_run,
