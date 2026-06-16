@@ -251,7 +251,7 @@ async fn main() -> anyhow::Result<()> {
     let ws_manager = api::WsManager::new(config.redis_url.clone());
     tracing::info!("WebSocket manager initialized");
 
-    let app_state = api::AppState::new(pool, config.clone(), cache, ws_manager);
+    let app_state = api::AppState::new(pool, config.clone(), cache, ws_manager)?;
     tracing::info!(
         "HTTP client initialized with {}s timeout",
         config.http_timeout_seconds
@@ -288,7 +288,13 @@ async fn main() -> anyhow::Result<()> {
         ];
 
         if origins.is_empty() {
-            tracing::warn!("No valid CORS origins configured, allowing all origins (not recommended for production)");
+            if config::is_production_environment() {
+                anyhow::bail!("CORS_ORIGINS must contain at least one valid origin in production");
+            }
+
+            tracing::warn!(
+                "No valid CORS origins configured; allowing all origins for local development"
+            );
             CorsLayer::new()
                 .allow_origin(Any)
                 .allow_methods(Any)
@@ -335,14 +341,20 @@ async fn main() -> anyhow::Result<()> {
     );
 
     // Spawn recurring expense scheduler
+    let scheduler_policy = scheduler::RecurringExpenseSchedulerPolicy::new(
+        config.recurring_expense_scheduler_interval_seconds,
+        config.recurring_expense_scheduler_jitter_percent,
+    );
     let scheduler = scheduler::RecurringExpenseScheduler::new(
         app_state.pool.clone(),
-        config.recurring_expense_scheduler_interval_seconds,
+        app_state.http_client.clone(),
+        scheduler_policy,
     );
     scheduler.spawn();
     tracing::info!(
-        "Recurring expense scheduler initialized (interval: {}s)",
-        config.recurring_expense_scheduler_interval_seconds
+        "Recurring expense scheduler initialized (interval: {}s, jitter: {}%)",
+        config.recurring_expense_scheduler_interval_seconds,
+        config.recurring_expense_scheduler_jitter_percent
     );
 
     // Serve static files (frontend) - fallback to index.html for SPA routing

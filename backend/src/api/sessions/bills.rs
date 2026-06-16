@@ -1,12 +1,14 @@
 use axum::extract::{Path, Query, State};
 use axum::Json;
-use rust_decimal::{Decimal, RoundingStrategy};
-use serde::Deserialize;
+use rust_decimal::Decimal;
 use uuid::Uuid;
 use validator::{Validate, ValidationErrors};
 
+use super::bill_currency::{convert_amount, convert_payers, convert_split_details};
+use super::bill_events::{publish_bill_deleted, publish_bill_updated};
+use super::bill_requests::{CreateBillRequest, UpdateBillRequest};
+use crate::api::feature_flags::require_feature_enabled;
 use crate::api::response::{created, ok, ApiResponse};
-use crate::api::ws::WsEvent;
 use crate::api::AppState;
 use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
@@ -15,47 +17,8 @@ use crate::repository::session_repo::SessionRepository;
 use crate::utils::forex::{normalize_currency, resolve_exchange_rate};
 use crate::utils::pagination::{PaginatedResponse, PaginationParams};
 
-use super::{BillDetailResponse, BillResponse, PayerInput, SplitDetailInput};
-
-#[derive(Deserialize, Validate)]
-pub struct CreateBillRequest {
-    #[validate(length(
-        min = 1,
-        max = 500,
-        message = "Description must be between 1 and 500 characters"
-    ))]
-    pub description: String,
-    #[serde(with = "rust_decimal::serde::str")]
-    pub total_amount: Decimal,
-    pub currency_code: Option<String>,
-    #[serde(default, with = "rust_decimal::serde::str_option")]
-    pub exchange_rate: Option<Decimal>,
-    #[validate(length(min = 1, message = "At least one payer is required"))]
-    pub payers: Vec<PayerInput>,
-    #[serde(default = "default_split_strategy")]
-    pub split_strategy: String,
-    pub split_details: Option<Vec<SplitDetailInput>>,
-    pub category_id: Option<Uuid>,
-}
-
-fn default_split_strategy() -> String {
-    "EQUAL".to_string()
-}
-
-#[derive(Deserialize)]
-pub struct UpdateBillRequest {
-    pub description: Option<String>,
-    #[serde(default, with = "rust_decimal::serde::str_option")]
-    pub total_amount: Option<Decimal>,
-    pub currency_code: Option<String>,
-    #[serde(default, with = "rust_decimal::serde::str_option")]
-    pub exchange_rate: Option<Decimal>,
-    pub split_strategy: Option<String>,
-    pub payers: Option<Vec<PayerInput>>,
-    pub split_details: Option<Vec<SplitDetailInput>>,
-    pub category_id: Option<Uuid>,
-    pub receipt_url: Option<String>,
-}
+use super::authz::{require_active_session_participant, require_bill_mutator};
+use super::{BillDetailResponse, BillResponse};
 
 pub async fn list_bills(
     State(state): State<AppState>,
@@ -63,6 +26,8 @@ pub async fn list_bills(
     Path(session_id): Path<Uuid>,
     Query(pagination): Query<PaginationParams>,
 ) -> Result<Json<ApiResponse<PaginatedResponse<BillDetailResponse>>>, AppError> {
+    require_feature_enabled(&state, "sessions").await?;
+
     let repo = SessionRepository::new(state.pool.clone());
     let bill_repo = SessionBillRepository::new(state.pool.clone());
 
@@ -84,6 +49,8 @@ pub async fn create_bill(
     Path(session_id): Path<Uuid>,
     Json(payload): Json<CreateBillRequest>,
 ) -> Result<(axum::http::StatusCode, Json<ApiResponse<BillResponse>>), AppError> {
+    require_feature_enabled(&state, "sessions").await?;
+
     // Validate input
     let payload_inner: &CreateBillRequest = &payload;
     payload_inner
@@ -104,8 +71,7 @@ pub async fn create_bill(
 
     let repo = SessionRepository::new(state.pool.clone());
 
-    repo.verify_participant(session_id, auth_user.user_id)
-        .await?;
+    require_active_session_participant(&state.pool, &auth_user, session_id).await?;
 
     let base_currency = normalize_currency(&repo.get_session_base_currency(session_id).await?)?;
     let currency_code = match payload.currency_code.as_deref() {
@@ -181,26 +147,7 @@ pub async fn create_bill(
         )
         .await?;
 
-    // Invalidate cache (total_amount changed)
-    state.cache.invalidate_session(session_id).await;
-
-    // Broadcast WebSocket event
-    state
-        .ws_manager
-        .broadcast_to_session(
-            session_id,
-            WsEvent::BillUpdated {
-                session_id,
-                bill_id: bill.id,
-            },
-        )
-        .await;
-
-    // Debts are recalculated when bill is created
-    state
-        .ws_manager
-        .broadcast_to_session(session_id, WsEvent::DebtsRecalculated { session_id })
-        .await;
+    publish_bill_updated(&state, session_id, bill.id).await;
 
     // Create Activity
     let feed_repo = crate::repository::feed_repo::FeedRepository::new(state.pool.clone());
@@ -228,27 +175,11 @@ pub async fn update_bill(
     Path((session_id, bill_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<UpdateBillRequest>,
 ) -> Result<Json<ApiResponse<BillResponse>>, AppError> {
+    require_feature_enabled(&state, "sessions").await?;
+
     let repo = SessionRepository::new(state.pool.clone());
 
-    // Verify user is participant
-    repo.verify_participant(session_id, auth_user.user_id)
-        .await?;
-
-    // Check if bill exists and user is the creator
-    let bill_creator: Option<(Uuid,)> =
-        sqlx::query_as("SELECT created_by FROM bills WHERE id = $1 AND session_id = $2")
-            .bind(bill_id)
-            .bind(session_id)
-            .fetch_optional(&state.pool)
-            .await?;
-
-    let (creator_id,) = bill_creator.ok_or(AppError::BillNotFound { bill_id })?;
-
-    if creator_id != auth_user.user_id {
-        return Err(AppError::Forbidden {
-            message: "Chỉ người tạo hóa đơn mới có thể sửa".to_string(),
-        });
-    }
+    require_bill_mutator(&state.pool, &auth_user, session_id, bill_id).await?;
 
     let base_currency = normalize_currency(&repo.get_session_base_currency(session_id).await?)?;
 
@@ -410,26 +341,7 @@ pub async fn update_bill(
         )
         .await?;
 
-    // Invalidate cache (bill amounts may have changed)
-    state.cache.invalidate_session(session_id).await;
-
-    // Broadcast WebSocket event
-    state
-        .ws_manager
-        .broadcast_to_session(
-            session_id,
-            WsEvent::BillUpdated {
-                session_id,
-                bill_id,
-            },
-        )
-        .await;
-
-    // Debts are recalculated when bill is updated
-    state
-        .ws_manager
-        .broadcast_to_session(session_id, WsEvent::DebtsRecalculated { session_id })
-        .await;
+    publish_bill_updated(&state, session_id, bill_id).await;
 
     Ok(ok(updated_bill))
 }
@@ -439,139 +351,16 @@ pub async fn delete_bill(
     auth_user: AuthUser,
     Path((session_id, bill_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<ApiResponse<()>>, AppError> {
+    require_feature_enabled(&state, "sessions").await?;
+
     let repo = SessionRepository::new(state.pool.clone());
 
-    // Verify user is participant
-    repo.verify_participant(session_id, auth_user.user_id)
-        .await?;
-
-    // Check if bill exists and user is the creator
-    let bill_creator: Option<(Uuid,)> =
-        sqlx::query_as("SELECT created_by FROM bills WHERE id = $1 AND session_id = $2")
-            .bind(bill_id)
-            .bind(session_id)
-            .fetch_optional(&state.pool)
-            .await?;
-
-    let (creator_id,) = bill_creator.ok_or(AppError::BillNotFound { bill_id })?;
-
-    if creator_id != auth_user.user_id {
-        return Err(AppError::Forbidden {
-            message: "Chỉ người tạo hóa đơn mới có thể xóa".to_string(),
-        });
-    }
+    require_bill_mutator(&state.pool, &auth_user, session_id, bill_id).await?;
 
     // Delete bill
     repo.delete_bill(bill_id, session_id).await?;
 
-    // Invalidate cache
-    state.cache.invalidate_session(session_id).await;
-
-    // Broadcast WebSocket events
-    state
-        .ws_manager
-        .broadcast_to_session(
-            session_id,
-            WsEvent::BillDeleted {
-                session_id,
-                bill_id,
-            },
-        )
-        .await;
-
-    // Debts are recalculated when bill is deleted
-    state
-        .ws_manager
-        .broadcast_to_session(session_id, WsEvent::DebtsRecalculated { session_id })
-        .await;
+    publish_bill_deleted(&state, session_id, bill_id).await;
 
     Ok(ok(()))
-}
-
-fn round_amount(amount: Decimal) -> Decimal {
-    amount.round_dp_with_strategy(2, RoundingStrategy::MidpointAwayFromZero)
-}
-
-fn convert_amount(amount: Decimal, rate: Decimal) -> Decimal {
-    round_amount(amount * rate)
-}
-
-fn convert_payers(
-    payers: &[PayerInput],
-    rate: Decimal,
-    total_original: Decimal,
-    total_converted: Decimal,
-) -> Vec<PayerInput> {
-    let mut converted: Vec<PayerInput> = payers
-        .iter()
-        .map(|payer| PayerInput {
-            participant_id: payer.participant_id,
-            amount: convert_amount(payer.amount, rate),
-        })
-        .collect();
-
-    if converted.is_empty() {
-        return converted;
-    }
-
-    let sum_original: Decimal = payers.iter().map(|p| p.amount).sum();
-    if sum_original != total_original {
-        return converted;
-    }
-
-    let sum_converted: Decimal = converted.iter().map(|p| p.amount).sum();
-    let remainder = total_converted - sum_converted;
-    if remainder == Decimal::ZERO {
-        return converted;
-    }
-
-    if let Some((target_idx, _)) = payers
-        .iter()
-        .enumerate()
-        .max_by(|(_, a), (_, b)| a.amount.cmp(&b.amount))
-    {
-        converted[target_idx].amount = round_amount(converted[target_idx].amount + remainder);
-    }
-
-    converted
-}
-
-fn convert_split_details(
-    details: &[SplitDetailInput],
-    rate: Decimal,
-    total_original: Decimal,
-    total_converted: Decimal,
-) -> Vec<SplitDetailInput> {
-    let mut converted: Vec<SplitDetailInput> = details
-        .iter()
-        .map(|detail| SplitDetailInput {
-            participant_id: detail.participant_id,
-            amount: convert_amount(detail.amount, rate),
-        })
-        .collect();
-
-    if converted.is_empty() {
-        return converted;
-    }
-
-    let sum_original: Decimal = details.iter().map(|d| d.amount).sum();
-    if sum_original != total_original {
-        return converted;
-    }
-
-    let sum_converted: Decimal = converted.iter().map(|d| d.amount).sum();
-    let remainder = total_converted - sum_converted;
-    if remainder == Decimal::ZERO {
-        return converted;
-    }
-
-    if let Some((target_idx, _)) = details
-        .iter()
-        .enumerate()
-        .max_by(|(_, a), (_, b)| a.amount.cmp(&b.amount))
-    {
-        converted[target_idx].amount = round_amount(converted[target_idx].amount + remainder);
-    }
-
-    converted
 }

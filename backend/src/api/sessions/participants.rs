@@ -6,6 +6,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 use validator::Validate;
 
+use crate::api::feature_flags::require_feature_enabled;
 use crate::api::response::{created, ok, ApiResponse};
 use crate::api::ws::WsEvent;
 use crate::api::AppState;
@@ -13,6 +14,7 @@ use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::repository::session_repo::SessionRepository;
 
+use super::authz::require_session_owner_or_admin;
 use super::ParticipantResponse;
 
 #[derive(Deserialize, Validate)]
@@ -51,9 +53,11 @@ pub async fn add_participant(
     ),
     AppError,
 > {
+    require_feature_enabled(&state, "sessions").await?;
+
     let repo = SessionRepository::new(state.pool.clone());
 
-    repo.verify_owner(session_id, auth_user.user_id).await?;
+    require_session_owner_or_admin(&state.pool, &auth_user, session_id).await?;
 
     if payload.user_id.is_none() && payload.guest_name.is_none() {
         return Err(AppError::Validation {
@@ -180,10 +184,11 @@ pub async fn update_participant(
     Path(params): Path<ParticipantPathParams>,
     Json(payload): Json<UpdateParticipantRequest>,
 ) -> Result<Json<ApiResponse<ParticipantResponse>>, AppError> {
+    require_feature_enabled(&state, "sessions").await?;
+
     let repo = SessionRepository::new(state.pool.clone());
 
-    // Verify user is session owner
-    repo.verify_owner(params.id, auth_user.user_id).await?;
+    require_session_owner_or_admin(&state.pool, &auth_user, params.id).await?;
 
     // Update participant (guest_name, default_weight, is_active)
     let participant = repo
@@ -220,10 +225,11 @@ pub async fn delete_participant(
     auth_user: AuthUser,
     Path(params): Path<ParticipantPathParams>,
 ) -> Result<Json<ApiResponse<()>>, AppError> {
+    require_feature_enabled(&state, "sessions").await?;
+
     let repo = SessionRepository::new(state.pool.clone());
 
-    // Verify user is session owner
-    repo.verify_owner(params.id, auth_user.user_id).await?;
+    require_session_owner_or_admin(&state.pool, &auth_user, params.id).await?;
 
     // Check if participant has any bills
     let has_bills: bool = sqlx::query_scalar(

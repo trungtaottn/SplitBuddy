@@ -1,7 +1,6 @@
 use crate::error::AppError;
 use serde::Serialize;
 use sqlx::PgPool;
-use std::env;
 use uuid::Uuid;
 use web_push::{
     ContentEncoding, IsahcWebPushClient, SubscriptionInfo, VapidSignatureBuilder, WebPushClient,
@@ -25,11 +24,17 @@ struct PushSubscriptionRow {
 
 pub struct PushService {
     pool: PgPool,
+    vapid_private_key: Option<String>,
+    vapid_subject: String,
 }
 
 impl PushService {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub fn new(pool: PgPool, vapid_private_key: Option<String>, vapid_subject: String) -> Self {
+        Self {
+            pool,
+            vapid_private_key,
+            vapid_subject,
+        }
     }
 
     /// Send a push notification to a specific user
@@ -70,14 +75,12 @@ impl PushService {
         })
         .map_err(|e| AppError::Internal(anyhow::anyhow!("Payload serialization error: {}", e)))?;
 
-        // 3. Get VAPID keys from env
-        let vapid_private_key = env::var("VAPID_PRIVATE_KEY").map_err(|_| {
-            AppError::Internal(anyhow::anyhow!("Missing VAPID_PRIVATE_KEY".to_string()))
-        })?;
-        // Public key is not needed for signing, only for frontend subscription.
-
-        let vapid_subject =
-            env::var("VAPID_SUBJECT").unwrap_or_else(|_| "mailto:admin@splitbuddy.com".to_string());
+        let vapid_private_key =
+            self.vapid_private_key
+                .as_deref()
+                .ok_or_else(|| AppError::FeatureDisabled {
+                    feature: "push_notifications".to_string(),
+                })?;
 
         // 4. Send to all subscriptions
         let mut success_count = 0;
@@ -99,7 +102,7 @@ impl PushService {
 
             // Sign with VAPID
             let mut sig_builder = VapidSignatureBuilder::from_base64(
-                &vapid_private_key,
+                vapid_private_key,
                 web_push::URL_SAFE_NO_PAD,
                 &subscription_info,
             )
@@ -110,7 +113,7 @@ impl PushService {
                 ))
             })?;
 
-            sig_builder.add_claim("sub", vapid_subject.clone());
+            sig_builder.add_claim("sub", self.vapid_subject.clone());
 
             let signature = sig_builder
                 .build()
