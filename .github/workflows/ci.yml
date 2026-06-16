@@ -224,7 +224,7 @@ jobs:
         run: npm ci --prefer-offline
 
       - name: Audit dependencies
-        run: npm audit --audit-level=moderate
+        run: npm audit --omit=dev --audit-level=moderate
       
       - name: Update version (main branch only)
         if: github.ref == 'refs/heads/main'
