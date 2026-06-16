@@ -1,7 +1,7 @@
 # SplitBuddy Project Roadmap
 
-**Last Updated:** 2026-06-01  
-**Status:** Current  
+**Last Updated:** 2026-06-04
+**Status:** Current
 **Principle:** stabilize money and maintainability before feature expansion.
 
 ## Phase 0: Stabilization
@@ -11,10 +11,11 @@ Target: 1-2 weeks.
 | Work | Priority | Done When |
 |---|---:|---|
 | Recurring `f64` -> Decimal | P0 | Done: domain, repo, API, scheduler, DTOs, snapshots, tests use Decimal/string money. |
-| Frontend money typing | P0 | Done for core paths: no `any`/`parseFloat` in bill/debt/recurring optimistic paths. |
-| Production unwrap/expect removal | P0 | Done for target paths: scheduler/startup/push/recurring date paths return errors or log-and-skip safely. |
+| Frontend money typing | P0 | Done for core paths: no `any`/`parseFloat` in bill/debt/group-debt/recurring plus dashboard/import/export/notification/feed/WebSocket/music/profile/sound/wrapped/greeting/chat/KingsCup/counter/offline/tooltip/install-prompt/error-boundary/onboarding/smart-suggestions/page-transition/swipe-action/button/toast/auth/feature-flag/theme/mood guarded paths; frontend lint and dependency audit are clean and enforced in local/CI gates; `BillInput` edit initializer keeps currency and weighted strategy stable; offline indicator cleanup removed duplicate status hook and dead skip-link helper. |
+| Shared form validation | P0 | Done: numeric rules reject partial strings like `12abc`, accept finite trimmed numeric strings, are covered by Vitest, and are included in local/CI money guards. |
+| Production unwrap/expect removal | P0 | Done for target paths: scheduler/startup config/AppState/push/recurring date/persona cutoff/AI slogan paths return errors, log-and-skip safely, or use safe fallback; backend API/config/main panic tokens are blocked by local and CI guardrails. |
 | Manual money QA | P0 | Uneven split, fractional values, recurring run, debt netting verified. |
-| CI policy prep | P0 | Done: type-check is enforced and money guard blocks recurring floats plus core frontend `any`/`parseFloat`. |
+| CI policy prep | P0 | Done: type-check, zero-warning frontend lint, frontend dependency audit, money guard, and backend startup/API panic guard are enforced. |
 
 Exit gate:
 
@@ -38,17 +39,18 @@ Target: 2-4 weeks after Phase 0.
 
 | Work | Priority | Done When |
 |---|---:|---|
-| Modularize `session_repo.rs` | P1 | Bills, debts, participants, export/import, listing live in separate repository modules. |
-| Modularize session API | P1 | Handlers split by route family; `mod.rs` only wires routes/shared DTOs. |
-| Decouple scheduler | P1 | Scheduler uses domain/repo contracts, injected FX/config, metrics, jitter, error isolation. |
-| Authz pass | P1 | Mutating endpoints and admin flows have explicit ownership/role checks. |
-| WebSocket hardening | P1 | Reconnect/ticket expiry semantics and Redis paths verified. |
-| Upload lifecycle | P1 | Ownership-aware static access/deletion policy decided and implemented if needed. |
+| Modularize `session_repo.rs` | P1 | Done: bills, debts, participants, lifecycle, minimize-debts, and listing/detail live in separate repository modules behind a facade. |
+| Modularize session API | P1 | Done: handlers split by route family; `mod.rs` only wires routes/shared DTOs. |
+| Decouple scheduler | P1 | Done: uses repository contracts, resolves FX through the shared FX utility, creates bill/debt/snapshot/next-run atomically, has config-injected jitter, Prometheus run metrics, and per-item error isolation. |
+| Authz pass | P1 | Done for session/bill/participant/debt/recurring/import money-affecting mutations; seeded backend feature flags now gate matching session/debt/group/game/AI/notification APIs. |
+| WebSocket hardening | P1 | Done for server-side session subscribe/activity authz and typed subscription rejection; Redis scale observation remains future work. |
+| Upload lifecycle | P1 | Done: public static reads retained for current image rendering; app-uploaded avatar/receipt/bank QR files have owner/admin delete with path-safe filename validation. |
 
 Exit gate:
 - Largest touched modules below practical file-size threshold.
 - No new money-path `any`, `number`, `f64`, `parseFloat`.
 - Scheduler failure of one recurring item cannot stop the loop.
+- `make check-foundation` passes authz/WS targeted tests and session split file-size guard.
 
 ## Phase 2: Product Completion
 
@@ -69,7 +71,7 @@ Target: after Phase 0/1.
 Target: after product flows are stable.
 
 - Money newtype (`Amount`) instead of raw Decimal/string scattered across layers.
-- Distributed scheduler lock for multi-instance deployment.
+- Observe distributed scheduler lock behavior under multi-instance deployment.
 - Per-user and per-route rate limiting.
 - Observability for scheduler, cache hit rate, WS fanout, API errors, money mutation latency.
 - Upload malware scanning if receipts/QR become high-risk.
@@ -81,7 +83,7 @@ Target: after product flows are stable.
 1. **Money integrity:** Decimal/string contracts, no float math, typed optimistic updates, property/edge tests.
 2. **Core flow reliability:** sessions, bills, debts, settlement, recurring, WebSocket invalidation.
 3. **Modular maintainability:** split god objects before expanding feature surface.
-4. **Security/ops hardening:** authz, CORS, VAPID, uploads, feature-flag enforcement, scheduler resilience.
+4. **Security/ops hardening:** authz, uploads, scheduler resilience, targeted feature-flag enforcement for new gated surfaces.
 5. **Product depth after stability:** payments, feed, personas, analytics, games, PWA polish.
 
 ## Do Not Start Yet
