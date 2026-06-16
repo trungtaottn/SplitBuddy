@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                bp.bill_id,\n                bp.participant_id,\n                COALESCE(u.full_name, sp.guest_name, 'Unknown') as name,\n                bp.amount_paid\n            FROM bill_payers bp\n            JOIN session_participants sp ON bp.participant_id = sp.id\n            LEFT JOIN users u ON sp.user_id = u.id\n            WHERE bp.bill_id = ANY($1)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "bill_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "participant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "amount_paid",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "4f858b829521ebe0d5f4e1af27d4442c9710d8b129b4ee2be554205718dd9d53"
+}

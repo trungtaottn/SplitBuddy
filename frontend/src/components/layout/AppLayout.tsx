@@ -1,12 +1,13 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
-import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
+import { useAuth } from '@/contexts/use-auth'
+import { useFeatureFlags } from '@/contexts/use-feature-flags'
 import { LogOut, User, Wallet, Home, Users, Sparkles, TrendingUp, Wifi, WifiOff } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MusicPlayer } from '@/components/ui/MusicPlayer'
 import { AnimatedOutlet } from '@/components/PageTransition'
 import { NotificationBell } from '@/components/NotificationBell'
-import { useWebSocket } from '@/contexts/WebSocketContext'
+import { useWebSocket } from '@/contexts/use-websocket'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { ClosureNoticeBanner } from '@/components/ClosureNoticeBanner'
 
@@ -61,7 +62,7 @@ export default function AppLayout() {
 
   const isActive = (path: string) => location.pathname === path
 
-  const NavLink = ({ to, label, icon: _Icon }: { to: string; label: string; icon: any }) => (
+  const NavLink = ({ to, label, icon: Icon }: { to: string; label: string; icon: LucideIcon }) => (
 
     <Link 
       to={to} 
@@ -69,6 +70,7 @@ export default function AppLayout() {
         isActive(to) ? 'text-white' : 'text-muted-foreground hover:text-white'
       }`}
     >
+      <Icon className="h-4 w-4" strokeWidth={1.5} />
       <span>{label}</span>
       {isActive(to) && (
         <span className="absolute -bottom-1 left-0 w-full h-[2px] bg-gradient-to-r from-orange-500 to-red-500" />

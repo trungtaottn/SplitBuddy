@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Trash2, MessageSquarePlus, Target, Hand, Flame } from 'lucide-react'
-import { toast } from '@/components/ui/toaster'
+import { toast } from '@/components/ui/toast'
 import type { ApiResponse, CustomQuestion, CreateCustomQuestion } from '@/types/api'
 
 const GAME_OPTIONS = [

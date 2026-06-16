@@ -1,4 +1,5 @@
 use chrono::{DateTime, NaiveDate, Utc};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::types::Uuid;
 use std::collections::HashMap;
@@ -32,7 +33,7 @@ pub struct RecurringExpenseSnapshot {
     /// Participant ID -> weight mapping (for WEIGHTED)
     pub participant_weights: Option<HashMap<Uuid, i32>>,
     /// Participant ID -> custom amount (for CUSTOM)
-    pub custom_amounts: Option<HashMap<Uuid, f64>>,
+    pub custom_amounts: Option<HashMap<Uuid, String>>,
     /// List of active participant IDs at execution time
     pub active_participants: Vec<Uuid>,
     /// Session state snapshot
@@ -47,7 +48,7 @@ pub struct RecurringExpense {
     pub session_id: Uuid,
     pub name: String,
     pub description: Option<String>,
-    pub amount: f64,
+    pub amount: Decimal,
     pub currency_code: String,
     pub category_id: Option<Uuid>,
     pub split_strategy: String,
@@ -75,12 +76,10 @@ impl RecurringExpense {
     #[allow(dead_code)]
     pub fn is_expired(&self) -> bool {
         if let Some(end_date) = self.end_date {
-            let end_datetime = end_date
+            end_date
                 .and_hms_opt(23, 59, 59)
-                .unwrap()
-                .and_local_timezone(Utc)
-                .unwrap();
-            Utc::now() > end_datetime
+                .map(|end_datetime| Utc::now().naive_utc() > end_datetime)
+                .unwrap_or(false)
         } else {
             false
         }
@@ -89,7 +88,7 @@ impl RecurringExpense {
     /// Validate the recurring expense configuration
     #[allow(dead_code)]
     pub fn validate(&self) -> Result<(), String> {
-        if self.amount <= 0.0 {
+        if self.amount <= Decimal::ZERO {
             return Err("Amount must be positive".to_string());
         }
         if self.interval_count <= 0 {
@@ -199,44 +198,17 @@ mod tests {
     use crate::domain::recurring_expense::scheduler::calculate_next_run;
     use chrono::TimeZone;
 
-    #[test]
-    fn test_should_run_now() {
-        let mut expense = RecurringExpense {
-            id: Uuid::new_v4(),
-            session_id: Uuid::new_v4(),
-            name: "Test".to_string(),
-            description: None,
-            amount: 100.0,
-            currency_code: "VND".to_string(),
-            category_id: None,
-            split_strategy: "EQUAL".to_string(),
-            frequency: RecurringFrequency::Daily,
-            interval_count: 1,
-            start_date: NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
-            end_date: None,
-            next_run: Utc::now() - chrono::Duration::hours(1),
-            last_run: None,
-            timezone: "UTC".to_string(),
-            is_active: true,
-            created_by: Uuid::new_v4(),
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
-        };
-
-        assert!(expense.should_run_now());
-
-        expense.is_active = false;
-        assert!(!expense.should_run_now());
+    fn decimal(value: &str) -> Decimal {
+        value.parse().expect("valid decimal literal")
     }
 
-    #[test]
-    fn test_validate() {
-        let expense = RecurringExpense {
+    fn sample_expense(amount: Decimal) -> RecurringExpense {
+        RecurringExpense {
             id: Uuid::new_v4(),
             session_id: Uuid::new_v4(),
             name: "Test".to_string(),
             description: None,
-            amount: -100.0,
+            amount,
             currency_code: "VND".to_string(),
             category_id: None,
             split_strategy: "EQUAL".to_string(),
@@ -251,9 +223,34 @@ mod tests {
             created_by: Uuid::new_v4(),
             created_at: Utc::now(),
             updated_at: Utc::now(),
-        };
+        }
+    }
+
+    #[test]
+    fn test_should_run_now() {
+        let mut expense = sample_expense(decimal("100"));
+        expense.next_run = Utc::now() - chrono::Duration::hours(1);
+
+        assert!(expense.should_run_now());
+
+        expense.is_active = false;
+        assert!(!expense.should_run_now());
+    }
+
+    #[test]
+    fn test_validate() {
+        let expense = sample_expense(decimal("-100"));
 
         assert!(expense.validate().is_err());
+    }
+
+    #[test]
+    fn test_validate_fractional_decimal_amounts() {
+        for amount in ["0.01", "0.10", "123.45"] {
+            let expense = sample_expense(decimal(amount));
+            assert!(expense.validate().is_ok());
+            assert_eq!(expense.amount.to_string(), amount);
+        }
     }
 
     #[test]

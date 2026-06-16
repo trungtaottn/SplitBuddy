@@ -9,24 +9,29 @@ import {
   ChevronDown, ChevronUp, Copy, TrendingUp,
   ArrowUpRight, ArrowDownRight, MessageSquare, QrCode
 } from 'lucide-react'
-import FunTooltip, { FUN_MESSAGES } from '@/components/FunTooltip'
+import FunTooltip from '@/components/FunTooltip'
+import { FUN_MESSAGES } from '@/components/fun-tooltip-messages'
 import { formatCurrency } from '@/utils/formatCurrency'
-import { toast } from '@/components/ui/toaster'
+import { absMoney, addMoney, compareMoney, subtractMoney, sumMoney } from '@/utils/money'
+import { toast } from '@/components/ui/toast'
 import { showError } from '@/utils/errorHandler'
 import { cn } from '@/lib/utils'
 import { DebtCardSkeleton, StatsSkeleton } from '@/components/ui/skeleton'
-import { staggerContainer, staggerItem } from '@/components/PageTransition'
+import { staggerContainer, staggerItem } from '@/components/page-transition-animations'
 import { QRCodeGenerator } from '@/components/QRCodeGenerator'
 import { ResponsiveModal } from '@/components/ui/responsive-modal'
-import type { DebtSummary, ApiResponse, SessionDebt } from '@/types/api'
+import type { DebtItem, DebtSummary, ApiResponse, SessionDebt } from '@/types/api'
 
 type TabType = 'summary' | 'sessions'
 
 interface NettedDebt {
-  counterpartId: string
+  counterpartKey: string
   counterpartName: string
-  netAmount: number // positive = I owe them, negative = they owe me
+  netAmount: string // positive = I owe them, negative = they owe me
 }
+
+const sumDebtAmounts = (debts: DebtItem[]) => sumMoney(debts.map(debt => debt.amount))
+const getCounterpartKey = (debt: DebtItem) => debt.counterpart_user_id ?? debt.counterpart_id
 
 // DebtCard Component - Modern Dark Luxury style
 function DebtCard({
@@ -239,35 +244,37 @@ export default function DebtsPage() {
   const nettedDebts = useMemo<NettedDebt[]>(() => {
     if (!debts) return []
     
-    const netMap = new Map<string, { name: string; amount: number }>()
+    const netMap = new Map<string, { name: string; amount: string }>()
     
     // I owe them (+)
     debts.i_owe.forEach(debt => {
-      const current = netMap.get(debt.counterpart_id) || { name: debt.counterpart_name, amount: 0 }
-      current.amount += parseFloat(debt.amount)
-      netMap.set(debt.counterpart_id, current)
+      const counterpartKey = getCounterpartKey(debt)
+      const current = netMap.get(counterpartKey) || { name: debt.counterpart_name, amount: '0' }
+      current.amount = addMoney(current.amount, debt.amount)
+      netMap.set(counterpartKey, current)
     })
     
     // They owe me (-)
     debts.owed_to_me.forEach(debt => {
-      const current = netMap.get(debt.counterpart_id) || { name: debt.counterpart_name, amount: 0 }
-      current.amount -= parseFloat(debt.amount)
-      netMap.set(debt.counterpart_id, current)
+      const counterpartKey = getCounterpartKey(debt)
+      const current = netMap.get(counterpartKey) || { name: debt.counterpart_name, amount: '0' }
+      current.amount = subtractMoney(current.amount, debt.amount)
+      netMap.set(counterpartKey, current)
     })
     
     // Convert to array and filter out zero balances
     return Array.from(netMap.entries())
       .map(([id, data]) => ({
-        counterpartId: id,
+        counterpartKey: id,
         counterpartName: data.name,
         netAmount: data.amount
       }))
-      .filter(d => Math.abs(d.netAmount) > 0.01)
-      .sort((a, b) => Math.abs(b.netAmount) - Math.abs(a.netAmount))
+      .filter(d => compareMoney(absMoney(d.netAmount), '0.01') > 0)
+      .sort((a, b) => compareMoney(absMoney(b.netAmount), absMoney(a.netAmount)))
   }, [debts])
 
-  const totalNetIOwe = nettedDebts.filter(d => d.netAmount > 0).reduce((sum, d) => sum + d.netAmount, 0)
-  const totalNetOwedToMe = nettedDebts.filter(d => d.netAmount < 0).reduce((sum, d) => sum + Math.abs(d.netAmount), 0)
+  const totalNetIOwe = sumMoney(nettedDebts.filter(d => compareMoney(d.netAmount, '0') > 0).map(d => d.netAmount))
+  const totalNetOwedToMe = sumMoney(nettedDebts.filter(d => compareMoney(d.netAmount, '0') < 0).map(d => absMoney(d.netAmount)))
 
   const requestSettle = useMutation({
     mutationFn: async (debtId: string) => {
@@ -380,7 +387,7 @@ export default function DebtsPage() {
           ) : (
             sessionDebts?.map((session) => {
               // Calculate session totals
-              const totalPaid = session.participants.reduce((sum, p) => sum + parseFloat(p.total_paid), 0)
+              const totalPaid = sumMoney(session.participants.map((p) => p.total_paid))
               
               return (
                 <FunTooltip key={session.session_id} messages={FUN_MESSAGES.sessionCard}>
@@ -413,9 +420,8 @@ export default function DebtsPage() {
                       {/* Mobile-friendly card grid */}
                       <div className="grid gap-2 sm:grid-cols-2">
                         {session.participants.map((p) => {
-                          const balance = parseFloat(p.balance)
-                          const isPositive = balance > 0
-                          const isNegative = balance < 0
+                          const isPositive = compareMoney(p.balance, '0') > 0
+                          const isNegative = compareMoney(p.balance, '0') < 0
                           
                           return (
                             <div 
@@ -514,79 +520,82 @@ export default function DebtsPage() {
                   {/* Optimized debts list with visual flow */}
                   <div className="space-y-3">
                     {nettedDebts.map((debt, index) => (
-                      <div
-                        key={debt.counterpartId}
-                        className={cn(
-                          "flex items-center justify-between p-4 rounded-xl border transition-all hover:bg-zinc-800/80 animate-in slide-in-from-bottom-2",
-                          debt.netAmount > 0 
-                            ? "bg-red-500/5 border-red-500/20" 
-                            : "bg-emerald-500/5 border-emerald-500/20"
-                        )}
-                        style={{ animationDelay: `${index * 50}ms` }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm font-body ring-2 ring-offset-2 ring-offset-[#0E0E0E]",
-                            debt.netAmount > 0 
-                              ? "bg-gradient-to-br from-red-500 to-red-700 text-white ring-red-500/20" 
-                              : "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white ring-emerald-500/20"
-                          )}>
-                            {debt.counterpartName.split(' ').pop()?.charAt(0)?.toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-bold text-sm font-heading text-white">{debt.counterpartName}</p>
-                            <p className="text-xs text-zinc-400 font-body mt-0.5">
-                              {debt.netAmount > 0 ? (
-                                <span className="flex items-center gap-1.5">
-                                  <ArrowUpRight className="h-3.5 w-3.5 text-red-500" />
-                                  Bạn cần trả
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-1.5">
-                                  <ArrowDownRight className="h-3.5 w-3.5 text-emerald-500" />
-                                  Họ cần trả bạn
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="text-right">
-                          <span className={cn(
-                            "text-lg font-bold font-mono tracking-tight block",
-                            debt.netAmount > 0 ? "text-red-500" : "text-emerald-500"
-                          )}>
-                            {formatCurrency(Math.abs(debt.netAmount))}
-                          </span>
-                          
-                          <div className="mt-2 flex justify-end">
-                            {/* Settlement action for netted debts */}
-                            {debt.netAmount > 0 ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-[10px] rounded-full px-3 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 hover:border-red-500/50"
-                                onClick={() => {
-                                  const relatedDebts = debts?.i_owe.filter(
-                                    d => d.counterpart_id === debt.counterpartId && d.status === 'pending'
-                                  ) || []
-                                  relatedDebts.forEach(d => requestSettle.mutate(d.id))
-                                }}
-                                disabled={requestSettle.isPending}
-                              >
-                                <Check className="h-3 w-3 mr-1" />
-                                Đã trả
-                              </Button>
-                            ) : (
-                              (() => {
-                                const relatedDebts = debts?.owed_to_me.filter(
-                                  d => d.counterpart_id === debt.counterpartId
-                                ) || []
-                                const pendingDebts = relatedDebts.filter(d => d.status === 'pending')
-                                const waitingDebts = relatedDebts.filter(d => d.status === 'settlement_requested')
-                                const guestDebts = pendingDebts.filter(d => d.is_guest)
-                                
-                                return (
+                      (() => {
+                        const oweDebts = debts?.i_owe.filter(d => getCounterpartKey(d) === debt.counterpartKey) || []
+                        const owedDebts = debts?.owed_to_me.filter(d => getCounterpartKey(d) === debt.counterpartKey) || []
+                        const isNetOwe = compareMoney(debt.netAmount, '0') > 0
+                        const pendingOweDebts = oweDebts.filter(d => d.status === 'pending')
+                        const pendingOweTotal = sumDebtAmounts(pendingOweDebts)
+                        const canRequestExactNet = isNetOwe && owedDebts.length === 0 && compareMoney(pendingOweTotal, debt.netAmount) === 0
+                        const pendingOwedDebts = owedDebts.filter(d => d.status === 'pending')
+                        const waitingDebts = owedDebts.filter(d => d.status === 'settlement_requested')
+                        const guestDebts = pendingOwedDebts.filter(d => d.is_guest)
+                        const owedTotal = sumDebtAmounts(owedDebts)
+                        const canSettleExactNet = !isNetOwe && oweDebts.length === 0 && compareMoney(owedTotal, absMoney(debt.netAmount)) === 0
+
+                        return (
+                          <div
+                            key={debt.counterpartKey}
+                            className={cn(
+                              "flex items-center justify-between p-4 rounded-xl border transition-all hover:bg-zinc-800/80 animate-in slide-in-from-bottom-2",
+                              isNetOwe
+                                ? "bg-red-500/5 border-red-500/20"
+                                : "bg-emerald-500/5 border-emerald-500/20"
+                            )}
+                            style={{ animationDelay: `${index * 50}ms` }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={cn(
+                                "w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm font-body ring-2 ring-offset-2 ring-offset-[#0E0E0E]",
+                                isNetOwe
+                                  ? "bg-gradient-to-br from-red-500 to-red-700 text-white ring-red-500/20"
+                                  : "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white ring-emerald-500/20"
+                              )}>
+                                {debt.counterpartName.split(' ').pop()?.charAt(0)?.toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-bold text-sm font-heading text-white">{debt.counterpartName}</p>
+                                <p className="text-xs text-zinc-400 font-body mt-0.5">
+                                  {isNetOwe ? (
+                                    <span className="flex items-center gap-1.5">
+                                      <ArrowUpRight className="h-3.5 w-3.5 text-red-500" />
+                                      Bạn cần trả
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-1.5">
+                                      <ArrowDownRight className="h-3.5 w-3.5 text-emerald-500" />
+                                      Họ cần trả bạn
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="text-right">
+                              <span className={cn(
+                                "text-lg font-bold font-mono tracking-tight block",
+                                isNetOwe ? "text-red-500" : "text-emerald-500"
+                              )}>
+                                {formatCurrency(absMoney(debt.netAmount))}
+                              </span>
+
+                              <div className="mt-2 flex justify-end">
+                                {isNetOwe ? (
+                                  canRequestExactNet && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-[10px] rounded-full px-3 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 hover:border-red-500/50"
+                                      onClick={() => {
+                                        pendingOweDebts.forEach(d => requestSettle.mutate(d.id))
+                                      }}
+                                      disabled={requestSettle.isPending}
+                                    >
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Đã trả
+                                    </Button>
+                                  )
+                                ) : (
                                   <div className="flex items-center gap-2">
                                     <Button
                                       size="sm"
@@ -595,7 +604,7 @@ export default function DebtsPage() {
                                       onClick={() => {
                                         setQrModal({
                                           open: true,
-                                          amount: String(Math.round(Math.abs(debt.netAmount))),
+                                          amount: absMoney(debt.netAmount, 'VND'),
                                           note: `Thanh toan no - ${debt.counterpartName}`,
                                         })
                                       }}
@@ -603,7 +612,7 @@ export default function DebtsPage() {
                                       <QrCode className="h-3 w-3 mr-1" />
                                       VietQR
                                     </Button>
-                                    {waitingDebts.length > 0 && (
+                                    {canSettleExactNet && waitingDebts.length > 0 && (
                                       <Button
                                         size="sm"
                                         variant="outline"
@@ -617,7 +626,7 @@ export default function DebtsPage() {
                                         Xác nhận ({waitingDebts.length})
                                       </Button>
                                     )}
-                                    {guestDebts.length > 0 && (
+                                    {canSettleExactNet && guestDebts.length > 0 && (
                                       <Button
                                         size="sm"
                                         variant="outline"
@@ -632,12 +641,12 @@ export default function DebtsPage() {
                                       </Button>
                                     )}
                                   </div>
-                                )
-                              })()
-                            )}
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        )
+                      })()
                     ))}
                   </div>
                   

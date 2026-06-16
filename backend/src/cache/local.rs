@@ -8,7 +8,7 @@ use crate::api::sessions::ParticipantResponse;
 use crate::domain::session::SessionStatus;
 
 /// Cached feature flag data
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct CachedFeatureFlag {
     pub id: Uuid,
     pub key: String,

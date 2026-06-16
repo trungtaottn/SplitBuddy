@@ -1,4 +1,10 @@
-import { DebtStats } from '@/types/api';
+import type {
+  AddParticipantDto,
+  CreateBillDto,
+  DebtStats,
+  UpdateBillDto,
+  UpdatePersonaRequest,
+} from '@/types/api'
 import api from './axios'
 
 export const apiWrapper = {
@@ -10,8 +16,8 @@ export const apiWrapper = {
     inputs: {
         getCategories: () => api.get('/categories').then((res) => res.data.data),
         listBills: (sessionId: string) => api.get(`/sessions/${sessionId}/bills`).then((res) => res.data.data),
-        createBill: (sessionId: string, data: any) => api.post(`/sessions/${sessionId}/bills`, data).then((res) => res.data.data),
-        updateBill: (sessionId: string, billId: string, data: any) => api.put(`/sessions/${sessionId}/bills/${billId}`, data).then((res) => res.data.data),
+        createBill: (sessionId: string, data: CreateBillDto) => api.post(`/sessions/${sessionId}/bills`, data).then((res) => res.data.data),
+        updateBill: (sessionId: string, billId: string, data: Omit<UpdateBillDto, 'billId'>) => api.put(`/sessions/${sessionId}/bills/${billId}`, data).then((res) => res.data.data),
         deleteBill: (sessionId: string, billId: string) => api.delete(`/sessions/${sessionId}/bills/${billId}`).then((res) => res.data.data),
     },
     recurring: {
@@ -51,8 +57,8 @@ export const apiWrapper = {
     deleteSession: (id: string) => api.delete(`/sessions/${id}`).then((res) => res.data.data),
     bulkArchiveSessions: (sessionIds: string[]) =>
         api.post(`/sessions/bulk-archive`, { session_ids: sessionIds }).then((res) => res.data.data),
-    addParticipant: (id: string, data: any) => api.post(`/sessions/${id}/participants`, data).then((res) => res.data.data),
-    updateParticipant: (id: string, pid: string, data: any) => api.put(`/sessions/${id}/participants/${pid}`, data).then((res) => res.data.data),
+    addParticipant: (id: string, data: AddParticipantDto) => api.post(`/sessions/${id}/participants`, data).then((res) => res.data.data),
+    updateParticipant: (id: string, pid: string, data: Partial<AddParticipantDto & { default_weight: number; is_active: boolean }>) => api.put(`/sessions/${id}/participants/${pid}`, data).then((res) => res.data.data),
     deleteParticipant: (id: string, pid: string) => api.delete(`/sessions/${id}/participants/${pid}`).then((res) => res.data.data),
     fx: {
         rateHistory: (base: string, quote: string, limit = 7) =>
@@ -67,7 +73,7 @@ export const apiWrapper = {
     },
     personas: {
         getMe: () => api.get('/personas/me').then((res) => res.data.data),
-        updateMe: (data: any) => api.put('/personas/me', data).then((res) => res.data.data),
+        updateMe: (data: UpdatePersonaRequest) => api.put('/personas/me', data).then((res) => res.data.data),
         getAchievements: () => api.get('/personas/achievements').then((res) => res.data.data),
         getMyAchievements: () => api.get('/personas/achievements/me').then((res) => res.data.data),
         checkAchievements: () => api.post('/personas/achievements/check').then((res) => res.data.data),

@@ -1,6 +1,6 @@
 use utoipa::OpenApi;
 
-use crate::api::auth::{AuthResponse, LoginRequest, RegisterRequest, UserResponse};
+use crate::api::auth_dto::{AuthResponse, LoginRequest, RegisterRequest, UserResponse};
 
 #[derive(OpenApi)]
 #[openapi(

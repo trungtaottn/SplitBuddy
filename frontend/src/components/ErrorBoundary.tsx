@@ -145,20 +145,6 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 /**
- * useErrorHandler - Hook to catch and handle errors in functional components
- */
-export function useErrorHandler() {
-  const handleError = (error: Error, context?: string) => {
-    console.error(`Error${context ? ` in ${context}` : ''}:`, error)
-    
-    // Could integrate with error reporting service here
-    // e.g., Sentry.captureException(error)
-  }
-
-  return { handleError }
-}
-
-/**
  * AsyncBoundary - Wrapper for async operations with loading and error states
  */
 interface AsyncBoundaryProps {
@@ -206,4 +192,3 @@ export function AsyncBoundary({
 }
 
 export default ErrorBoundary
-

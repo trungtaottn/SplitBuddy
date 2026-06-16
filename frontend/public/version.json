@@ -1,6 +1,6 @@
 {
-  "version": "dev.9ca8fdb",
-  "buildTime": "2026-01-24T10:36:53.329Z",
-  "commit": "9ca8fdb",
-  "branch": "dev"
+  "version": "local.2026.6.16.1135.f1b8a0d",
+  "buildTime": "2026-06-16T04:35:08.137Z",
+  "commit": "f1b8a0d",
+  "branch": "refactor/docs-restructure-2026"
 }

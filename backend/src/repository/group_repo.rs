@@ -342,7 +342,7 @@ pub struct UserBasic {
     pub avatar_url: Option<String>,
 }
 
-use crate::api::groups::{
+use crate::api::groups_dto::{
     GroupDebtSummary, GroupMemberDebt, GroupSessionDebt, MemberSessionAmount, SessionPayer,
 };
 
@@ -435,6 +435,58 @@ impl GroupRepository {
             .map(|r| (r.user_id, (r.total_paid, r.total_owed)))
             .collect();
 
+        #[derive(sqlx::FromRow)]
+        struct SettledOffsetRow {
+            user_id: Uuid,
+            amount: Decimal,
+        }
+
+        let settled_offsets: Vec<SettledOffsetRow> = sqlx::query_as(
+            r#"
+            WITH group_sessions AS (
+                SELECT id FROM sessions WHERE group_id = $1
+            ),
+            settled_transfers AS (
+                SELECT debtor_sp.user_id AS user_id, SUM(d.amount) AS amount
+                FROM debts d
+                JOIN group_sessions gs ON d.session_id = gs.id
+                JOIN session_participants debtor_sp ON debtor_sp.id = d.debtor_id
+                JOIN session_participants creditor_sp ON creditor_sp.id = d.creditor_id
+                JOIN group_members debtor_gm
+                  ON debtor_gm.group_id = $1 AND debtor_gm.user_id = debtor_sp.user_id
+                JOIN group_members creditor_gm
+                  ON creditor_gm.group_id = $1 AND creditor_gm.user_id = creditor_sp.user_id
+                WHERE d.status = 'settled' AND debtor_sp.user_id IS NOT NULL
+                GROUP BY debtor_sp.user_id
+
+                UNION ALL
+
+                SELECT creditor_sp.user_id AS user_id, -SUM(d.amount) AS amount
+                FROM debts d
+                JOIN group_sessions gs ON d.session_id = gs.id
+                JOIN session_participants debtor_sp ON debtor_sp.id = d.debtor_id
+                JOIN session_participants creditor_sp ON creditor_sp.id = d.creditor_id
+                JOIN group_members debtor_gm
+                  ON debtor_gm.group_id = $1 AND debtor_gm.user_id = debtor_sp.user_id
+                JOIN group_members creditor_gm
+                  ON creditor_gm.group_id = $1 AND creditor_gm.user_id = creditor_sp.user_id
+                WHERE d.status = 'settled' AND creditor_sp.user_id IS NOT NULL
+                GROUP BY creditor_sp.user_id
+            )
+            SELECT user_id, COALESCE(SUM(amount), 0) AS amount
+            FROM settled_transfers
+            GROUP BY user_id
+            "#,
+        )
+        .bind(group_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let settled_offset_map: HashMap<Uuid, Decimal> = settled_offsets
+            .into_iter()
+            .map(|row| (row.user_id, row.amount))
+            .collect();
+
         // Build member debt list
         let member_debts: Vec<GroupMemberDebt> = members
             .iter()
@@ -443,12 +495,16 @@ impl GroupRepository {
                     .get(&m.user_id)
                     .cloned()
                     .unwrap_or((Decimal::ZERO, Decimal::ZERO));
+                let settled_offset = settled_offset_map
+                    .get(&m.user_id)
+                    .copied()
+                    .unwrap_or(Decimal::ZERO);
                 GroupMemberDebt {
                     user_id: m.user_id,
                     name: m.full_name.clone(),
                     total_paid,
                     total_owed,
-                    balance: total_paid - total_owed,
+                    balance: total_paid - total_owed + settled_offset,
                 }
             })
             .collect();

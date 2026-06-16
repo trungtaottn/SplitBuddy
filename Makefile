@@ -1,7 +1,7 @@
 # SplitBuddy Makefile
 # Các lệnh tiện ích cho development
 
-.PHONY: setup check format check-backend check-frontend lint-backend test-backend format-backend format-frontend clean docker-up docker-down
+.PHONY: setup check format check-backend check-frontend check-money check-foundation file-size-report lint-backend test-backend format-backend format-frontend clean docker-up docker-down
 
 # ============================================
 # Setup
@@ -48,7 +48,7 @@ format-frontend:
 # ============================================
 
 ## Check tất cả (giống CI - chạy tuần tự)
-check: lint-backend test-backend check-frontend
+check: lint-backend test-backend check-frontend check-money check-foundation
 	@echo ""
 	@echo "✅ All checks passed! Ready to push."
 
@@ -79,11 +79,35 @@ check-frontend:
 	@echo "🔍 Checking frontend..."
 	@echo "  → npm ci"
 	cd frontend && npm ci --prefer-offline
+	@echo "  → npm audit"
+	cd frontend && npm audit --audit-level=moderate
+	@echo "  → lint"
+	cd frontend && npm run lint
 	@echo "  → type-check"
-	cd frontend && npm run type-check || true
+	cd frontend && npm run type-check
 	@echo "  → npm run build"
 	cd frontend && npm run build
 	@echo "✅ Frontend checks passed!"
+
+check-money:
+	@echo "🔍 Checking money guardrails..."
+	@! rg "\bf(32|64)\b|from_f64|Decimal::from_str\(&amount" backend/src/domain/recurring_expense.rs backend/src/api/recurring_expenses.rs backend/src/repository/recurring_expense_repo.rs backend/src/scheduler.rs
+	@! rg "unwrap\(|expect\(|panic!" backend/src/api backend/src/config.rs backend/src/main.rs
+	@! rg "parseFloat|:\s*any|as any|Record<string, any>" frontend/src/components/BillInput.tsx frontend/src/components/NotificationBell.tsx frontend/src/components/NotificationDropdown.tsx frontend/src/components/feed/ActivityItem.tsx frontend/src/components/layout/AppLayout.tsx frontend/src/components/profile/PersonaEditor.tsx frontend/src/contexts/FeatureFlagsContext.tsx frontend/src/contexts/MusicContext.tsx frontend/src/contexts/WebSocketContext.tsx frontend/src/hooks/useFeed.ts frontend/src/hooks/useFormValidation.ts frontend/src/pages/DashboardPage.tsx frontend/src/pages/SessionDetailPage.tsx frontend/src/pages/session/DebtBreakdown.tsx frontend/src/pages/DebtsPage.tsx frontend/src/pages/GroupDebtsPage.tsx frontend/src/pages/session/ImportExportModal.tsx frontend/src/pages/session/RecurringExpenses.tsx frontend/src/lib/api.ts frontend/src/types/api.ts frontend/src/types/websocket.ts frontend/src/utils/sounds.ts
+	@echo "✅ Money guardrails passed!"
+
+check-foundation:
+	@echo "🔍 Checking foundation guardrails..."
+	cd backend && SQLX_OFFLINE=true cargo test authz
+	cd backend && SQLX_OFFLINE=true cargo test ws::tests
+	@$(MAKE) file-size-report
+	@echo "✅ Foundation guardrails passed!"
+
+file-size-report:
+	@echo "🔍 Session file-size guard..."
+	@wc -l backend/src/repository/session_repo.rs backend/src/api/sessions/mod.rs backend/src/api/ws.rs backend/src/api/recurring_expenses.rs frontend/src/contexts/WebSocketContext.tsx frontend/src/types/websocket.ts
+	@test $$(wc -l < backend/src/repository/session_repo.rs) -le 400
+	@test $$(wc -l < backend/src/api/sessions/mod.rs) -le 120
 
 # ============================================
 # Development
@@ -155,7 +179,7 @@ help:
 	@echo "    make lint-backend   - Lint backend (fmt + clippy)"
 	@echo "    make test-backend   - Test backend (build + nextest)"
 	@echo "    make check-backend  - Check backend (lint + test)"
-	@echo "    make check-frontend - Check frontend (type-check + build)"
+	@echo "    make check-frontend - Check frontend (audit + lint + type-check + build)"
 	@echo ""
 	@echo "  Development:"
 	@echo "    make dev            - Chạy cả backend + frontend"

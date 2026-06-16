@@ -7,7 +7,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use axum::http::header;
+use axum::http::{header, HeaderValue};
 use axum::{
     body::Body,
     extract::Request,
@@ -120,14 +120,14 @@ async fn add_cache_headers(request: Request, next: Next) -> Response<Body> {
     if path == "/" || path.ends_with(".html") || path.ends_with("/") || !path.contains('.') {
         response.headers_mut().insert(
             header::CACHE_CONTROL,
-            "no-cache, no-store, must-revalidate".parse().unwrap(),
+            HeaderValue::from_static("no-cache, no-store, must-revalidate"),
         );
         response
             .headers_mut()
-            .insert(header::PRAGMA, "no-cache".parse().unwrap());
+            .insert(header::PRAGMA, HeaderValue::from_static("no-cache"));
         response
             .headers_mut()
-            .insert(header::EXPIRES, "0".parse().unwrap());
+            .insert(header::EXPIRES, HeaderValue::from_static("0"));
     }
 
     response
@@ -194,7 +194,7 @@ async fn main() -> anyhow::Result<()> {
     // Initialize Prometheus metrics exporter
     let metrics_handle = metrics_exporter_prometheus::PrometheusBuilder::new()
         .install_recorder()
-        .expect("Failed to install Prometheus recorder");
+        .map_err(|e| anyhow::anyhow!("Failed to install Prometheus recorder: {}", e))?;
     tracing::info!("Prometheus metrics initialized");
 
     let config = Config::from_env()?;
@@ -251,7 +251,7 @@ async fn main() -> anyhow::Result<()> {
     let ws_manager = api::WsManager::new(config.redis_url.clone());
     tracing::info!("WebSocket manager initialized");
 
-    let app_state = api::AppState::new(pool, config.clone(), cache, ws_manager);
+    let app_state = api::AppState::new(pool, config.clone(), cache, ws_manager)?;
     tracing::info!(
         "HTTP client initialized with {}s timeout",
         config.http_timeout_seconds
@@ -288,7 +288,13 @@ async fn main() -> anyhow::Result<()> {
         ];
 
         if origins.is_empty() {
-            tracing::warn!("No valid CORS origins configured, allowing all origins (not recommended for production)");
+            if config::is_production_environment() {
+                anyhow::bail!("CORS_ORIGINS must contain at least one valid origin in production");
+            }
+
+            tracing::warn!(
+                "No valid CORS origins configured; allowing all origins for local development"
+            );
             CorsLayer::new()
                 .allow_origin(Any)
                 .allow_methods(Any)
@@ -315,7 +321,7 @@ async fn main() -> anyhow::Result<()> {
             .burst_size(config.rate_limit_burst_size)
             .key_extractor(RealIpKeyExtractor)
             .finish()
-            .expect("Failed to create rate limiter config"),
+            .ok_or_else(|| anyhow::anyhow!("Failed to create rate limiter config"))?,
     );
     let governor_limiter = governor_conf.limiter().clone();
 
@@ -335,14 +341,20 @@ async fn main() -> anyhow::Result<()> {
     );
 
     // Spawn recurring expense scheduler
+    let scheduler_policy = scheduler::RecurringExpenseSchedulerPolicy::new(
+        config.recurring_expense_scheduler_interval_seconds,
+        config.recurring_expense_scheduler_jitter_percent,
+    );
     let scheduler = scheduler::RecurringExpenseScheduler::new(
         app_state.pool.clone(),
-        config.recurring_expense_scheduler_interval_seconds,
+        app_state.http_client.clone(),
+        scheduler_policy,
     );
     scheduler.spawn();
     tracing::info!(
-        "Recurring expense scheduler initialized (interval: {}s)",
-        config.recurring_expense_scheduler_interval_seconds
+        "Recurring expense scheduler initialized (interval: {}s, jitter: {}%)",
+        config.recurring_expense_scheduler_interval_seconds,
+        config.recurring_expense_scheduler_jitter_percent
     );
 
     // Serve static files (frontend) - fallback to index.html for SPA routing
@@ -412,17 +424,22 @@ async fn main() -> anyhow::Result<()> {
 /// Listens for Ctrl+C (SIGINT) and SIGTERM
 async fn shutdown_signal() {
     let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("Failed to install Ctrl+C handler");
+        if let Err(error) = signal::ctrl_c().await {
+            tracing::error!("Failed to install Ctrl+C handler: {}", error);
+        }
     };
 
     #[cfg(unix)]
     let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("Failed to install SIGTERM handler")
-            .recv()
-            .await;
+        match signal::unix::signal(signal::unix::SignalKind::terminate()) {
+            Ok(mut stream) => {
+                stream.recv().await;
+            }
+            Err(error) => {
+                tracing::error!("Failed to install SIGTERM handler: {}", error);
+                std::future::pending::<()>().await;
+            }
+        }
     };
 
     #[cfg(not(unix))]

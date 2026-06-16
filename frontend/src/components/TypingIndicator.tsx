@@ -1,4 +1,4 @@
-import { useSessionActivity } from '@/contexts/WebSocketContext'
+import { useSessionActivity } from '@/contexts/use-websocket'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export function TypingIndicator({ sessionId }: { sessionId: string }) {

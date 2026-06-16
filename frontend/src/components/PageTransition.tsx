@@ -1,79 +1,16 @@
-import { motion, AnimatePresence, Variants, Transition } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useLocation, useOutlet } from 'react-router-dom'
 import { ReactNode, useRef, useState, useEffect } from 'react'
-
-// Page transition variants - smooth fade with subtle scale
-const pageVariants: Variants = {
-  initial: {
-    opacity: 0,
-    scale: 0.98,
-  },
-  in: {
-    opacity: 1,
-    scale: 1,
-  },
-  out: {
-    opacity: 0,
-    scale: 0.98,
-  },
-}
-
-// Paper slide variant - smooth slide with subtle scale and translate
-const paperSlideVariants: Variants = {
-  initial: {
-    opacity: 0,
-    x: 12,
-    y: 4,
-    scale: 0.98,
-  },
-  in: {
-    opacity: 1,
-    x: 0,
-    y: 0,
-    scale: 1,
-  },
-  out: {
-    opacity: 0,
-    x: -12,
-    y: -4,
-    scale: 0.98,
-  },
-}
-
-// Fade variant - smooth fade with subtle scale
-const fadeTextureVariants: Variants = {
-  initial: {
-    opacity: 0,
-    scale: 0.98,
-  },
-  in: {
-    opacity: 1,
-    scale: 1,
-  },
-  out: {
-    opacity: 0,
-    scale: 0.98,
-  },
-}
-
-// Optimized transitions for smooth animations (balanced duration + natural easing)
-const pageTransition: Transition = {
-  type: 'tween',
-  ease: [0.25, 0.1, 0.25, 1], // Natural ease-in-out
-  duration: 0.3, // Slightly longer for smoothness
-}
-
-const paperSlideTransition: Transition = {
-  type: 'tween',
-  ease: [0.25, 0.1, 0.25, 1], // Natural ease-in-out
-  duration: 0.3, // Slightly longer for smoothness
-}
-
-const fadeTextureTransition: Transition = {
-  type: 'tween',
-  ease: [0.25, 0.1, 0.25, 1], // Natural ease-in-out
-  duration: 0.3, // Slightly longer for smoothness
-}
+import {
+  fadeTextureTransition,
+  fadeTextureVariants,
+  pageTransition,
+  pageVariants,
+  paperSlideTransition,
+  paperSlideVariants,
+  staggerContainer,
+  staggerItem,
+} from '@/components/page-transition-animations'
 
 /**
  * AnimatedOutlet - Properly handles route transitions with AnimatePresence
@@ -166,65 +103,6 @@ export function PageTransition({ children }: PageTransitionProps) {
       </motion.div>
     </AnimatePresence>
   )
-}
-
-// Slide variants for different directions
-export const slideVariants = {
-  slideRight: {
-    initial: { x: -30, opacity: 0 },
-    animate: { x: 0, opacity: 1 },
-    exit: { x: 30, opacity: 0 },
-  },
-  slideLeft: {
-    initial: { x: 30, opacity: 0 },
-    animate: { x: 0, opacity: 1 },
-    exit: { x: -30, opacity: 0 },
-  },
-  slideUp: {
-    initial: { y: 30, opacity: 0 },
-    animate: { y: 0, opacity: 1 },
-    exit: { y: -30, opacity: 0 },
-  },
-  slideDown: {
-    initial: { y: -30, opacity: 0 },
-    animate: { y: 0, opacity: 1 },
-    exit: { y: 30, opacity: 0 },
-  },
-  fade: {
-    initial: { opacity: 0 },
-    animate: { opacity: 1 },
-    exit: { opacity: 0 },
-  },
-  scale: {
-    initial: { scale: 0.9, opacity: 0 },
-    animate: { scale: 1, opacity: 1 },
-    exit: { scale: 0.9, opacity: 0 },
-  },
-}
-
-// Stagger children animations
-export const staggerContainer: Variants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.08,
-      delayChildren: 0.05,
-    },
-  },
-}
-
-export const staggerItem: Variants = {
-  hidden: { opacity: 0, y: 15 },
-  show: { 
-    opacity: 1, 
-    y: 0,
-    transition: {
-      type: 'tween',
-      ease: [0.25, 0.1, 0.25, 1],
-      duration: 0.4,
-    },
-  },
 }
 
 // Fade in animation for elements

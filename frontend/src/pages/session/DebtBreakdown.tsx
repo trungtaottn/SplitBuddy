@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/utils/formatCurrency'
+import { addMoney, compareMoney } from '@/utils/money'
 import type { SessionDetail, Bill } from '@/types/api'
 import { useNavigate } from 'react-router-dom'
 import { useMemo } from 'react'
@@ -14,11 +15,11 @@ export function DebtBreakdown({ session, bills }: DebtBreakdownProps) {
     const navigate = useNavigate()
 
     const participantTotals = useMemo(() => {
-        const totals: Record<string, { name: string; owed: number; paid: number }> = {}
+        const totals: Record<string, { name: string; owed: string; paid: string }> = {}
 
         // Initialize all participants
         session.participants.forEach((p) => {
-            totals[p.id] = { name: p.display_name, owed: 0, paid: 0 }
+            totals[p.id] = { name: p.display_name, owed: '0', paid: '0' }
         })
 
         // Sum up actual amounts from bills
@@ -26,13 +27,13 @@ export function DebtBreakdown({ session, bills }: DebtBreakdownProps) {
             // Add amounts owed from bill splits
             bill.participants?.forEach((bp) => {
                 if (totals[bp.participant_id]) {
-                    totals[bp.participant_id].owed += parseFloat(bp.amount_owed) || 0
+                    totals[bp.participant_id].owed = addMoney(totals[bp.participant_id].owed, bp.amount_owed, session.base_currency)
                 }
             })
             // Add amounts paid
             bill.payers?.forEach((payer) => {
                 if (totals[payer.participant_id]) {
-                    totals[payer.participant_id].paid += parseFloat(payer.amount_paid) || 0
+                    totals[payer.participant_id].paid = addMoney(totals[payer.participant_id].paid, payer.amount_paid, session.base_currency)
                 }
             })
         })
@@ -73,7 +74,7 @@ export function DebtBreakdown({ session, bills }: DebtBreakdownProps) {
                             <p className="mb-3 text-sm font-medium text-zinc-400">Chi tiết mỗi người:</p>
                             <div className="space-y-2">
                                 {session.participants.map((p) => {
-                                    const data = participantTotals[p.id] || { owed: 0, paid: 0 }
+                                    const data = participantTotals[p.id] || { owed: '0', paid: '0' }
                                     return (
                                         <div key={p.id} className="flex items-center justify-between rounded-lg bg-zinc-900 border border-white/5 px-3 py-2 hover:border-orange-500/30 transition-colors">
                                             <div className="flex items-center gap-2">
@@ -81,7 +82,7 @@ export function DebtBreakdown({ session, bills }: DebtBreakdownProps) {
                                                 <span className="font-medium text-white">{p.display_name}</span>
                                             </div>
                                             <div className="text-right">
-                                                {data.owed > 0 ? (
+                                                {compareMoney(data.owed, '0') > 0 ? (
                                                     <span className="font-bold text-orange-500">
                                                         {formatCurrency(data.owed, session.base_currency)}
                                                     </span>

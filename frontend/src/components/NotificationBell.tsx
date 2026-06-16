@@ -4,6 +4,7 @@ import { Bell } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { NotificationDropdown } from '@/components/NotificationDropdown'
+import { isRateLimitError } from '@/utils/errorHandler'
 
 
 export function NotificationBell() {
@@ -14,8 +15,8 @@ export function NotificationBell() {
     queryKey: ['notifications', 'unread-count'],
     queryFn: () => api.notifications.getUnreadCount(),
     refetchInterval: 30000,
-    retry: (failureCount, error: any) => {
-        if (error?.response?.status === 429) return false
+    retry: (failureCount, error: unknown) => {
+        if (isRateLimitError(error)) return false
         return failureCount < 2
     },
   })
@@ -58,4 +59,3 @@ export function NotificationBell() {
     </div>
   )
 }
-
