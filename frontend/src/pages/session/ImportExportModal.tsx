@@ -5,7 +5,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
-import { getErrorMessage } from '@/utils/errorHandler'
 import type { ImportPreviewResponse, ImportResultResponse } from '@/types/api'
 
 interface ImportExportModalProps {
@@ -33,8 +32,8 @@ export function ImportExportModal({
         toast.error('CSV có lỗi, vui lòng kiểm tra trước khi import')
       }
     },
-    onError: (error: unknown) => {
-      toast.error('Không thể xem trước CSV: ' + getErrorMessage(error))
+    onError: (error: any) => {
+      toast.error('Không thể xem trước CSV: ' + (error.response?.data?.message || error.message))
     },
   })
 
@@ -52,8 +51,8 @@ export function ImportExportModal({
       setPreview(null)
       setFileName('')
     },
-    onError: (error: unknown) => {
-      toast.error('Không thể import: ' + getErrorMessage(error))
+    onError: (error: any) => {
+      toast.error('Không thể import: ' + (error.response?.data?.message || error.message))
     },
   })
 
@@ -79,8 +78,8 @@ export function ImportExportModal({
       link.download = `session_${sessionId}.csv`
       link.click()
       URL.revokeObjectURL(url)
-    } catch (error: unknown) {
-      toast.error('Không thể xuất CSV: ' + getErrorMessage(error))
+    } catch (error: any) {
+      toast.error('Không thể xuất CSV: ' + (error.response?.data?.message || error.message))
     }
   }
 
@@ -94,8 +93,8 @@ export function ImportExportModal({
       link.download = `session_${sessionId}_v2.csv`
       link.click()
       URL.revokeObjectURL(url)
-    } catch (error: unknown) {
-      toast.error('Không thể xuất CSV: ' + getErrorMessage(error))
+    } catch (error: any) {
+      toast.error('Không thể xuất CSV: ' + (error.response?.data?.message || error.message))
     }
   }
 

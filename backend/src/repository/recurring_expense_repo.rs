@@ -3,7 +3,6 @@ use crate::domain::recurring_expense::{
 };
 use crate::error::AppError;
 use chrono::{DateTime, NaiveDate, Utc};
-use rust_decimal::Decimal;
 use sqlx::{PgPool, Postgres, Row, Transaction};
 use uuid::Uuid;
 
@@ -27,7 +26,7 @@ impl RecurringExpenseRepository {
         session_id: Uuid,
         name: String,
         description: Option<String>,
-        amount: Decimal,
+        amount: f64,
         currency_code: String,
         category_id: Option<Uuid>,
         split_strategy: String,
@@ -162,7 +161,7 @@ impl RecurringExpenseRepository {
         id: Uuid,
         name: Option<String>,
         description: Option<Option<String>>,
-        amount: Option<Decimal>,
+        amount: Option<f64>,
         category_id: Option<Option<Uuid>>,
         split_strategy: Option<String>,
         frequency: Option<RecurringFrequency>,
@@ -479,7 +478,11 @@ impl RecurringExpenseRepository {
             session_id: row.get("session_id"),
             name: row.get("name"),
             description: row.get("description"),
-            amount: row.get::<Decimal, _>("amount"),
+            amount: row
+                .get::<sqlx::types::Decimal, _>("amount")
+                .to_string()
+                .parse()
+                .unwrap_or(0.0),
             currency_code: row.get("currency_code"),
             category_id: row.get("category_id"),
             split_strategy: row.get("split_strategy"),

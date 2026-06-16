@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
-import { useMood } from '@/contexts/use-mood'
+import { useMood } from '@/contexts/MoodContext'
 import { MessageCircle, X, Send, Loader2 } from 'lucide-react'
 import type { ApiResponse } from '@/types/api'
 
@@ -25,7 +25,7 @@ export function FloatingChat() {
       const greeting = moodConfig.greetings[Math.floor(Math.random() * moodConfig.greetings.length)]
       addMessage({ id: Date.now().toString(), role: 'assistant', content: greeting, timestamp: new Date() })
     }
-  }, [addMessage, chatHistory.length, isChatOpen, moodConfig.greetings])
+  }, [isChatOpen])
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {

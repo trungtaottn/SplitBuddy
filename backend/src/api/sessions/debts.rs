@@ -6,7 +6,6 @@ use rust_decimal::Decimal;
 use serde::Serialize;
 use uuid::Uuid;
 
-use crate::api::feature_flags::require_feature_enabled;
 use crate::api::response::{ok, ApiResponse};
 use crate::api::AppState;
 use crate::error::AppError;
@@ -36,8 +35,6 @@ pub async fn get_debt_stats(
     auth_user: AuthUser,
     Path(session_id): Path<Uuid>,
 ) -> Result<Json<ApiResponse<DebtStatsResponse>>, AppError> {
-    require_feature_enabled(&state, "sessions").await?;
-
     // Verify access via SessionRepository
     let session_repo = SessionRepository::new(state.pool.clone());
     session_repo
@@ -60,8 +57,6 @@ pub async fn get_pending_debts(
     auth_user: AuthUser,
     Path(session_id): Path<Uuid>,
 ) -> Result<Json<ApiResponse<Vec<DebtInfoResponse>>>, AppError> {
-    require_feature_enabled(&state, "sessions").await?;
-
     // Verify access
     let session_repo = SessionRepository::new(state.pool.clone());
     session_repo

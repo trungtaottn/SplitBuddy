@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from './contexts/use-auth'
+import { useAuth } from './contexts/AuthContext'
 import { MoodProvider } from './contexts/MoodContext'
 import { MusicProvider } from './contexts/MusicContext'
 import { FeatureFlagsProvider } from './contexts/FeatureFlagsContext'

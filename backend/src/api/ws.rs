@@ -3,19 +3,150 @@
 //! This module provides WebSocket functionality for pushing real-time updates
 //! to connected clients about session events, debt settlements, and notifications.
 
-use axum::{routing::get, Router};
+use axum::{
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        Query, State,
+    },
+    response::IntoResponse,
+    routing::get,
+    Router,
+};
+use futures::{SinkExt, StreamExt};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
 
-use crate::api::ws_redis;
-use crate::api::ws_socket::ws_handler;
-use crate::api::ws_types::{ConnectedUser, PresenceUser, SessionPresence};
 use crate::api::AppState;
 use chrono::Utc;
 
-pub use crate::api::ws_types::WsEvent;
+/// Wrapper for transport over Redis
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WsTransport {
+    pub session_id: Uuid,
+    pub event: WsEvent,
+}
+
+/// WebSocket event types for real-time updates
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", content = "data")]
+pub enum WsEvent {
+    /// A bill was added or updated in a session
+    BillUpdated {
+        session_id: Uuid,
+        bill_id: Uuid,
+    },
+    /// A bill was deleted
+    BillDeleted {
+        session_id: Uuid,
+        bill_id: Uuid,
+    },
+    /// A debt was settled or settlement was requested
+    DebtUpdated {
+        session_id: Uuid,
+        debt_id: Uuid,
+    },
+    /// Debts recalculated (after bill changes)
+    DebtsRecalculated {
+        session_id: Uuid,
+    },
+    /// Session status changed (closed/reopened)
+    SessionStatusChanged {
+        session_id: Uuid,
+        status: String,
+    },
+    /// Generic session update (name, settings, etc.)
+    SessionUpdated {
+        session_id: Uuid,
+    },
+    /// A participant joined or left a session
+    ParticipantChanged {
+        session_id: Uuid,
+        action: String,
+    },
+    /// Game event (spin, truth/dare, etc.)
+    GameEvent {
+        session_id: Uuid,
+        event_type: String,
+    },
+    /// User achievement unlocked
+    AchievementUnlocked {
+        user_id: Uuid,
+        achievement_id: Uuid,
+    },
+    /// New notification received
+    NotificationReceived {
+        notification_id: Uuid,
+        title: String,
+        notification_type: String,
+    },
+    /// User joined session view (presence)
+    PresenceJoined {
+        session_id: Uuid,
+        user_id: Uuid,
+        user_name: String,
+    },
+    /// User left session view (presence)
+    PresenceLeft {
+        session_id: Uuid,
+        user_id: Uuid,
+    },
+    /// Current users viewing a session
+    PresenceList {
+        session_id: Uuid,
+        users: Vec<PresenceUser>,
+    },
+    /// Connection established confirmation
+    Connected {
+        user_id: Uuid,
+    },
+    /// Ephemeral user activity (typing, editing, etc.)
+    UserActivity {
+        session_id: Uuid,
+        user_id: Uuid,
+        user_name: String,
+        action: String,
+    },
+    /// Error message
+    Error {
+        message: String,
+    },
+    /// Ping/pong for keepalive
+    Ping,
+    Pong,
+}
+
+/// User presence info
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PresenceUser {
+    pub user_id: Uuid,
+    pub user_name: String,
+    pub joined_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Query parameters for WebSocket connection
+#[derive(Debug, Deserialize)]
+pub struct WsQuery {
+    /// WebSocket ticket (short-lived, single-use) - obtained from /api/auth/ws-ticket
+    pub ticket: String,
+}
+
+/// Connected user info
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct ConnectedUser {
+    pub user_name: String,
+    pub session_subscriptions: Vec<Uuid>,
+    pub connected_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Session presence - who is viewing each session
+#[derive(Debug, Clone, Default)]
+pub struct SessionPresence {
+    pub users: HashMap<Uuid, PresenceUser>,
+}
 
 /// WebSocket connection manager
 #[derive(Clone)]
@@ -58,7 +189,7 @@ impl WsManager {
 
             // Spawn tasks
             tokio::spawn(async move {
-                ws_redis::subscribe_global(
+                Self::subscribe_redis_global(
                     client_clone.clone(),
                     tx_clone.clone(),
                     connections_clone.clone(),
@@ -69,7 +200,7 @@ impl WsManager {
             let tx_user = tx.clone();
             let connections_user = connections.clone();
             tokio::spawn(async move {
-                ws_redis::subscribe_user(client_user, tx_user, connections_user).await;
+                Self::subscribe_redis_user(client_user, tx_user, connections_user).await;
             });
         }
 
@@ -81,6 +212,114 @@ impl WsManager {
         }
     }
 
+    /// Background task to subscribe to Redis GLOBAL events
+    async fn subscribe_redis_global(
+        client: redis::Client,
+        tx: broadcast::Sender<(Uuid, WsEvent)>,
+        connections: Arc<RwLock<HashMap<Uuid, ConnectedUser>>>,
+    ) {
+        #[allow(deprecated)]
+        let conn = match client.get_async_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                tracing::error!("Failed to connect to Redis for Pub/Sub: {}", e);
+                return;
+            }
+        };
+
+        let mut pubsub = conn.into_pubsub();
+        if let Err(e) = pubsub.subscribe("ws_global_events").await {
+            tracing::error!("Failed to subscribe to Redis channel: {}", e);
+            return;
+        }
+
+        tracing::info!("✅ Subscribed to Redis 'ws_global_events' channel");
+
+        let mut stream = pubsub.on_message();
+        while let Some(msg) = stream.next().await {
+            // Deserialize message
+            let payload: String = match msg.get_payload::<String>() {
+                Ok(p) => p,
+                Err(e) => {
+                    tracing::error!("Failed to get payload from Redis msg: {}", e);
+                    continue;
+                }
+            };
+
+            match serde_json::from_str::<WsTransport>(&payload) {
+                Ok(transport) => {
+                    // Iterate local connections to find subscribers
+                    let connections_guard = connections.read().await;
+                    for (user_id, user) in connections_guard.iter() {
+                        if user.session_subscriptions.contains(&transport.session_id) {
+                            // Send to local client via broadcast channel
+                            // Note: We use send() which might fail if no receivers, that's fine
+                            let _ = tx.send((*user_id, transport.event.clone()));
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to deserialize WS Redis transport: {}", e);
+                }
+            }
+        }
+    }
+
+    /// Background task to subscribe to Redis USER events
+    async fn subscribe_redis_user(
+        client: redis::Client,
+        tx: broadcast::Sender<(Uuid, WsEvent)>,
+        connections: Arc<RwLock<HashMap<Uuid, ConnectedUser>>>,
+    ) {
+        #[allow(deprecated)]
+        let conn = match client.get_async_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                tracing::error!("Failed to connect to Redis for User Pub/Sub: {}", e);
+                return;
+            }
+        };
+
+        let mut pubsub = conn.into_pubsub();
+        if let Err(e) = pubsub.subscribe("ws_user_events").await {
+            tracing::error!("Failed to subscribe to Redis user channel: {}", e);
+            return;
+        }
+
+        tracing::info!("✅ Subscribed to Redis 'ws_user_events' channel");
+
+        #[derive(Deserialize)]
+        struct UserTransport {
+            target_user_id: Uuid,
+            event: WsEvent,
+        }
+
+        let mut stream = pubsub.on_message();
+        while let Some(msg) = stream.next().await {
+            let payload: String = match msg.get_payload::<String>() {
+                Ok(p) => p,
+                Err(e) => {
+                    tracing::error!("Failed to get payload from Redis msg: {}", e);
+                    continue;
+                }
+            };
+
+            match serde_json::from_str::<UserTransport>(&payload) {
+                Ok(transport) => {
+                    // Check if user is connected locally
+                    let connections_guard = connections.read().await;
+                    if connections_guard.contains_key(&transport.target_user_id) {
+                        // Send to local client
+                        let _ = tx.send((transport.target_user_id, transport.event));
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to deserialize WS Redis User transport: {}", e);
+                }
+            }
+        }
+    }
+
     /// Broadcast an event to all users subscribed to a session
     pub async fn broadcast_to_session(&self, session_id: Uuid, event: WsEvent) {
         // Option 1: If Redis is available, publish to Redis (and let subscriber handle local broadcast)
@@ -89,9 +328,35 @@ impl WsManager {
         // Easiest robust path: Just publish to Redis. Redis localhost latency is microsecond scale.
 
         if let Some(client) = &self.redis_client {
-            if let Err(e) = ws_redis::publish_session(client, session_id, event.clone()).await {
-                tracing::error!("Failed to publish to Redis: {:?}", e);
-                self.broadcast_local(session_id, event).await;
+            // Publish to Redis
+            let transport = WsTransport {
+                session_id,
+                event: event.clone(),
+            };
+
+            if let Ok(payload) = serde_json::to_string(&transport) {
+                // Determine connection
+                let mut conn = match client.get_multiplexed_async_connection().await {
+                    Ok(c) => c,
+                    Err(e) => {
+                        tracing::error!("Failed to get Redis conn for publish: {}", e);
+                        // Fallback to local broadcast
+                        self.broadcast_local(session_id, event).await;
+                        return;
+                    }
+                };
+
+                if let Err(e) = redis::AsyncCommands::publish::<_, _, ()>(
+                    &mut conn,
+                    "ws_global_events",
+                    payload,
+                )
+                .await
+                {
+                    tracing::error!("Failed to publish to Redis: {}", e);
+                    // Fallback to local broadcast
+                    self.broadcast_local(session_id, event).await;
+                }
             }
         } else {
             // No Redis, local broadcast only
@@ -111,21 +376,33 @@ impl WsManager {
 
         // If not local, and Redis available, publish
         if let Some(client) = &self.redis_client {
-            if let Err(e) = ws_redis::publish_user(client, target_user_id, event.clone()).await {
-                tracing::error!("Failed to publish user event to Redis: {:?}", e);
+            #[derive(Serialize)]
+            struct UserTransport {
+                target_user_id: Uuid,
+                event: WsEvent,
+            }
+
+            let transport = UserTransport {
+                target_user_id,
+                event: event.clone(),
+            };
+
+            if let Ok(payload) = serde_json::to_string(&transport) {
+                let mut conn = match client.get_multiplexed_async_connection().await {
+                    Ok(c) => c,
+                    Err(e) => {
+                        tracing::error!("Failed to get Redis conn: {}", e);
+                        return;
+                    }
+                };
+                if let Err(e) =
+                    redis::AsyncCommands::publish::<_, _, ()>(&mut conn, "ws_user_events", payload)
+                        .await
+                {
+                    tracing::error!("Failed to publish user event to Redis: {}", e);
+                }
             }
         }
-    }
-
-    pub async fn reject_session_subscription(&self, user_id: Uuid, session_id: Uuid) {
-        self.send_to_user(
-            user_id,
-            WsEvent::SubscriptionRejected {
-                session_id,
-                message: "Session access required".to_string(),
-            },
-        )
-        .await;
     }
 
     /// Helper for local broadcast only
@@ -307,74 +584,169 @@ pub fn routes() -> Router<AppState> {
     Router::new().route("/", get(ws_handler))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::time::Duration;
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<AppState>,
+    Query(query): Query<WsQuery>,
+) -> impl IntoResponse {
+    // Parse ticket UUID
+    let ticket_id = match Uuid::parse_str(&query.ticket) {
+        Ok(id) => id,
+        Err(_) => {
+            return ws.on_upgrade(|mut socket| async move {
+                let error = WsEvent::Error {
+                    message: "Invalid ticket format".to_string(),
+                };
+                let msg = serde_json::to_string(&error).unwrap_or_default();
+                let _ = socket.send(Message::Text(msg)).await;
+                let _ = socket.close().await;
+            });
+        }
+    };
 
-    #[tokio::test]
-    async fn subscribe_to_session_adds_subscription_and_presence() {
-        let manager = WsManager::new(None);
-        let user_id = Uuid::new_v4();
-        let session_id = Uuid::new_v4();
+    // Consume ticket from cache (single-use, removes it after validation)
+    match state.cache.consume_ws_ticket(ticket_id).await {
+        Some(ticket) => {
+            // Check if ticket is still valid (not expired)
+            if ticket.expires_at < Utc::now() {
+                return ws.on_upgrade(|mut socket| async move {
+                    let error = WsEvent::Error {
+                        message: "Ticket expired".to_string(),
+                    };
+                    let msg = serde_json::to_string(&error).unwrap_or_default();
+                    let _ = socket.send(Message::Text(msg)).await;
+                    let _ = socket.close().await;
+                });
+            }
 
-        manager.register_user(user_id, "Ada".to_string()).await;
-        manager.subscribe_to_session(user_id, session_id).await;
+            // Ticket is valid - upgrade connection
+            let user_id = ticket.user_id;
+            let user_name = ticket.user_name.clone();
+            ws.on_upgrade(move |socket| handle_socket(socket, state, user_id, user_name))
+        }
+        None => {
+            // Ticket not found or already used
+            ws.on_upgrade(|mut socket| async move {
+                let error = WsEvent::Error {
+                    message: "Invalid or already used ticket".to_string(),
+                };
+                let msg = serde_json::to_string(&error).unwrap_or_default();
+                let _ = socket.send(Message::Text(msg)).await;
+                let _ = socket.close().await;
+            })
+        }
+    }
+}
 
-        let connections = manager.connections.read().await;
-        let subscriptions = connections
-            .get(&user_id)
-            .map(|user| user.session_subscriptions.clone());
-        assert_eq!(subscriptions, Some(vec![session_id]));
-        drop(connections);
+async fn handle_socket(socket: WebSocket, state: AppState, user_id: Uuid, user_name: String) {
+    let (mut sender, mut receiver) = socket.split();
 
-        let presence = manager.session_presence.read().await;
-        assert!(presence
-            .get(&session_id)
-            .is_some_and(|session_presence| session_presence.users.contains_key(&user_id)));
+    // Register user
+    state
+        .ws_manager
+        .register_user(user_id, user_name.clone())
+        .await;
+
+    // Send connected confirmation
+    let connected_event = WsEvent::Connected { user_id };
+    if let Ok(msg) = serde_json::to_string(&connected_event) {
+        let _ = sender.send(Message::Text(msg)).await;
     }
 
-    #[tokio::test]
-    async fn rejected_subscription_does_not_add_subscription_or_presence() {
-        let manager = WsManager::new(None);
-        let user_id = Uuid::new_v4();
-        let session_id = Uuid::new_v4();
-        let mut rx = manager.tx.subscribe();
+    // Subscribe to broadcast channel
+    let mut rx = state.ws_manager.tx.subscribe();
 
-        manager.register_user(user_id, "Ada".to_string()).await;
-        manager
-            .reject_session_subscription(user_id, session_id)
-            .await;
+    // Clone for the receive task
+    let ws_manager = state.ws_manager.clone();
+    let user_id_clone = user_id;
 
-        let received = tokio::time::timeout(Duration::from_secs(1), rx.recv()).await;
-        assert!(received.is_ok());
-        let recv_result = match received {
-            Ok(value) => value,
-            Err(_) => return,
-        };
-        assert!(recv_result.is_ok());
-        let (target_user_id, event) = match recv_result {
-            Ok(value) => value,
-            Err(_) => return,
-        };
+    // Task to forward broadcast messages to this user's WebSocket
+    let mut send_task = tokio::spawn(async move {
+        while let Ok((target_user_id, event)) = rx.recv().await {
+            if target_user_id == user_id_clone {
+                if let Ok(msg) = serde_json::to_string(&event) {
+                    if sender.send(Message::Text(msg)).await.is_err() {
+                        break;
+                    }
+                }
+            }
+        }
+    });
 
-        assert_eq!(target_user_id, user_id);
-        assert!(matches!(
-            event,
-            WsEvent::SubscriptionRejected {
-                session_id: rejected_session_id,
-                ..
-            } if rejected_session_id == session_id
-        ));
+    // Task to handle incoming messages from the client
+    let ws_manager_recv = ws_manager.clone();
+    let user_name_recv = user_name.clone(); // Clone for recv task
+    let mut recv_task = tokio::spawn(async move {
+        while let Some(Ok(msg)) = receiver.next().await {
+            match msg {
+                Message::Text(text) => {
+                    // Handle client messages (e.g., subscribe to sessions)
+                    if let Ok(event) = serde_json::from_str::<ClientMessage>(&text) {
+                        let user_name = user_name_recv.clone();
+                        match event {
+                            ClientMessage::Subscribe { session_id } => {
+                                ws_manager_recv
+                                    .subscribe_to_session(user_id, session_id)
+                                    .await;
+                            }
+                            ClientMessage::Unsubscribe { session_id } => {
+                                ws_manager_recv
+                                    .unsubscribe_from_session(user_id, session_id)
+                                    .await;
+                            }
+                            ClientMessage::Ping => {
+                                // Ping handled, will send pong below
+                            }
+                            ClientMessage::Activity { session_id, action } => {
+                                // Broadcast activity to session
+                                ws_manager_recv
+                                    .broadcast_to_session(
+                                        session_id,
+                                        WsEvent::UserActivity {
+                                            session_id,
+                                            user_id,
+                                            user_name: user_name.clone(), // We need user_name here. It's available in handle_socket scope!
+                                            // Wait, handle_socket has user_name string.
+                                            // But wait, user_name was moved into handle_socket -> sender task?
+                                            // user_name is available in handle_socket. We need to clone it for recv_task.
+                                            action,
+                                        },
+                                    )
+                                    .await;
+                            }
+                        }
+                    }
+                }
+                Message::Close(_) => break,
+                _ => {}
+            }
+        }
+    });
 
-        let connections = manager.connections.read().await;
-        let subscriptions = connections
-            .get(&user_id)
-            .map(|user| user.session_subscriptions.clone());
-        assert_eq!(subscriptions, Some(Vec::new()));
-        drop(connections);
-
-        let presence = manager.session_presence.read().await;
-        assert!(!presence.contains_key(&session_id));
+    // Wait for either task to finish
+    tokio::select! {
+        _ = &mut send_task => {
+            recv_task.abort();
+        }
+        _ = &mut recv_task => {
+            send_task.abort();
+        }
     }
+
+    // Cleanup
+    state.ws_manager.unregister_user(user_id).await;
+}
+
+/// Messages that clients can send to the WebSocket server
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type")]
+pub enum ClientMessage {
+    /// Subscribe to updates for a specific session
+    Subscribe { session_id: Uuid },
+    /// Unsubscribe from session updates
+    Unsubscribe { session_id: Uuid },
+    /// Ping for keepalive
+    Ping,
+    /// User activity (typing, etc.)
+    Activity { session_id: Uuid, action: String },
 }

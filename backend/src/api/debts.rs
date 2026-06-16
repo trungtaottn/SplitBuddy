@@ -1,18 +1,20 @@
 use axum::{
-    extract::State,
+    extract::{Path, State},
     routing::{get, post},
     Json, Router,
 };
 use rust_decimal::Decimal;
+use serde::Serialize;
+use uuid::Uuid;
 
-use crate::api::debts_dto::{DebtSummaryResponse, SessionDebtResponse};
-use crate::api::debts_settlement::{confirm_settle, request_settle, settle_guest_debt};
-use crate::api::feature_flags::require_feature_enabled;
 use crate::api::response::{ok, ApiResponse};
+use crate::api::ws::WsEvent;
 use crate::api::AppState;
+use crate::domain::debt::DebtStatus;
 use crate::error::AppError;
 use crate::middleware::auth::AuthUser;
 use crate::repository::debt_repo::DebtRepository;
+use crate::repository::session_repo::SessionRepository;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -23,12 +25,63 @@ pub fn routes() -> Router<AppState> {
         .route("/:id/settle-guest", post(settle_guest_debt))
 }
 
+#[derive(Serialize)]
+pub struct DebtSummaryResponse {
+    pub i_owe: Vec<DebtItemResponse>,
+    pub owed_to_me: Vec<DebtItemResponse>,
+    pub total_i_owe: String,
+    pub total_owed_to_me: String,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct DebtItemResponse {
+    pub id: Uuid,
+    pub session_id: Uuid,
+    pub session_name: String,
+    pub counterpart_id: Uuid,
+    pub counterpart_name: String,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub amount: Decimal,
+    pub status: DebtStatus,
+    pub is_guest: bool, // Whether the counterpart (debtor for owed_to_me) is a guest
+    // Optional payment info for settlement UX (only available for registered users with default bank account)
+    pub counterpart_bank_name: Option<String>,
+    pub counterpart_account_number: Option<String>,
+    pub counterpart_account_holder_name: Option<String>,
+    pub counterpart_qr_image_url: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct SettleResponse {
+    pub debt_id: Uuid,
+    pub status: DebtStatus,
+    pub message: String,
+}
+
+#[derive(Serialize)]
+pub struct SessionDebtResponse {
+    pub session_id: Uuid,
+    pub session_name: String,
+    pub session_date: chrono::NaiveDate,
+    pub participants: Vec<ParticipantDebtResponse>,
+}
+
+#[derive(Serialize)]
+pub struct ParticipantDebtResponse {
+    pub participant_id: Uuid,
+    pub name: String,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub total_paid: Decimal,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub total_owed: Decimal,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub balance: Decimal,
+}
+
 async fn get_my_debts(
     State(state): State<AppState>,
     auth_user: AuthUser,
 ) -> Result<Json<ApiResponse<DebtSummaryResponse>>, AppError> {
-    require_feature_enabled(&state, "debts").await?;
-
     let repo = DebtRepository::new(state.pool.clone());
 
     let (i_owe, owed_to_me) = repo.find_by_user(auth_user.user_id).await?;
@@ -48,9 +101,244 @@ async fn get_debts_by_session(
     State(state): State<AppState>,
     auth_user: AuthUser,
 ) -> Result<Json<ApiResponse<Vec<SessionDebtResponse>>>, AppError> {
-    require_feature_enabled(&state, "debts").await?;
-
     let repo = DebtRepository::new(state.pool.clone());
     let sessions = repo.get_session_debts(auth_user.user_id).await?;
     Ok(ok(sessions))
+}
+
+async fn request_settle(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(debt_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<SettleResponse>>, AppError> {
+    let repo = DebtRepository::new(state.pool.clone());
+
+    let debt = repo.request_settlement(debt_id, auth_user.user_id).await?;
+
+    // Broadcast WebSocket event
+    state
+        .ws_manager
+        .broadcast_to_session(
+            debt.session_id,
+            WsEvent::DebtUpdated {
+                session_id: debt.session_id,
+                debt_id: debt.id,
+            },
+        )
+        .await;
+
+    Ok(ok(SettleResponse {
+        debt_id: debt.id,
+        status: debt.status,
+        message: "Settlement request sent. Waiting for creditor confirmation.".to_string(),
+    }))
+}
+
+async fn confirm_settle(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(debt_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<SettleResponse>>, AppError> {
+    tracing::info!(
+        "Confirm settlement request: debt_id={}, user_id={}",
+        debt_id,
+        auth_user.user_id
+    );
+    let repo = DebtRepository::new(state.pool.clone());
+
+    let debt = match repo.confirm_settlement(debt_id, auth_user.user_id).await {
+        Ok(d) => d,
+        Err(e) => {
+            tracing::error!(
+                "Failed to confirm settlement: debt_id={}, user_id={}, error={:?}",
+                debt_id,
+                auth_user.user_id,
+                e
+            );
+            return Err(e);
+        }
+    };
+
+    if let Ok(true) = auto_archive_if_settled(&state.pool, debt.session_id).await {
+        state
+            .ws_manager
+            .broadcast_to_session(
+                debt.session_id,
+                WsEvent::SessionStatusChanged {
+                    session_id: debt.session_id,
+                    status: "ARCHIVED".to_string(),
+                },
+            )
+            .await;
+    }
+
+    // Broadcast WebSocket event
+    state
+        .ws_manager
+        .broadcast_to_session(
+            debt.session_id,
+            WsEvent::DebtUpdated {
+                session_id: debt.session_id,
+                debt_id: debt.id,
+            },
+        )
+        .await;
+
+    // Create notification for the debtor that their payment was confirmed
+    // Get debt details to notify the debtor
+    let debt_details: Option<(Uuid, String, String, Decimal)> = sqlx::query_as(
+        r#"
+        SELECT 
+            d.debtor_id,
+            COALESCE(u.full_name, sp.guest_name, 'Unknown') as creditor_name,
+            s.name as session_name,
+            d.amount
+        FROM debts d
+        JOIN sessions s ON d.session_id = s.id
+        LEFT JOIN session_participants sp ON d.creditor_id = sp.id
+        LEFT JOIN users u ON sp.user_id = u.id
+        WHERE d.id = $1
+        "#,
+    )
+    .bind(debt_id)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    if let Some((debtor_id, creditor_name, session_name, amount)) = debt_details {
+        // Check if debtor is a registered user (not a guest)
+        let debtor_user_id: Option<Uuid> =
+            sqlx::query_scalar("SELECT user_id FROM session_participants WHERE id = $1")
+                .bind(debtor_id)
+                .fetch_optional(&state.pool)
+                .await?
+                .flatten();
+
+        if let Some(user_id) = debtor_user_id {
+            // Check settlement_notifications preference
+            let prefs_enabled: bool = sqlx::query_scalar(
+                r#"
+                SELECT COALESCE(settlement_notifications, true)
+                FROM notification_preferences
+                WHERE user_id = $1
+                "#,
+            )
+            .bind(user_id)
+            .fetch_optional(&state.pool)
+            .await?
+            .unwrap_or(true);
+
+            if prefs_enabled {
+                let notification_id = uuid::Uuid::new_v4();
+                sqlx::query(
+                    r#"
+                    INSERT INTO notifications (id, user_id, type, title, message, data, is_read, created_at)
+                    VALUES ($1, $2, 'settlement_confirmed', $3, $4, $5, false, NOW())
+                    "#,
+                )
+                .bind(notification_id)
+                .bind(user_id)
+                .bind("Thanh toán đã được xác nhận".to_string())
+                .bind(format!("{} đã xác nhận thanh toán {} VND từ session '{}'", creditor_name, amount, session_name))
+                .bind(serde_json::json!({
+                    "debt_id": debt_id,
+                    "session_id": debt.session_id,
+                    "session_name": session_name,
+                    "creditor_name": creditor_name,
+                    "amount": amount.to_string()
+                }))
+                .execute(&state.pool)
+                .await?;
+
+                // Broadcast notification to debtor
+                state
+                    .ws_manager
+                    .send_to_user(
+                        user_id,
+                        WsEvent::NotificationReceived {
+                            notification_id,
+                            title: "Thanh toán đã được xác nhận".to_string(),
+                            notification_type: "settlement_confirmed".to_string(),
+                        },
+                    )
+                    .await;
+            }
+        }
+    }
+
+    Ok(ok(SettleResponse {
+        debt_id: debt.id,
+        status: debt.status,
+        message: "Settlement confirmed. Debt has been cleared.".to_string(),
+    }))
+}
+
+/// Settle a debt from a guest (non-user participant) directly
+/// This allows creditors to mark guest debts as settled without waiting for settlement request
+async fn settle_guest_debt(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(debt_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<SettleResponse>>, AppError> {
+    let repo = DebtRepository::new(state.pool.clone());
+
+    let debt = repo.settle_guest_debt(debt_id, auth_user.user_id).await?;
+
+    if let Ok(true) = auto_archive_if_settled(&state.pool, debt.session_id).await {
+        state
+            .ws_manager
+            .broadcast_to_session(
+                debt.session_id,
+                WsEvent::SessionStatusChanged {
+                    session_id: debt.session_id,
+                    status: "ARCHIVED".to_string(),
+                },
+            )
+            .await;
+    }
+
+    // Broadcast WebSocket event
+    state
+        .ws_manager
+        .broadcast_to_session(
+            debt.session_id,
+            WsEvent::DebtUpdated {
+                session_id: debt.session_id,
+                debt_id: debt.id,
+            },
+        )
+        .await;
+
+    Ok(ok(SettleResponse {
+        debt_id: debt.id,
+        status: debt.status,
+        message: "Guest debt has been settled.".to_string(),
+    }))
+}
+
+async fn auto_archive_if_settled(pool: &sqlx::PgPool, session_id: Uuid) -> Result<bool, AppError> {
+    #[derive(sqlx::FromRow)]
+    struct DebtCountRow {
+        total: i64,
+        unsettled: i64,
+    }
+
+    let counts: DebtCountRow = sqlx::query_as(
+        r#"
+        SELECT COUNT(*) as total,
+               COUNT(*) FILTER (WHERE status != 'settled') as unsettled
+        FROM debts
+        WHERE session_id = $1
+        "#,
+    )
+    .bind(session_id)
+    .fetch_one(pool)
+    .await?;
+
+    if counts.total > 0 && counts.unsettled == 0 {
+        let repo = SessionRepository::new(pool.clone());
+        let _ = repo.set_archived(session_id, true).await?;
+        return Ok(true);
+    }
+
+    Ok(false)
 }

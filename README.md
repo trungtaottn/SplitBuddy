@@ -166,23 +166,15 @@ SplitBuddy/
 
 ## Documentation
 
-**Xem [docs/README.md](./docs/README.md) — Documentation Hub (Living Index)** để navigation đầy đủ + phân biệt Living vs Historical documents.
-
-### Living Documents (Single Source of Truth – cập nhật 2026-06-01)
-- [Project Overview & PDR](./docs/project-overview-pdr.md) — Product scope, requirements, risks, acceptance criteria.
-- [Codebase Summary](./docs/codebase-summary.md) — Tổng quan hiện trạng, feature status, P0 debt.
-- [Code Standards](./docs/code-standards.md) — Standards thực tế + current violations.
-- [System Architecture](./docs/system-architecture.md) — Layers thực tế, flows quan trọng, tradeoffs.
-- [Project Roadmap](./docs/project-roadmap.md) — Phased P0 (money + any + unwraps) trước khi scale feature.
-- [Deep Codebase Review 2026](./docs/reviews/CODEBASE_DEEP_REVIEW_OPTIMIZATION_2026.md) — Audit triệt để toàn bộ (god objects, 33 migrations, frontend any/decimal, security... với exact file:line).
-- [Project Guidelines](./docs/guidelines/PROJECT_GUIDELINES.md) — Bắt buộc: Decimal money, no unwrap/any, DDD, DoD, conventional commits.
-- Deployment & Setup: [DEPLOYMENT.md](./docs/deployment/DEPLOYMENT.md) | [SETUP.md](./docs/deployment/SETUP.md)
-- Backend / Frontend overviews: [SplitBuddy Backend.md](./docs/summaries/SplitBuddy Backend.md) | [SplitBuddy Frontend.md](./docs/summaries/SplitBuddy Frontend.md)
-
-### Historical Plans (đã archive)
-Tất cả SPRINT/EXECUTION/UI_TRANS/GAMES_ROADMAP/UX_FLOWS/Roadmap cũ (2024–early 2025) nằm tại `docs/archive/2024-2025-plans/`. Chỉ tham khảo lịch sử, không dùng làm basis cho phát triển mới (đã drift nặng so với codebase hiện tại).
-
-**Chuẩn bị trước /brainstorm:** Luôn đọc living docs + deep review trước để "hiểu đúng và đủ", tránh debt mới.
+| Document                                           | Description                                 |
+| -------------------------------------------------- | ------------------------------------------- |
+| [Backend README](./backend/README.md)              | Backend API documentation, endpoints, setup |
+| [Frontend README](./frontend/README.md)            | Frontend documentation, components, routes  |
+| [Contributing](./CONTRIBUTING.md)                  | How to contribute to this project           |
+| [Deployment](./docs/DEPLOYMENT.md)                 | Deployment & CI/CD guide                    |
+| [Setup](./docs/SETUP.md)                           | Detailed setup guide                        |
+| [Project Guidelines](./docs/PROJECT_GUIDELINES.md) | Coding conventions & standards              |
+| [Architecture](./docs/Architecture%20Plan.md)      | System architecture overview                |
 
 ## Development Workflow
 

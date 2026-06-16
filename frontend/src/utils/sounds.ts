@@ -1,22 +1,13 @@
 // Sound effects utility for games
 // Using Web Audio API for better performance
 
-declare global {
-  interface Window {
-    webkitAudioContext?: typeof AudioContext
-  }
-}
-
 class SoundManager {
   private audioContext: AudioContext | null = null
   private enabled: boolean = true
 
   constructor() {
     if (typeof window !== 'undefined') {
-      const AudioContextConstructor = window.AudioContext || window.webkitAudioContext
-      if (AudioContextConstructor) {
-        this.audioContext = new AudioContextConstructor()
-      }
+      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
     }
   }
 

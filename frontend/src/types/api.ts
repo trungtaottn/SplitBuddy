@@ -146,7 +146,6 @@ export interface DebtItem {
   session_id: string
   session_name: string
   counterpart_id: string
-  counterpart_user_id?: string | null
   counterpart_name: string
   amount: string
   status: DebtStatus
@@ -196,7 +195,7 @@ export interface RecurringExpense {
   session_id: string
   name: string
   description?: string | null
-  amount: string
+  amount: number
   currency_code: string
   category_id?: string | null
   split_strategy: string
@@ -231,10 +230,6 @@ export interface CreateBillDto {
   receipt_url?: string | null
   currency_code?: string
   exchange_rate?: string
-}
-
-export interface UpdateBillDto extends CreateBillDto {
-  billId: string
 }
 
 // Group types
@@ -666,7 +661,7 @@ export interface UpdatePersonaRequest {
   avatar_accessories?: string[]
   avatar_background?: string
   avatar_frame?: string
-  current_title?: string | null
+  current_title?: string
   display_badges?: string[]
 }
 
@@ -738,7 +733,7 @@ export interface FeedActivity {
   type: string
   target_id: string
   target_type: string
-  meta_data: Record<string, unknown>
+  meta_data: Record<string, any>
   created_at: string
   stats: {
     likes: number

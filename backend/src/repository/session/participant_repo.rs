@@ -1,23 +1,29 @@
 //! Participant Repository
 //!
 //! Provides specialized operations for session participants.
+//! Currently delegates to SessionRepository, will be migrated incrementally.
 
 use sqlx::PgPool;
 use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::api::sessions::{ParticipantBasicInfo, ParticipantResponse};
-use crate::domain::session::ParticipantRole;
 use crate::error::AppError;
+use crate::repository::session_repo::SessionRepository;
 
 /// Repository for participant-related operations within sessions
 pub struct ParticipantRepository {
     pool: PgPool,
+    // Keep reference to session repo for delegation during migration
+    session_repo: SessionRepository,
 }
 
 impl ParticipantRepository {
     pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+        Self {
+            session_repo: SessionRepository::new(pool.clone()),
+            pool,
+        }
     }
 
     /// Get pool reference for direct queries
@@ -25,43 +31,20 @@ impl ParticipantRepository {
         &self.pool
     }
 
+    // ========================================
+    // Delegated methods (Phase 1)
+    // These will be migrated to direct implementation in Phase 2
+    // ========================================
+
     /// Get basic participant info for session cards (max 5)
     pub async fn get_session_participants_basic(
         &self,
         session_id: Uuid,
     ) -> Result<Vec<ParticipantBasicInfo>, AppError> {
-        #[derive(sqlx::FromRow)]
-        struct ParticipantRow {
-            id: Uuid,
-            name: String,
-            avatar_url: Option<String>,
-        }
-
-        let participants: Vec<ParticipantRow> = sqlx::query_as(
-            r#"
-            SELECT
-                sp.id,
-                COALESCE(u.full_name, sp.guest_name, 'Guest') as name,
-                u.avatar_url
-            FROM session_participants sp
-            LEFT JOIN users u ON sp.user_id = u.id
-            WHERE sp.session_id = $1
-            ORDER BY sp.joined_at
-            LIMIT 5
-            "#,
-        )
-        .bind(session_id)
-        .fetch_all(&self.pool)
-        .await?;
-
-        Ok(participants
-            .into_iter()
-            .map(|p| ParticipantBasicInfo {
-                id: p.id,
-                name: p.name,
-                avatar_url: p.avatar_url,
-            })
-            .collect())
+        // Delegate to session_repo for now
+        self.session_repo
+            .get_session_participants_basic(session_id)
+            .await
     }
 
     /// Batch get participants for multiple sessions (max 5 per session)
@@ -69,56 +52,7 @@ impl ParticipantRepository {
         &self,
         session_ids: &[Uuid],
     ) -> Result<HashMap<Uuid, Vec<ParticipantBasicInfo>>, AppError> {
-        if session_ids.is_empty() {
-            return Ok(HashMap::new());
-        }
-
-        #[derive(sqlx::FromRow)]
-        struct ParticipantRow {
-            session_id: Uuid,
-            id: Uuid,
-            name: String,
-            avatar_url: Option<String>,
-            row_num: i64,
-        }
-
-        let participants: Vec<ParticipantRow> = sqlx::query_as(
-            r#"
-            SELECT session_id, id, name, avatar_url, row_num FROM (
-                SELECT
-                    sp.session_id,
-                    sp.id,
-                    COALESCE(u.full_name, sp.guest_name, 'Guest') as name,
-                    u.avatar_url,
-                    ROW_NUMBER() OVER (PARTITION BY sp.session_id ORDER BY sp.joined_at) as row_num
-                FROM session_participants sp
-                LEFT JOIN users u ON sp.user_id = u.id
-                WHERE sp.session_id = ANY($1)
-            ) sub
-            WHERE row_num <= 5
-            "#,
-        )
-        .bind(session_ids)
-        .fetch_all(&self.pool)
-        .await?;
-
-        let mut result: HashMap<Uuid, Vec<ParticipantBasicInfo>> = HashMap::new();
-        for p in participants {
-            result
-                .entry(p.session_id)
-                .or_default()
-                .push(ParticipantBasicInfo {
-                    id: p.id,
-                    name: p.name,
-                    avatar_url: p.avatar_url,
-                });
-        }
-
-        for sid in session_ids {
-            result.entry(*sid).or_default();
-        }
-
-        Ok(result)
+        self.session_repo.batch_get_participants(session_ids).await
     }
 
     /// Add a new participant to a session
@@ -128,39 +62,9 @@ impl ParticipantRepository {
         user_id: Option<Uuid>,
         guest_name: Option<String>,
     ) -> Result<ParticipantResponse, AppError> {
-        let participant_id = Uuid::new_v4();
-        let display_name = if let Some(uid) = user_id {
-            sqlx::query_scalar!(r#"SELECT full_name FROM users WHERE id = $1"#, uid)
-                .fetch_optional(&self.pool)
-                .await?
-                .ok_or(AppError::UserNotFound { user_id: uid })?
-        } else {
-            guest_name.clone().unwrap_or_else(|| "Guest".to_string())
-        };
-
-        sqlx::query!(
-            r#"
-            INSERT INTO session_participants (id, session_id, user_id, guest_name, role, joined_at)
-            VALUES ($1, $2, $3, $4, 'member', NOW())
-            "#,
-            participant_id,
-            session_id,
-            user_id,
-            guest_name
-        )
-        .execute(&self.pool)
-        .await?;
-
-        Ok(ParticipantResponse {
-            id: participant_id,
-            user_id,
-            guest_name,
-            display_name,
-            role: ParticipantRole::Member,
-            joined_at: chrono::Utc::now(),
-            default_weight: 1,
-            is_active: true,
-        })
+        self.session_repo
+            .add_participant(session_id, user_id, guest_name)
+            .await
     }
 
     /// Update a participant's details
@@ -171,86 +75,20 @@ impl ParticipantRepository {
         default_weight: Option<i32>,
         is_active: Option<bool>,
     ) -> Result<ParticipantResponse, AppError> {
-        if let Some(weight) = default_weight {
-            if weight <= 0 {
-                return Err(AppError::Validation {
-                    field: "default_weight".to_string(),
-                    message: "Weight must be greater than 0".to_string(),
-                });
-            }
-        }
-
-        #[derive(sqlx::FromRow)]
-        struct UpdatedParticipant {
-            id: Uuid,
-            user_id: Option<Uuid>,
-            guest_name: Option<String>,
-            role: String,
-            joined_at: chrono::DateTime<chrono::Utc>,
-            default_weight: i32,
-            is_active: bool,
-        }
-
-        let participant: UpdatedParticipant = sqlx::query_as(
-            r#"
-            UPDATE session_participants
-            SET guest_name = COALESCE($1, guest_name),
-                default_weight = COALESCE($2, default_weight),
-                is_active = COALESCE($3, is_active)
-            WHERE id = $4
-            RETURNING id, user_id, guest_name, role::text, joined_at, default_weight, is_active
-            "#,
-        )
-        .bind(guest_name)
-        .bind(default_weight)
-        .bind(is_active)
-        .bind(participant_id)
-        .fetch_optional(&self.pool)
-        .await?
-        .ok_or(AppError::Validation {
-            field: "participant_id".to_string(),
-            message: "Participant not found".to_string(),
-        })?;
-
-        let display_name = if let Some(uid) = participant.user_id {
-            sqlx::query_scalar!(r#"SELECT full_name FROM users WHERE id = $1"#, uid)
-                .fetch_optional(&self.pool)
-                .await?
-                .unwrap_or_else(|| "Unknown".to_string())
-        } else {
-            participant
-                .guest_name
-                .clone()
-                .unwrap_or_else(|| "Guest".to_string())
-        };
-
-        Ok(ParticipantResponse {
-            id: participant.id,
-            user_id: participant.user_id,
-            guest_name: participant.guest_name,
-            display_name,
-            role: if participant.role == "owner" {
-                ParticipantRole::Owner
-            } else {
-                ParticipantRole::Member
-            },
-            joined_at: participant.joined_at,
-            default_weight: participant.default_weight,
-            is_active: participant.is_active,
-        })
+        self.session_repo
+            .update_participant(participant_id, guest_name, default_weight, is_active)
+            .await
     }
 
     /// Delete a participant from a session
     pub async fn delete_participant(&self, participant_id: Uuid) -> Result<(), AppError> {
-        sqlx::query!(
-            "DELETE FROM session_participants WHERE id = $1",
-            participant_id
-        )
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
+        self.session_repo.delete_participant(participant_id).await
     }
+
+    // ========================================
+    // New methods (Phase 2+)
+    // Add new functionality here that doesn't exist in SessionRepository
+    // ========================================
 
     /// Get participant by ID with full details
     pub async fn get_participant_by_id(
@@ -356,4 +194,9 @@ impl ParticipantRepository {
             })
             .collect())
     }
+}
+
+#[cfg(test)]
+mod tests {
+    // Tests will be added during Phase 2 migration
 }
