@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                session_id,\n                description,\n                amount,\n                COALESCE(amount_original, amount) as \"amount_original!\",\n                currency_code,\n                exchange_rate,\n                rate_source,\n                rate_timestamp,\n                split_strategy,\n                created_by,\n                created_at\n            FROM bills\n            WHERE session_id = $1\n            ORDER BY created_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "session_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "amount_original!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "currency_code",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "exchange_rate",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "rate_source",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "rate_timestamp",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "split_strategy",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4888f669558682fbc4c567c59f14ccdf1775137a04485ae2b2d71e39ef15c4e8"
+}
