@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
-import { toast } from '@/components/ui/toaster'
+import { toast } from '@/components/ui/toast'
 import { triggerHaptic } from './useHaptic'
 
 interface OptimisticMutationOptions<TData, TVariables> {

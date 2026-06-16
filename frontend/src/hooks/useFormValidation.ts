@@ -236,6 +236,18 @@ export function useFormValidation<T extends Record<string, unknown>>(
 }
 
 // Common validation rules
+const toFiniteNumber = (value: string | number): number | null => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null
+  }
+
+  const normalized = value.trim()
+  if (normalized === '') return null
+
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 export const validationRules = {
   email: {
     validate: (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
@@ -251,22 +263,22 @@ export const validationRules = {
   }),
   positiveNumber: {
     validate: (value: string | number) => {
-      const num = typeof value === 'string' ? parseFloat(value) : value
-      return !isNaN(num) && num > 0
+      const num = toFiniteNumber(value)
+      return num !== null && num > 0
     },
     message: 'Phải là số dương',
   },
   minValue: (min: number) => ({
     validate: (value: string | number) => {
-      const num = typeof value === 'string' ? parseFloat(value) : value
-      return !isNaN(num) && num >= min
+      const num = toFiniteNumber(value)
+      return num !== null && num >= min
     },
     message: `Giá trị tối thiểu là ${min}`,
   }),
   maxValue: (max: number) => ({
     validate: (value: string | number) => {
-      const num = typeof value === 'string' ? parseFloat(value) : value
-      return !isNaN(num) && num <= max
+      const num = toFiniteNumber(value)
+      return num !== null && num <= max
     },
     message: `Giá trị tối đa là ${max}`,
   }),
@@ -275,4 +287,3 @@ export const validationRules = {
     message,
   }),
 }
-

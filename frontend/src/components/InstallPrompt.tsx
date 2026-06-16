@@ -19,6 +19,8 @@ export function InstallPrompt() {
   const [isStandalone, setIsStandalone] = useState(false)
 
   useEffect(() => {
+    const timers: number[] = []
+
     // Check if already installed
     const standalone = window.matchMedia('(display-mode: standalone)').matches
     setIsStandalone(standalone)
@@ -39,17 +41,20 @@ export function InstallPrompt() {
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      setTimeout(() => setShowPrompt(true), 3000)
+      timers.push(window.setTimeout(() => setShowPrompt(true), 3000))
     }
 
     window.addEventListener('beforeinstallprompt', handler)
 
     // For iOS, show manual install instructions after delay
     if (iOS && !standalone) {
-      setTimeout(() => setShowPrompt(true), 5000)
+      timers.push(window.setTimeout(() => setShowPrompt(true), 5000))
     }
 
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler)
+      timers.forEach((timer) => window.clearTimeout(timer))
+    }
   }, [])
 
   const handleInstall = async () => {
@@ -128,22 +133,4 @@ export function InstallPrompt() {
       </div>
     </div>
   )
-}
-
-// Hook to check PWA install status
-export function usePWAInstall() {
-  const [isInstalled, setIsInstalled] = useState(false)
-  const [isInstallable, setIsInstallable] = useState(false)
-
-  useEffect(() => {
-    const standalone = window.matchMedia('(display-mode: standalone)').matches
-    setIsInstalled(standalone)
-
-    const handler = () => setIsInstallable(true)
-    window.addEventListener('beforeinstallprompt', handler)
-
-    return () => window.removeEventListener('beforeinstallprompt', handler)
-  }, [])
-
-  return { isInstalled, isInstallable }
 }

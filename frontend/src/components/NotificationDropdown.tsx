@@ -3,10 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { toast } from '@/components/ui/toaster'
+import { toast } from '@/components/ui/toast'
 import { showError } from '@/utils/errorHandler'
 import { cn } from '@/lib/utils'
 import type { NotificationItem } from '@/types/api'
+
+function getNotificationSessionId(data: Record<string, unknown>): string | null {
+  return typeof data.session_id === 'string' ? data.session_id : null
+}
 
 export function NotificationDropdown({
   onClose,
@@ -82,12 +86,12 @@ export function NotificationDropdown({
                   
                   // Deep linking
                   if (n.data && typeof n.data === 'object') {
-                      const data = n.data as any
-                      if (n.type === 'settlement_confirmed' && data.session_id) {
-                          navigate(`/session/${data.session_id}?tab=debts`)
+                      const sessionId = getNotificationSessionId(n.data)
+                      if (n.type === 'settlement_confirmed' && sessionId) {
+                          navigate(`/session/${sessionId}?tab=debts`)
                           onClose()
-                      } else if (n.type === 'session_invite' && data.session_id) {
-                          navigate(`/session/${data.session_id}`)
+                      } else if (n.type === 'session_invite' && sessionId) {
+                          navigate(`/session/${sessionId}`)
                           onClose()
                       }
                   }
@@ -111,4 +115,3 @@ export function NotificationDropdown({
     </Card>
   )
 }
-

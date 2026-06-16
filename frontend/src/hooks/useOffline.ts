@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 // Hook for detecting online/offline status
 export function useOnlineStatus() {
@@ -196,6 +196,11 @@ export function useOfflineData<T>({
   const [error, setError] = useState<Error | null>(null)
   const isOnline = useOnlineStatus()
   const { getCache, setCache } = useLocalCache<T>({ key: queryKey, ttl: cacheTTL })
+  const queryFnRef = useRef(queryFn)
+
+  useEffect(() => {
+    queryFnRef.current = queryFn
+  }, [queryFn])
 
   const fetchData = useCallback(async () => {
     setIsLoading(true)
@@ -203,7 +208,8 @@ export function useOfflineData<T>({
 
     // Try to get from cache first
     const cached = getCache()
-    if (cached) {
+    const hasCachedData = cached !== null
+    if (hasCachedData) {
       setData(cached)
       setIsLoading(false)
     }
@@ -211,26 +217,26 @@ export function useOfflineData<T>({
     // If online, fetch fresh data
     if (isOnline) {
       try {
-        const freshData = await queryFn()
+        const freshData = await queryFnRef.current()
         setData(freshData)
         setCache(freshData)
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Failed to fetch'))
         // Keep cached data if fetch fails
-        if (!cached) {
+        if (!hasCachedData) {
           setData(null)
         }
       }
-    } else if (!cached) {
+    } else if (!hasCachedData) {
       setError(new Error('Offline - no cached data available'))
     }
 
     setIsLoading(false)
-  }, [isOnline, queryFn, getCache, setCache])
+  }, [isOnline, getCache, setCache])
 
   useEffect(() => {
     fetchData()
-  }, []) // Only run once on mount
+  }, [fetchData])
 
   return {
     data,
@@ -241,4 +247,3 @@ export function useOfflineData<T>({
     isFromCache: !isOnline && data !== null,
   }
 }
-

@@ -35,6 +35,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
       docker: ${{ steps.filter.outputs.docker }}
+      ci: ${{ steps.filter.outputs.ci }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,6 +63,44 @@ jobs:
               - 'LICENSE'
               - 'AGENTS.md'
               - '*.md'
+
+  # ============================================
+  # Cross-cutting guardrails
+  # ============================================
+  guardrails:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.ci == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend -> target
+          cache-on-failure: true
+          shared-key: "rust-guardrails"
+
+      - name: Money guardrails
+        run: |
+          ! grep -E '\bf(32|64)\b|from_f64|Decimal::from_str\(&amount' backend/src/domain/recurring_expense.rs backend/src/api/recurring_expenses.rs backend/src/repository/recurring_expense_repo.rs backend/src/scheduler.rs
+          ! grep -R -E 'unwrap\(|expect\(|panic!' backend/src/api backend/src/config.rs backend/src/main.rs
+          ! grep -E 'parseFloat|:\s*any|as any|Record<string, any>' frontend/src/components/BillInput.tsx frontend/src/components/NotificationBell.tsx frontend/src/components/NotificationDropdown.tsx frontend/src/components/feed/ActivityItem.tsx frontend/src/components/layout/AppLayout.tsx frontend/src/components/profile/PersonaEditor.tsx frontend/src/contexts/FeatureFlagsContext.tsx frontend/src/contexts/MusicContext.tsx frontend/src/contexts/WebSocketContext.tsx frontend/src/hooks/useFeed.ts frontend/src/hooks/useFormValidation.ts frontend/src/pages/DashboardPage.tsx frontend/src/pages/SessionDetailPage.tsx frontend/src/pages/session/DebtBreakdown.tsx frontend/src/pages/DebtsPage.tsx frontend/src/pages/GroupDebtsPage.tsx frontend/src/pages/session/ImportExportModal.tsx frontend/src/pages/session/RecurringExpenses.tsx frontend/src/lib/api.ts frontend/src/types/api.ts frontend/src/types/websocket.ts frontend/src/utils/sounds.ts
+
+      - name: Foundation authz and WebSocket tests
+        working-directory: ./backend
+        run: |
+          SQLX_OFFLINE=true cargo test authz
+          SQLX_OFFLINE=true cargo test ws::tests
+
+      - name: Session file-size guard
+        run: |
+          wc -l backend/src/repository/session_repo.rs backend/src/api/sessions/mod.rs backend/src/api/ws.rs backend/src/api/recurring_expenses.rs frontend/src/contexts/WebSocketContext.tsx frontend/src/types/websocket.ts
+          test $(wc -l < backend/src/repository/session_repo.rs) -le 400
+          test $(wc -l < backend/src/api/sessions/mod.rs) -le 120
 
   # ============================================
   # Backend: Lint (runs in parallel with test-backend)
@@ -183,6 +222,9 @@ jobs:
           
       - name: Install dependencies
         run: npm ci --prefer-offline
+
+      - name: Audit dependencies
+        run: npm audit --omit=dev --audit-level=moderate
       
       - name: Update version (main branch only)
         if: github.ref == 'refs/heads/main'
@@ -192,6 +234,9 @@ jobs:
         
       - name: Type check
         run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
       
       - name: Build
         run: npm run build
@@ -200,13 +245,14 @@ jobs:
         working-directory: .
         run: |
           ! grep -E '\bf(32|64)\b|from_f64|Decimal::from_str\(&amount' backend/src/domain/recurring_expense.rs backend/src/api/recurring_expenses.rs backend/src/repository/recurring_expense_repo.rs backend/src/scheduler.rs
-          ! grep -E 'parseFloat|:\s*any|as any' frontend/src/components/BillInput.tsx frontend/src/pages/SessionDetailPage.tsx frontend/src/pages/session/DebtBreakdown.tsx frontend/src/pages/DebtsPage.tsx frontend/src/pages/session/RecurringExpenses.tsx frontend/src/lib/api.ts
+          ! grep -R -E 'unwrap\(|expect\(|panic!' backend/src/api backend/src/config.rs backend/src/main.rs
+          ! grep -E 'parseFloat|:\s*any|as any|Record<string, any>' frontend/src/components/BillInput.tsx frontend/src/components/NotificationBell.tsx frontend/src/components/NotificationDropdown.tsx frontend/src/components/feed/ActivityItem.tsx frontend/src/components/layout/AppLayout.tsx frontend/src/components/profile/PersonaEditor.tsx frontend/src/contexts/FeatureFlagsContext.tsx frontend/src/contexts/MusicContext.tsx frontend/src/contexts/WebSocketContext.tsx frontend/src/hooks/useFeed.ts frontend/src/hooks/useFormValidation.ts frontend/src/pages/DashboardPage.tsx frontend/src/pages/SessionDetailPage.tsx frontend/src/pages/session/DebtBreakdown.tsx frontend/src/pages/DebtsPage.tsx frontend/src/pages/GroupDebtsPage.tsx frontend/src/pages/session/ImportExportModal.tsx frontend/src/pages/session/RecurringExpenses.tsx frontend/src/lib/api.ts frontend/src/types/api.ts frontend/src/types/websocket.ts frontend/src/utils/sounds.ts
 
   # ============================================
   # Deploy to Heroku (main branch only)
   # ============================================
   deploy:
-    needs: [changes, lint-backend, test-backend, test-frontend]
+    needs: [changes, guardrails, lint-backend, test-backend, test-frontend]
     # Run if all tests pass OR if tests were skipped (no changes)
     if: |
       always() && 
@@ -214,7 +260,8 @@ jobs:
       github.event_name == 'push' &&
       (needs.lint-backend.result == 'success' || needs.lint-backend.result == 'skipped') &&
       (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped') &&
-      (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped')
+      (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped') &&
+      (needs.guardrails.result == 'success' || needs.guardrails.result == 'skipped')
     runs-on: ubuntu-latest
     outputs:
       previous_commit: ${{ steps.save-commit.outputs.hash }}

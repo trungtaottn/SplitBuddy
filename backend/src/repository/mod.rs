@@ -1,4 +1,5 @@
 pub mod bill_repo;
+pub mod debt_lock;
 pub mod debt_repo;
 pub mod feed_repo;
 pub mod game_repo;

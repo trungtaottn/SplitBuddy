@@ -19,6 +19,11 @@ export type WsEvent =
       message: string
     }
   | {
+      type: 'SubscriptionRejected'
+      session_id: string
+      message: string
+    }
+  | {
       type: 'BillUpdated'
       session_id: string
       bill_id: string
@@ -81,13 +86,61 @@ export type WsEvent =
       notification_type: string
     }
 
-// Helper to check event type safely
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isWsEvent(data: any): data is WsEvent {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'type' in data &&
-    typeof data.type === 'string'
-  )
+function isRecord(data: unknown): data is Record<string, unknown> {
+  return typeof data === 'object' && data !== null
+}
+
+function hasString(data: Record<string, unknown>, key: string): boolean {
+  return typeof data[key] === 'string'
+}
+
+function isPresenceUser(data: unknown): data is PresenceUser {
+  return isRecord(data)
+    && hasString(data, 'user_id')
+    && hasString(data, 'user_name')
+    && hasString(data, 'joined_at')
+}
+
+export function isWsEvent(data: unknown): data is WsEvent {
+  if (!isRecord(data) || !hasString(data, 'type')) return false
+
+  switch (data.type) {
+    case 'Connected':
+      return hasString(data, 'user_id')
+    case 'Error':
+      return hasString(data, 'message')
+    case 'SubscriptionRejected':
+      return hasString(data, 'session_id') && hasString(data, 'message')
+    case 'BillUpdated':
+    case 'BillDeleted':
+      return hasString(data, 'session_id') && hasString(data, 'bill_id')
+    case 'DebtUpdated':
+      return hasString(data, 'session_id') && hasString(data, 'debt_id')
+    case 'DebtsRecalculated':
+    case 'SessionUpdated':
+      return hasString(data, 'session_id')
+    case 'SessionStatusChanged':
+      return hasString(data, 'session_id') && hasString(data, 'status')
+    case 'ParticipantChanged':
+      return hasString(data, 'session_id') && hasString(data, 'action')
+    case 'PresenceJoined':
+      return hasString(data, 'session_id') && hasString(data, 'user_id') && hasString(data, 'user_name')
+    case 'PresenceLeft':
+      return hasString(data, 'session_id') && hasString(data, 'user_id')
+    case 'PresenceList':
+      return hasString(data, 'session_id')
+        && Array.isArray(data.users)
+        && data.users.every(isPresenceUser)
+    case 'UserActivity':
+      return hasString(data, 'session_id')
+        && hasString(data, 'user_id')
+        && hasString(data, 'user_name')
+        && hasString(data, 'action')
+    case 'NotificationReceived':
+      return hasString(data, 'notification_id')
+        && hasString(data, 'title')
+        && hasString(data, 'notification_type')
+    default:
+      return false
+  }
 }

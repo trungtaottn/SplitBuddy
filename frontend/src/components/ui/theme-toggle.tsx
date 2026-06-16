@@ -1,5 +1,5 @@
 import { Moon, Sun, Monitor } from 'lucide-react'
-import { useTheme } from '@/contexts/ThemeContext'
+import { useTheme } from '@/contexts/use-theme'
 import { cn } from '@/lib/utils'
 import { haptics } from '@/utils/haptics'
 

@@ -1,16 +1,16 @@
 import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/contexts/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { toast } from '@/components/ui/toaster'
+import { toast } from '@/components/ui/toast'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { User, Lock, Camera, Save, Eye, EyeOff, Loader2, Palette, Sparkles, Trophy, Star, Lightbulb, Landmark, Plus, Pencil, Trash2, Bell, QrCode } from 'lucide-react'
 import WrappedModal from '@/components/WrappedModal'
-import { useOnboarding } from '@/components/Onboarding'
+import { useOnboarding } from '@/components/onboarding-context'
 import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import { SwipeActions } from '@/components/ui/SwipeActions'
 import { PersonaEditor } from '@/components/profile/PersonaEditor'
@@ -751,7 +751,7 @@ export default function ProfilePage() {
                                         toast.success('Đã tắt push notifications')
                                       }
                                    }
-                                 } catch(e) { toast.error('Lỗi khi tắt push') } finally { setPushLoading(false) }
+                                 } catch { toast.error('Lỗi khi tắt push') } finally { setPushLoading(false) }
                              } else {
                                 // Logic to enable
                                  const vapidKey = (import.meta as unknown as { env: Record<string, string | undefined> }).env.VITE_VAPID_PUBLIC_KEY
@@ -770,7 +770,7 @@ export default function ProfilePage() {
                                        setPushEnabled(true)
                                        toast.success('Đã bật push!')
                                     }
-                                 } catch(e) { toast.error('Lỗi khi bật push') } finally { setPushLoading(false) }
+                                 } catch { toast.error('Lỗi khi bật push') } finally { setPushLoading(false) }
                              }
                           }}
                           className={`w-full text-xs h-8 ${pushEnabled ? 'border-white/10 text-zinc-400 hover:text-white' : 'bg-white text-black hover:bg-zinc-200'}`}
