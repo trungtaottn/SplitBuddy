@@ -20,9 +20,9 @@ import { CURRENCY_OPTIONS } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/axios'
 import { api as apiWrapper } from '@/lib/api'
-import { toast } from '@/components/ui/toaster'
+import { toast } from '@/components/ui/toast'
 import type { ApiResponse, ExpenseCategory, Participant, PayerInput, SplitDetailInput, Bill, RateHistoryEntry } from '@/types/api'
-import { useWebSocket } from '@/contexts/WebSocketContext'
+import { useWebSocket } from '@/contexts/use-websocket'
 
 
 // Common bill descriptions for autocomplete
@@ -123,9 +123,16 @@ export function BillInput({
       setDescription(initialData.description || '')
       setAmount(initialData.amount_original?.toString() || initialData.amount?.toString() || '')
       setSelectedPayer(initialData.payers?.[0]?.participant_id || '')
-      setCurrencyCode(initialData.currency_code || baseCurrency)
+      const nextCurrencyCode = initialData.currency_code || baseCurrency
+      setCurrencyCode(nextCurrencyCode)
       setExchangeRate(initialData.exchange_rate || '')
-      setSplitMode(initialData.split_strategy === 'CUSTOM' ? 'CUSTOM' : 'EQUAL')
+      setSplitMode(
+        initialData.split_strategy === 'CUSTOM'
+          ? 'CUSTOM'
+          : initialData.split_strategy === 'WEIGHTED'
+            ? 'WEIGHTED'
+            : 'EQUAL'
+      )
 
       if (initialData.participants && initialData.participants.length > 0) {
         setSelectedSplitParticipants(initialData.participants.map(p => p.participant_id))
@@ -136,8 +143,8 @@ export function BillInput({
 
           initialData.participants.forEach(p => {
             splits[p.participant_id] = useRate
-              ? divideMoney(p.amount_owed || '0', initialData.exchange_rate || '1', initialData.currency_code || currencyCode)
-              : normalizeMoney(p.amount_owed || '0', initialData.currency_code || currencyCode)
+              ? divideMoney(p.amount_owed || '0', initialData.exchange_rate || '1', nextCurrencyCode)
+              : normalizeMoney(p.amount_owed || '0', nextCurrencyCode)
           })
           setCustomSplits(splits)
         }

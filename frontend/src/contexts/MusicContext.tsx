@@ -1,35 +1,10 @@
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
+import { useState, useEffect, useRef, useCallback, ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { isYouTubeUrl, extractYouTubeVideoId, loadYouTubeAPI, YTPlayer, YTPlayerState } from '@/lib/youtube'
 import { api } from '@/lib/axios'
 import type { ApiResponse, PaginationMeta } from '@/types/api'
-
-export interface Track {
-  id: string
-  name: string
-  src: string
-  isYouTube?: boolean
-}
-
-interface MusicContextType {
-  isPlaying: boolean
-  currentTrack: Track | null
-  tracks: Track[]
-  volume: number
-  isLoading: boolean
-  isShuffled: boolean
-  play: () => void
-  pause: () => void
-  toggle: () => void
-  setVolume: (volume: number) => void
-  nextTrack: () => void
-  prevTrack: () => void
-  selectTrack: (track: Track) => void
-  refreshTracks: () => Promise<void>
-  toggleShuffle: () => void
-}
-
-const MusicContext = createContext<MusicContextType | null>(null)
+import { isRateLimitError } from '@/utils/errorHandler'
+import { MusicContext, type Track } from './music-context'
 
 export function MusicProvider({ children }: { children: ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false)
@@ -40,7 +15,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   // const [isLoading, setIsLoading] = useState(true) // Removed unused state
   const [volume, setVolumeState] = useState(() => {
     const saved = localStorage.getItem('musicVolume')
-    return saved ? parseFloat(saved) : 0.3
+    const parsed = saved ? Number(saved) : 0.3
+    return Number.isFinite(parsed) ? Math.max(0, Math.min(1, parsed)) : 0.3
   })
   
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -48,10 +24,24 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const ytContainerRef = useRef<HTMLDivElement | null>(null)
   const [ytReady, setYtReady] = useState(false)
   
-  // Ref to always have access to latest nextTrack function
   const nextTrackRef = useRef<() => void>(() => {})
+  const tracksLengthRef = useRef(0)
+  const isPlayingRef = useRef(false)
+  const volumeRef = useRef(volume)
 
   const currentTrack = tracks.length > 0 ? tracks[currentTrackIndex] : null
+
+  useEffect(() => {
+    tracksLengthRef.current = tracks.length
+  }, [tracks.length])
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying
+  }, [isPlaying])
+
+  useEffect(() => {
+    volumeRef.current = volume
+  }, [volume])
 
   const { data: paginatedData, isFetching: isLoading, refetch } = useQuery({
     queryKey: ['music-tracks'],
@@ -60,8 +50,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       return res.data.data
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: (failureCount, error: any) => {
-       if (error?.response?.status === 429) return false
+    retry: (failureCount, error: unknown) => {
+       if (isRateLimitError(error)) return false
        return failureCount < 2
     }
   })
@@ -124,7 +114,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   // Initialize audio element
   useEffect(() => {
     audioRef.current = new Audio()
-    audioRef.current.volume = volume
+    audioRef.current.volume = volumeRef.current
     audioRef.current.loop = false
     
     // Auto play next track when current ends
@@ -137,8 +127,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       const src = audioRef.current?.src || ''
       if (!src.includes('youtube') && !src.includes('youtu.be') && src !== '') {
         console.warn('Failed to load track, trying next...')
-        if (tracks.length > 1) {
-          nextTrack()
+        if (tracksLengthRef.current > 1) {
+          nextTrackRef.current()
         }
       }
     })
@@ -155,7 +145,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!currentTrack) return
     
-    const wasPlaying = isPlaying
+    const wasPlaying = isPlayingRef.current
     const isYT = isYouTubeUrl(currentTrack.src)
     
     if (isYT) {
@@ -172,7 +162,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         
         if (ytPlayerRef.current) {
           ytPlayerRef.current.loadVideoById(videoId)
-          ytPlayerRef.current.setVolume(volume * 100)
+          ytPlayerRef.current.setVolume(volumeRef.current * 100)
           // Auto-play if was playing, otherwise pause
           if (wasPlaying) {
             ytPlayerRef.current.playVideo()
@@ -193,7 +183,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
             },
             events: {
               onReady: (event) => {
-                event.target.setVolume(volume * 100)
+                event.target.setVolume(volumeRef.current * 100)
                 if (wasPlaying) {
                   event.target.playVideo()
                 }
@@ -205,8 +195,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
               },
               onError: () => {
                 console.warn('YouTube player error, trying next track...')
-                if (tracks.length > 1) {
-                  nextTrack()
+                if (tracksLengthRef.current > 1) {
+                  nextTrackRef.current()
                 }
               },
             },
@@ -230,7 +220,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-  }, [currentTrack?.id, ytReady])
+  }, [currentTrack, ytReady])
 
   // Update volume
   useEffect(() => {
@@ -243,7 +233,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('musicVolume', volume.toString())
   }, [volume])
 
-  const play = () => {
+  const play = useCallback(() => {
     if (!currentTrack) return
     
     const isYT = isYouTubeUrl(currentTrack.src)
@@ -258,9 +248,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         console.warn('Playback failed:', err)
       })
     }
-  }
+  }, [currentTrack])
 
-  const pause = () => {
+  const pause = useCallback(() => {
     if (currentTrack && isYouTubeUrl(currentTrack.src) && ytPlayerRef.current) {
       ytPlayerRef.current.pauseVideo()
     }
@@ -268,21 +258,21 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       audioRef.current.pause()
     }
     setIsPlaying(false)
-  }
+  }, [currentTrack])
 
-  const toggle = () => {
+  const toggle = useCallback(() => {
     if (isPlaying) {
       pause()
     } else {
       play()
     }
-  }
+  }, [isPlaying, pause, play])
 
-  const setVolume = (newVolume: number) => {
+  const setVolume = useCallback((newVolume: number) => {
     setVolumeState(Math.max(0, Math.min(1, newVolume)))
-  }
+  }, [])
 
-  const nextTrack = () => {
+  const nextTrack = useCallback(() => {
     if (tracks.length > 0) {
       if (isShuffled && shuffledIndices.length > 0) {
         // Find current position in shuffled array
@@ -296,14 +286,14 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       // Auto-play when switching tracks
       setIsPlaying(true)
     }
-  }
+  }, [currentTrackIndex, isShuffled, shuffledIndices, tracks.length])
   
   // Keep ref updated with latest nextTrack function
   useEffect(() => {
     nextTrackRef.current = nextTrack
-  })
+  }, [nextTrack])
 
-  const prevTrack = () => {
+  const prevTrack = useCallback(() => {
     if (tracks.length > 0) {
       if (isShuffled && shuffledIndices.length > 0) {
         // Find current position in shuffled array
@@ -315,16 +305,16 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         setCurrentTrackIndex((prev) => (prev - 1 + tracks.length) % tracks.length)
       }
     }
-  }
+  }, [currentTrackIndex, isShuffled, shuffledIndices, tracks.length])
 
-  const selectTrack = (track: Track) => {
+  const selectTrack = useCallback((track: Track) => {
     const index = tracks.findIndex((t) => t.id === track.id)
     if (index !== -1) {
       setCurrentTrackIndex(index)
     }
-  }
+  }, [tracks])
 
-  const toggleShuffle = () => {
+  const toggleShuffle = useCallback(() => {
     if (!isShuffled) {
       // Enable shuffle - create shuffled indices
       const indices = tracks.map((_, i) => i)
@@ -340,7 +330,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       setShuffledIndices([])
       setIsShuffled(false)
     }
-  }
+  }, [isShuffled, tracks])
 
   return (
     <MusicContext.Provider
@@ -365,12 +355,4 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       {children}
     </MusicContext.Provider>
   )
-}
-
-export function useMusic() {
-  const context = useContext(MusicContext)
-  if (!context) {
-    throw new Error('useMusic must be used within a MusicProvider')
-  }
-  return context
 }

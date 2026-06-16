@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useMusic } from '@/contexts/MusicContext'
+import { useMusic } from '@/contexts/use-music'
 import { 
   Play, 
   Pause, 

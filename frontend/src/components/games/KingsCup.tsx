@@ -46,6 +46,29 @@ const SUIT_COLORS: Record<string, string> = {
   spades: 'text-zinc-900'
 }
 
+function createShuffledDeck(): CardType[] {
+  const newDeck: CardType[] = []
+  for (const suit of SUITS) {
+    for (const value of VALUES) {
+      const ruleData = CARD_RULES[value]
+      newDeck.push({
+        suit,
+        value,
+        rule: ruleData.rule,
+        description: ruleData.description,
+        action: ruleData.action
+      })
+    }
+  }
+
+  for (let i = newDeck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
+  }
+
+  return newDeck
+}
+
 interface KingsCupProps {
   onClose?: () => void
 }
@@ -59,34 +82,11 @@ export function KingsCup({ onClose }: KingsCupProps) {
 
   // Initialize deck
   useEffect(() => {
-    shuffleDeck()
+    setDeck(createShuffledDeck())
   }, [])
 
-  const createDeck = (): CardType[] => {
-    const newDeck: CardType[] = []
-    for (const suit of SUITS) {
-      for (const value of VALUES) {
-        const ruleData = CARD_RULES[value]
-        newDeck.push({
-          suit,
-          value,
-          rule: ruleData.rule,
-          description: ruleData.description,
-          action: ruleData.action
-        })
-      }
-    }
-    return newDeck
-  }
-
   const shuffleDeck = () => {
-    const newDeck = createDeck()
-    // Fisher-Yates shuffle
-    for (let i = newDeck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]]
-    }
-    setDeck(newDeck)
+    setDeck(createShuffledDeck())
     setCurrentCard(null)
     setKingsDrawn(0)
     setGameOver(false)

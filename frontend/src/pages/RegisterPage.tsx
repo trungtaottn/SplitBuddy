@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/contexts/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Beer } from 'lucide-react'
-import { toast } from '@/components/ui/toaster'
+import { toast } from '@/components/ui/toast'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('')

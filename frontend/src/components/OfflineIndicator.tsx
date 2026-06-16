@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { WifiOff, Wifi, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -6,13 +6,20 @@ export function OfflineIndicator() {
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [showReconnected, setShowReconnected] = useState(false)
   const [wasOffline, setWasOffline] = useState(false)
+  const reconnectTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true)
       if (wasOffline) {
+        if (reconnectTimeoutRef.current) {
+          window.clearTimeout(reconnectTimeoutRef.current)
+        }
         setShowReconnected(true)
-        setTimeout(() => setShowReconnected(false), 3000)
+        reconnectTimeoutRef.current = window.setTimeout(() => {
+          setShowReconnected(false)
+          reconnectTimeoutRef.current = null
+        }, 3000)
       }
     }
 
@@ -27,6 +34,9 @@ export function OfflineIndicator() {
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
+      if (reconnectTimeoutRef.current) {
+        window.clearTimeout(reconnectTimeoutRef.current)
+      }
     }
   }, [wasOffline])
 
@@ -58,24 +68,3 @@ export function OfflineIndicator() {
     </div>
   )
 }
-
-// Hook for offline detection
-export function useOnlineStatus() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine)
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true)
-    const handleOffline = () => setIsOnline(false)
-
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
-
-  return isOnline
-}
-

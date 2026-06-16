@@ -303,20 +303,3 @@ function findMostCommon(items: string[]): string | null {
 
   return maxItem
 }
-
-// Bill amount predictor based on history
-export function useBillPrediction(recentBills: Bill[]) {
-  return useMemo(() => {
-    if (recentBills.length < 3) return null
-
-    const amounts = recentBills.map(b => parseFloat(b.amount))
-    const avg = amounts.reduce((a, b) => a + b, 0) / amounts.length
-    const rounded = Math.round(avg / 10000) * 10000 // Round to nearest 10k
-
-    return {
-      suggestedAmount: rounded,
-      confidence: amounts.length >= 5 ? 'high' : 'medium',
-    }
-  }, [recentBills])
-}
-

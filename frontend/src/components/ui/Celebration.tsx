@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 // Confetti particle
@@ -214,10 +214,16 @@ export function AnimatedNumber({
   className?: string
 }) {
   const [displayValue, setDisplayValue] = useState(0)
+  const displayValueRef = useRef(0)
+
+  useEffect(() => {
+    displayValueRef.current = displayValue
+  }, [displayValue])
 
   useEffect(() => {
     const startTime = Date.now()
-    const startValue = displayValue
+    const startValue = displayValueRef.current
+    let frameId = 0
     
     const animate = () => {
       const now = Date.now()
@@ -227,14 +233,16 @@ export function AnimatedNumber({
       const easeOutQuart = 1 - Math.pow(1 - progress, 4)
       const current = Math.floor(startValue + (value - startValue) * easeOutQuart)
       
+      displayValueRef.current = current
       setDisplayValue(current)
       
       if (progress < 1) {
-        requestAnimationFrame(animate)
+        frameId = requestAnimationFrame(animate)
       }
     }
     
-    requestAnimationFrame(animate)
+    frameId = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(frameId)
   }, [value, duration])
 
   return (
@@ -243,4 +251,3 @@ export function AnimatedNumber({
     </span>
   )
 }
-

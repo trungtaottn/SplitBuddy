@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Home, Users, Wallet, User } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
+import { useFeatureFlags } from '@/contexts/use-feature-flags'
 import { cn } from '@/lib/utils'
 
 export function MobileNav() {

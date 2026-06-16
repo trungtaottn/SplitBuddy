@@ -9,8 +9,8 @@ import { ArrowLeft, Plus, Upload } from "lucide-react";
 import type { Bill, CreateBillDto, ExpenseCategory, SessionDetail, UpdateBillDto } from "@/types/api";
 import { ResponsiveModal } from "@/components/ui/responsive-modal";
 import { BillInput } from "@/components/BillInput";
-import { useAuth } from "@/contexts/AuthContext";
-import { useSessionPresence } from "@/contexts/WebSocketContext";
+import { useAuth } from "@/contexts/use-auth";
+import { useSessionPresence } from "@/contexts/use-websocket";
 import { addMoney, subtractMoney } from "@/utils/money";
 import { getErrorMessage } from "@/utils/errorHandler";
 
