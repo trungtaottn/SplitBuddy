@@ -1,4 +1,6 @@
 import {
+  createContext,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -6,14 +8,25 @@ import {
   ReactNode,
 } from 'react'
 import { api } from '@/lib/axios'
-import { useAuth } from "@/contexts/use-auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { WsEvent, PresenceUser, isWsEvent, WsTicketResponse } from '@/types/websocket'
 import { ApiResponse } from '@/types/api'
 import { queryClient } from '@/lib/queryClient'
 import { toast } from 'sonner'
-import { getErrorStatus } from '@/utils/errorHandler'
-import { WebSocketContext, type ActiveUserActivity, type WebSocketContextType } from './websocket-context'
+
+interface WebSocketContextType {
+  isConnected: boolean
+  connectionStatus: 'connected' | 'connecting' | 'disconnected' | 'reconnecting' | 'error'
+  subscribeToSession: (sessionId: string) => void
+  unsubscribeFromSession: (sessionId: string) => void
+  sessionPresence: Map<string, PresenceUser[]>
+  activeUsers: Map<string, Map<string, { userName: string, action: string, timestamp: number }>> // sessionId -> userId -> info
+  reconnect: () => void
+  sendActivity: (sessionId: string, action: string) => void
+}
+
+const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined)
 
 const RECONNECT_INTERVAL_BASE = 1000
 const MAX_RECONNECT_INTERVAL = 30000
@@ -22,24 +35,13 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [connectionStatus, setConnectionStatus] = useState<WebSocketContextType['connectionStatus']>('disconnected')
   const [sessionPresence, setSessionPresence] = useState<Map<string, PresenceUser[]>>(new Map())
-  const [activeUsers, setActiveUsers] = useState<Map<string, Map<string, ActiveUserActivity>>>(new Map())
+  const [activeUsers, setActiveUsers] = useState<Map<string, Map<string, { userName: string, action: string, timestamp: number }>>>(new Map())
   
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
   const reconnectAttemptsRef = useRef(0)
   const subscriptionsRef = useRef<Set<string>>(new Set())
   const isConnectingRef = useRef(false)
-  const shouldReconnectRef = useRef(false)
-
-  const closeSocket = useCallback(() => {
-    shouldReconnectRef.current = false
-    clearTimeout(reconnectTimeoutRef.current)
-    if (wsRef.current) {
-      wsRef.current.close()
-      wsRef.current = null
-    }
-    isConnectingRef.current = false
-  }, [])
 
   const handleEvent = useCallback((event: WsEvent) => {
     switch (event.type) {
@@ -166,16 +168,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       case 'Error':
         console.error('WebSocket Error from server:', event.message)
         break
-
-      case 'SubscriptionRejected':
-        subscriptionsRef.current.delete(event.session_id)
-        setSessionPresence((prev) => {
-          const newMap = new Map(prev)
-          newMap.delete(event.session_id)
-          return newMap
-        })
-        toast.error(event.message)
-        break
     }
   }, [])
 
@@ -183,7 +175,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     if (wsRef.current?.readyState === WebSocket.OPEN || isConnectingRef.current) return
 
     try {
-      shouldReconnectRef.current = true
       isConnectingRef.current = true
       setConnectionStatus(reconnectAttemptsRef.current > 0 ? 'reconnecting' : 'connecting')
 
@@ -228,7 +219,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         setConnectionStatus('disconnected')
         wsRef.current = null
         isConnectingRef.current = false
-        if (!shouldReconnectRef.current) return
         
         // Attempt reconnect
         const timeout = Math.min(
@@ -244,15 +234,13 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       }
 
       wsRef.current = ws
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Failed to connect WebSocket:', error)
       isConnectingRef.current = false
       setConnectionStatus('error')
 
       // Stop reconnecting if Auth error (401/403)
-      const status = getErrorStatus(error)
-      if (status === 401 || status === 403) {
-          shouldReconnectRef.current = false
+      if (error.response?.status === 401 || error.response?.status === 403) {
           console.warn('WebSocket Auth failed. Stopping reconnect.')
           return
       }
@@ -274,16 +262,24 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       connect()
     } else {
       // Cleanup on logout
-      closeSocket()
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
+      clearTimeout(reconnectTimeoutRef.current)
       setConnectionStatus('disconnected')
       setSessionPresence(new Map())
       subscriptionsRef.current.clear()
+      isConnectingRef.current = false
     }
 
     return () => {
-      closeSocket()
+      if (wsRef.current) {
+        wsRef.current.close()
+      }
+      clearTimeout(reconnectTimeoutRef.current)
     }
-  }, [user, connect, closeSocket])
+  }, [user, connect])
 
   const subscribeToSession = useCallback((sessionId: string) => {
     subscriptionsRef.current.add(sessionId)
@@ -331,7 +327,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         sessionPresence,
         reconnect: () => {
              reconnectAttemptsRef.current = 0
-             shouldReconnectRef.current = true
              connect()
          },
          activeUsers,
@@ -341,4 +336,32 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       {children}
     </WebSocketContext.Provider>
   )
+}
+
+export function useWebSocket() {
+  const context = useContext(WebSocketContext)
+  if (context === undefined) {
+    throw new Error('useWebSocket must be used within a WebSocketProvider')
+  }
+  return context
+}
+
+export function useSessionPresence(sessionId?: string) {
+  const { subscribeToSession, unsubscribeFromSession, sessionPresence } = useWebSocket()
+
+  useEffect(() => {
+    if (sessionId) {
+      subscribeToSession(sessionId)
+      return () => {
+        unsubscribeFromSession(sessionId)
+      }
+    }
+  }, [sessionId, subscribeToSession, unsubscribeFromSession])
+
+  return sessionId ? (sessionPresence.get(sessionId) || []) : []
+}
+
+export function useSessionActivity(sessionId?: string) {
+    const { activeUsers } = useWebSocket()
+    return sessionId ? Array.from(activeUsers.get(sessionId)?.values() || []) : []
 }

@@ -3,9 +3,8 @@ import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { useAuth } from '@/contexts/use-auth'
-import { useMood } from '@/contexts/use-mood'
-import { MoodType, MOOD_CONFIGS } from '@/contexts/mood-configs'
+import { useAuth } from '@/contexts/AuthContext'
+import { useMood, MoodType, MOOD_CONFIGS } from '@/contexts/MoodContext'
 import { Smile, Frown, Moon, Flame, Zap, RefreshCw } from 'lucide-react'
 
 /**
@@ -77,7 +76,7 @@ export default function AiGreeting({ onCreateSession, onViewDebts }: AiGreetingP
       })
       setShowMoodSelector(false)
     }
-  }, [currentSlogan, greeting, mood])
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => {

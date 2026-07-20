@@ -37,25 +37,6 @@ const getActivityIcon = (type: string) => {
   }
 }
 
-const metaString = (meta: FeedActivity['meta_data'], key: string, fallback = ''): string =>
-  typeof meta[key] === 'string' ? meta[key] : fallback
-
-const metaNumber = (meta: FeedActivity['meta_data'], key: string): number => {
-  const value = meta[key]
-  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
-  if (typeof value === 'string') {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : 0
-  }
-  return 0
-}
-
-const formatFeedMoney = (meta: FeedActivity['meta_data']) =>
-  new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: metaString(meta, 'currency', 'VND'),
-  }).format(metaNumber(meta, 'amount'))
-
 const getActivityContent = (activity: FeedActivity) => {
   const { type, meta_data } = activity
   
@@ -64,10 +45,10 @@ const getActivityContent = (activity: FeedActivity) => {
       return (
         <div>
           <span className="text-gray-300">đã tạo hóa đơn </span>
-          <span className="font-semibold text-white">"{metaString(meta_data, 'description', 'Hóa đơn')}"</span>
+          <span className="font-semibold text-white">"{meta_data.description}"</span>
           <span className="text-gray-300"> với giá trị </span>
           <span className="font-bold text-orange-400">
-            {formatFeedMoney(meta_data)}
+            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: meta_data.currency || 'VND' }).format(Number(meta_data.amount))}
           </span>
         </div>
       )
@@ -75,8 +56,8 @@ const getActivityContent = (activity: FeedActivity) => {
       return (
         <div>
            <span className="text-gray-300">đã mở cuộc nhậu </span>
-           <span className="font-semibold text-purple-400">"{metaString(meta_data, 'name', 'Cuộc nhậu')}"</span>
-           {metaString(meta_data, 'location') && <span className="text-gray-400"> tại {metaString(meta_data, 'location')}</span>}
+           <span className="font-semibold text-purple-400">"{meta_data.name}"</span>
+           {meta_data.location && <span className="text-gray-400"> tại {meta_data.location}</span>}
         </div>
       )
     case 'payment_sent':
@@ -84,9 +65,9 @@ const getActivityContent = (activity: FeedActivity) => {
         <div>
           <span className="text-gray-300">đã thanh toán </span>
           <span className="font-bold text-green-400">
-             {formatFeedMoney(meta_data)}
+             {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: meta_data.currency || 'VND' }).format(Number(meta_data.amount))}
           </span>
-          <span className="text-gray-400 text-sm block mt-1">qua {metaString(meta_data, 'method', 'phương thức thanh toán')}</span>
+          <span className="text-gray-400 text-sm block mt-1">qua {meta_data.method}</span>
         </div>
       )
     case 'achievement_unlocked':
@@ -95,9 +76,9 @@ const getActivityContent = (activity: FeedActivity) => {
           <span className="text-gray-300">đã mở khóa thành tựu </span>
           <span className="font-bold text-yellow-400 flex items-center gap-1 inline-flex">
             <Trophy className="w-3 h-3" />
-            {metaString(meta_data, 'achievement_name', 'Thành tựu')}
+            {meta_data.achievement_name}
           </span>
-          <span className="text-gray-400 text-xs block mt-1">+{metaNumber(meta_data, 'xp_reward')} XP</span>
+          <span className="text-gray-400 text-xs block mt-1">+{meta_data.xp_reward} XP</span>
         </div>
       )
     default:

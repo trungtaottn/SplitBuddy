@@ -5,7 +5,6 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { formatCurrency } from '@/utils/formatCurrency'
-import { getErrorMessage } from '@/utils/errorHandler'
 import type { RecurringExpense, RecurringException } from '@/types/api'
 
 interface RecurringExpensesProps {
@@ -62,8 +61,8 @@ function RecurringExpenseCard({
       setExceptionDate('')
       toast.success('Đã thêm ngày bỏ qua')
     },
-    onError: (error: unknown) => {
-      toast.error('Không thể thêm ngoại lệ: ' + getErrorMessage(error))
+    onError: (error: any) => {
+      toast.error('Không thể thêm ngoại lệ: ' + (error.response?.data?.message || error.message))
     },
   })
 
@@ -73,8 +72,8 @@ function RecurringExpenseCard({
       queryClient.invalidateQueries({ queryKey: ['recurring-exceptions', sessionId, item.id] })
       toast.success('Đã xóa ngày bỏ qua')
     },
-    onError: (error: unknown) => {
-      toast.error('Không thể xóa ngoại lệ: ' + getErrorMessage(error))
+    onError: (error: any) => {
+      toast.error('Không thể xóa ngoại lệ: ' + (error.response?.data?.message || error.message))
     },
   })
 
@@ -84,8 +83,8 @@ function RecurringExpenseCard({
       queryClient.invalidateQueries({ queryKey: ['recurring-expenses', sessionId] })
       toast.success('Đã tạm dừng lịch định kỳ')
     },
-    onError: (error: unknown) => {
-      toast.error('Không thể tạm dừng: ' + getErrorMessage(error))
+    onError: (error: any) => {
+      toast.error('Không thể tạm dừng: ' + (error.response?.data?.message || error.message))
     },
   })
 
@@ -95,8 +94,8 @@ function RecurringExpenseCard({
       queryClient.invalidateQueries({ queryKey: ['recurring-expenses', sessionId] })
       toast.success('Đã tiếp tục lịch định kỳ')
     },
-    onError: (error: unknown) => {
-      toast.error('Không thể tiếp tục: ' + getErrorMessage(error))
+    onError: (error: any) => {
+      toast.error('Không thể tiếp tục: ' + (error.response?.data?.message || error.message))
     },
   })
 
@@ -106,8 +105,8 @@ function RecurringExpenseCard({
       queryClient.invalidateQueries({ queryKey: ['recurring-expenses', sessionId] })
       toast.success('Đã bỏ qua kỳ tiếp theo')
     },
-    onError: (error: unknown) => {
-      toast.error('Không thể bỏ qua: ' + getErrorMessage(error))
+    onError: (error: any) => {
+      toast.error('Không thể bỏ qua: ' + (error.response?.data?.message || error.message))
     },
   })
 

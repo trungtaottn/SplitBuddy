@@ -1,5 +1,4 @@
-import { useMood } from '@/contexts/use-mood'
-import type { MoodType } from '@/contexts/mood-configs'
+import { useMood, MoodType } from '@/contexts/MoodContext'
 
 // More visible mood effects with soft gradients and floating shapes
 // Dark Luxury compatible mood effects (Subtle, dark glows)

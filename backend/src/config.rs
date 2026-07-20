@@ -1,11 +1,5 @@
 use std::env;
 
-use anyhow::{Context, Result};
-
-mod push_config;
-
-pub use push_config::VapidConfig;
-
 #[derive(Clone)]
 pub struct Config {
     pub database_url: String,
@@ -22,7 +16,6 @@ pub struct Config {
     pub http_connect_timeout_seconds: u64,
     // Scheduler settings
     pub recurring_expense_scheduler_interval_seconds: u64,
-    pub recurring_expense_scheduler_jitter_percent: u32,
     // Redis settings (optional)
     pub redis_url: Option<String>,
 
@@ -32,12 +25,10 @@ pub struct Config {
     pub db_acquire_timeout_seconds: u64,
     pub db_idle_timeout_seconds: u64,
     pub db_max_lifetime_seconds: u64,
-    // Push notification settings
-    pub vapid: VapidConfig,
 }
 
 impl Config {
-    pub fn from_env() -> Result<Self> {
+    pub fn from_env() -> anyhow::Result<Self> {
         // Parse CORS origins from comma-separated string
         let cors_origins = env::var("CORS_ORIGINS")
             .unwrap_or_else(|_| "http://localhost:5173,http://localhost:8080".to_string())
@@ -47,18 +38,28 @@ impl Config {
             .collect();
 
         Ok(Self {
-            database_url: env::var("DATABASE_URL").context("DATABASE_URL must be set")?,
-            jwt_secret: env::var("JWT_SECRET").context("JWT_SECRET must be set")?,
+            database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
+            jwt_secret: env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
             jwt_expiration_hours: env::var("JWT_EXPIRATION_HOURS")
                 .unwrap_or_else(|_| "24".to_string())
                 .parse()
-                .context("JWT_EXPIRATION_HOURS must be a number")?,
+                .expect("JWT_EXPIRATION_HOURS must be a number"),
             port: env::var("PORT")
                 .unwrap_or_else(|_| "8080".to_string())
                 .parse()
-                .context("PORT must be a number")?,
+                .expect("PORT must be a number"),
             // Security settings
-            admin_default_password: admin_default_password()?,
+            admin_default_password: env::var("ADMIN_DEFAULT_PASSWORD").unwrap_or_else(|_| {
+                // Enforce password in production
+                if env::var("RUST_ENV").unwrap_or_default() == "production"
+                    || env::var("HEROKU").is_ok()
+                    || env::var("RAILWAY_ENVIRONMENT").is_ok()
+                {
+                    panic!("ADMIN_DEFAULT_PASSWORD must be set in production!");
+                }
+                tracing::warn!("⚠️  Using development default password - CHANGE IN PRODUCTION!");
+                "DevAdmin123!".to_string()
+            }),
             cors_origins,
             rate_limit_requests_per_second: env::var("RATE_LIMIT_RPS")
                 .unwrap_or_else(|_| "200".to_string())
@@ -84,12 +85,6 @@ impl Config {
             .unwrap_or_else(|_| "300".to_string())
             .parse()
             .unwrap_or(300),
-            recurring_expense_scheduler_jitter_percent: env::var(
-                "RECURRING_EXPENSE_SCHEDULER_JITTER_PERCENT",
-            )
-            .unwrap_or_else(|_| "10".to_string())
-            .parse()
-            .unwrap_or(10),
             // Redis settings (optional - if not set, falls back to local cache only)
             redis_url: env::var("REDIS_URL").ok(),
 
@@ -114,31 +109,6 @@ impl Config {
                 .unwrap_or_else(|_| "1800".to_string())
                 .parse()
                 .unwrap_or(1800),
-            // Push notification settings
-            vapid: push_config::vapid_config(
-                env::var("VAPID_PRIVATE_KEY").ok(),
-                env::var("VAPID_SUBJECT").ok(),
-                is_production_environment(),
-            )?,
         })
     }
-}
-
-fn admin_default_password() -> Result<String> {
-    match env::var("ADMIN_DEFAULT_PASSWORD") {
-        Ok(password) => Ok(password),
-        Err(_) if is_production_environment() => {
-            anyhow::bail!("ADMIN_DEFAULT_PASSWORD must be set in production")
-        }
-        Err(_) => {
-            tracing::warn!("⚠️  Using development default password - CHANGE IN PRODUCTION!");
-            Ok("DevAdmin123!".to_string())
-        }
-    }
-}
-
-pub fn is_production_environment() -> bool {
-    env::var("RUST_ENV").unwrap_or_default() == "production"
-        || env::var("HEROKU").is_ok()
-        || env::var("RAILWAY_ENVIRONMENT").is_ok()
 }

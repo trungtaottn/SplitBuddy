@@ -9,8 +9,8 @@ import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { Loader2, Sparkles } from 'lucide-react'
-import type { UpdatePersonaRequest, UserPersona } from '@/types/api'
-import { useAuth } from '@/contexts/use-auth'
+import type { UserPersona } from '@/types/api'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface PersonaEditorProps {
   isOpen: boolean
@@ -49,13 +49,13 @@ export function PersonaEditor({ isOpen, onClose, initialData, unlockedTitles }: 
   }, [isOpen, initialData])
 
   const updatePersona = useMutation({
-    mutationFn: async (data: UpdatePersonaRequest) => {
+    mutationFn: async (data: any) => {
       // 1. Update Persona
       await api.personas.updateMe(data)
       
       // 2. Update User Avatar if requested
       if (useAsAvatar && user?.id) {
-          const avatarUrl = `https://api.dicebear.com/7.x/${data.avatar_style || avatarStyle}/svg?seed=${user.id}`
+          const avatarUrl = `https://api.dicebear.com/7.x/${data.avatar_style}/svg?seed=${user.id}`
           await axiosApi.put('/users/me', { avatar_url: avatarUrl })
       }
     },

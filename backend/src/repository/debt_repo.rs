@@ -1,10 +1,9 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::api::debts_dto::{DebtItemResponse, ParticipantDebtResponse, SessionDebtResponse};
+use crate::api::debts::{DebtItemResponse, ParticipantDebtResponse, SessionDebtResponse};
 use crate::domain::debt::{Debt, DebtStatus};
 use crate::error::AppError;
-use crate::repository::debt_lock;
 
 pub struct DebtRepository {
     pool: PgPool,
@@ -26,7 +25,6 @@ impl DebtRepository {
                 d.session_id,
                 s.name as session_name,
                 d.creditor_id as counterpart_id,
-                sp_creditor.user_id as counterpart_user_id,
                 COALESCE(u.full_name, sp_creditor.guest_name, 'Unknown') as counterpart_name,
                 d.amount,
                 d.status,
@@ -58,7 +56,6 @@ impl DebtRepository {
                 d.session_id,
                 s.name as session_name,
                 d.debtor_id as counterpart_id,
-                sp_debtor.user_id as counterpart_user_id,
                 COALESCE(u.full_name, sp_debtor.guest_name, 'Unknown') as counterpart_name,
                 d.amount,
                 d.status,
@@ -84,8 +81,6 @@ impl DebtRepository {
     }
 
     pub async fn request_settlement(&self, debt_id: Uuid, user_id: Uuid) -> Result<Debt, AppError> {
-        let mut tx = self.pool.begin().await?;
-
         let debt = sqlx::query_as!(
             Debt,
             r#"
@@ -105,13 +100,11 @@ impl DebtRepository {
             debt_id,
             user_id
         )
-        .fetch_optional(&mut *tx)
+        .fetch_optional(&self.pool)
         .await?
         .ok_or(AppError::Forbidden {
             message: "You can only request settlement for your own debts".to_string(),
         })?;
-
-        debt_lock::lock_session_debt_mutation(&mut tx, debt.session_id).await?;
 
         if debt.status != DebtStatus::Pending {
             return Err(AppError::Validation {
@@ -120,38 +113,31 @@ impl DebtRepository {
             });
         }
 
-        let updated = sqlx::query_as::<_, Debt>(
+        let updated = sqlx::query_as!(
+            Debt,
             r#"
             UPDATE debts 
             SET status = 'settlement_requested'
-            WHERE id = $1 AND status = 'pending'
+            WHERE id = $1
             RETURNING 
                 id,
                 session_id,
                 debtor_id,
                 creditor_id,
                 amount,
-                status,
+                status as "status: DebtStatus",
                 created_at,
                 settled_at
             "#,
+            debt_id
         )
-        .bind(debt_id)
-        .fetch_optional(&mut *tx)
-        .await?
-        .ok_or(AppError::Validation {
-            field: "status".to_string(),
-            message: "This debt is not in pending status".to_string(),
-        })?;
-
-        tx.commit().await?;
+        .fetch_one(&self.pool)
+        .await?;
 
         Ok(updated)
     }
 
     pub async fn confirm_settlement(&self, debt_id: Uuid, user_id: Uuid) -> Result<Debt, AppError> {
-        let mut tx = self.pool.begin().await?;
-
         tracing::debug!(
             "Fetching debt for confirmation: debt_id={}, user_id={}",
             debt_id,
@@ -177,7 +163,7 @@ impl DebtRepository {
             debt_id,
             user_id
         )
-        .fetch_optional(&mut *tx)
+        .fetch_optional(&self.pool)
         .await?
         .ok_or_else(|| {
             tracing::warn!(
@@ -189,8 +175,6 @@ impl DebtRepository {
                 message: "You can only confirm settlement for debts owed to you".to_string(),
             }
         })?;
-
-        debt_lock::lock_session_debt_mutation(&mut tx, debt.session_id).await?;
 
         tracing::debug!(
             "Debt found: id={}, status={:?}, debtor_id={}, creditor_id={}",
@@ -212,65 +196,60 @@ impl DebtRepository {
             });
         }
 
-        let updated = sqlx::query_as::<_, Debt>(
+        let updated = sqlx::query_as!(
+            Debt,
             r#"
             UPDATE debts 
             SET status = 'settled', settled_at = NOW()
-            WHERE id = $1 AND status = 'settlement_requested'
+            WHERE id = $1
             RETURNING 
                 id,
                 session_id,
                 debtor_id,
                 creditor_id,
                 amount,
-                status,
+                status as "status: DebtStatus",
                 created_at,
                 settled_at
             "#,
+            debt_id
         )
-        .bind(debt_id)
-        .fetch_optional(&mut *tx)
-        .await?
-        .ok_or(AppError::Validation {
-            field: "status".to_string(),
-            message: "Settlement must be requested before it can be confirmed".to_string(),
-        })?;
-
-        tx.commit().await?;
+        .fetch_one(&self.pool)
+        .await?;
 
         Ok(updated)
     }
 
-    pub async fn settle_guest_debt_as_session_manager(
-        &self,
-        debt_id: Uuid,
-    ) -> Result<Debt, AppError> {
-        let mut tx = self.pool.begin().await?;
-
-        let debt = sqlx::query_as::<_, Debt>(
+    /// Settle a debt from a guest directly (creditor can mark as settled without request)
+    pub async fn settle_guest_debt(&self, debt_id: Uuid, user_id: Uuid) -> Result<Debt, AppError> {
+        // Check if the user is the creditor and the debtor is a guest
+        let debt = sqlx::query_as!(
+            Debt,
             r#"
-            SELECT
+            SELECT 
                 d.id,
                 d.session_id,
                 d.debtor_id,
                 d.creditor_id,
                 d.amount,
-                d.status,
+                d.status as "status: DebtStatus",
                 d.created_at,
                 d.settled_at
             FROM debts d
+            JOIN session_participants sp_creditor ON d.creditor_id = sp_creditor.id
             JOIN session_participants sp_debtor ON d.debtor_id = sp_debtor.id
-            WHERE d.id = $1 AND sp_debtor.user_id IS NULL
+            WHERE d.id = $1 
+              AND sp_creditor.user_id = $2 
+              AND sp_debtor.user_id IS NULL
             "#,
+            debt_id,
+            user_id
         )
-        .bind(debt_id)
-        .fetch_optional(&mut *tx)
+        .fetch_optional(&self.pool)
         .await?
         .ok_or(AppError::Forbidden {
             message: "Chỉ có thể tất toán nợ từ khách (không phải thành viên hệ thống)".to_string(),
         })?;
-
-        debt_lock::lock_session_debt_mutation(&mut tx, debt.session_id).await?;
 
         if debt.status == DebtStatus::Settled {
             return Err(AppError::Validation {
@@ -279,31 +258,26 @@ impl DebtRepository {
             });
         }
 
-        let updated = sqlx::query_as::<_, Debt>(
+        let updated = sqlx::query_as!(
+            Debt,
             r#"
-            UPDATE debts
+            UPDATE debts 
             SET status = 'settled', settled_at = NOW()
-            WHERE id = $1 AND status != 'settled'
-            RETURNING
+            WHERE id = $1
+            RETURNING 
                 id,
                 session_id,
                 debtor_id,
                 creditor_id,
                 amount,
-                status,
+                status as "status: DebtStatus",
                 created_at,
                 settled_at
             "#,
+            debt_id
         )
-        .bind(debt_id)
-        .fetch_optional(&mut *tx)
-        .await?
-        .ok_or(AppError::Validation {
-            field: "status".to_string(),
-            message: "Khoản nợ này đã được tất toán".to_string(),
-        })?;
-
-        tx.commit().await?;
+        .fetch_one(&self.pool)
+        .await?;
 
         Ok(updated)
     }
@@ -396,7 +370,7 @@ impl DebtRepository {
         }
 
         let mut sessions: Vec<SessionDebtResponse> = sessions_map.into_values().collect();
-        sessions.sort_by_key(|b| std::cmp::Reverse(b.session_id));
+        sessions.sort_by(|a, b| b.session_id.cmp(&a.session_id));
 
         Ok(sessions)
     }

@@ -11,18 +11,15 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, ArrowUpRight, ArrowDownLeft, Search, ChevronLeft, ChevronRight, LayoutTemplate } from 'lucide-react'
 import { CURRENCY_OPTIONS } from '@/utils/currency'
-import { toast } from '@/components/ui/toast'
+import { toast } from '@/components/ui/toaster'
 import AiGreeting from '@/components/AiGreeting'
 import { SessionCard } from '@/components/SessionCard'
 import { EmptyState } from '@/components/EmptyState'
 import { SessionListSkeleton } from '@/components/ui/skeleton'
-import { useOnboarding } from '@/components/onboarding-context'
-import { CountUp } from '@/components/PageTransition'
-import { staggerContainer, staggerItem } from '@/components/page-transition-animations'
+import { useOnboarding } from '@/components/Onboarding'
+import { staggerContainer, staggerItem, CountUp } from '@/components/PageTransition'
 import { ResponsiveModal } from '@/components/ui/responsive-modal'
 import { PullToRefresh } from '@/components/ui/pull-to-refresh'
-import { getErrorMessage, isRateLimitError } from '@/utils/errorHandler'
-import { compareMoney } from '@/utils/money'
 import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupDetail, PaginatedResponse } from '@/types/api'
 
 /**
@@ -33,7 +30,7 @@ import type { Session, DebtSummary, ApiResponse, CreateSessionDto, Group, GroupD
  * - Orange/Red Accent Gradients
  */
 
-import { useWebSocket } from '@/contexts/use-websocket'
+import { useWebSocket } from '@/contexts/WebSocketContext'
 
 export default function DashboardPage() {
   const { subscribeToSession, unsubscribeFromSession } = useWebSocket()
@@ -93,8 +90,8 @@ export default function DashboardPage() {
       const res = await api.get<PaginatedResponse<Session[]>>(`/sessions?${params.toString()}`)
       return res.data
     },
-    retry: (failureCount, error: unknown) => {
-        if (isRateLimitError(error)) return false
+    retry: (failureCount, error: any) => {
+        if (error?.response?.status === 429) return false
         return failureCount < 2
     },
   })
@@ -121,9 +118,9 @@ export default function DashboardPage() {
     if (!sessions) return []
     return sessions
       .filter((session) => {
-        return compareMoney(session.total_amount, '0') > 0
-          && compareMoney(session.settled_amount, session.total_amount) >= 0
-          && !session.archived_at
+        const total = Number(session.total_amount) || 0
+        const settled = Number(session.settled_amount) || 0
+        return total > 0 && settled >= total && !session.archived_at
       })
       .map((session) => session.id)
   }, [sessions])
@@ -134,8 +131,8 @@ export default function DashboardPage() {
       const res = await api.get<ApiResponse<DebtSummary>>('/debts/me')
       return res.data.data
     },
-    retry: (failureCount, error: unknown) => {
-        if (isRateLimitError(error)) return false
+    retry: (failureCount, error: any) => {
+        if (error?.response?.status === 429) return false
         return failureCount < 2
     },
   })
@@ -146,8 +143,8 @@ export default function DashboardPage() {
       const res = await api.get<ApiResponse<Group[]>>('/groups')
       return res.data.data
     },
-    retry: (failureCount, error: unknown) => {
-        if (isRateLimitError(error)) return false
+    retry: (failureCount, error: any) => {
+        if (error?.response?.status === 429) return false
         return failureCount < 2
     },
   })
@@ -241,8 +238,8 @@ export default function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['sessions'] })
       toast.success('Sessions Archived.')
     },
-    onError: (error: unknown) => {
-      toast.error('Archive failed: ' + getErrorMessage(error))
+    onError: (error: any) => {
+      toast.error('Archive failed: ' + (error.response?.data?.message || error.message))
     },
   })
 

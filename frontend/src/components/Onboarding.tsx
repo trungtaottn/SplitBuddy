@@ -1,10 +1,18 @@
-import { useState, useEffect, ReactNode } from 'react'
+import { useState, useEffect, createContext, useContext, ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { X, ChevronRight, ChevronLeft, Lightbulb, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { OnboardingContext, useOnboarding, type OnboardingStep } from '@/components/onboarding-context'
 
 // Onboarding steps configuration
+interface OnboardingStep {
+  id: string
+  target?: string // CSS selector for highlighting
+  title: string
+  description: string
+  position?: 'top' | 'bottom' | 'left' | 'right' | 'center'
+  emoji?: string
+}
+
 const DEFAULT_STEPS: OnboardingStep[] = [
   {
     id: 'welcome',
@@ -46,6 +54,28 @@ const DEFAULT_STEPS: OnboardingStep[] = [
     emoji: '',
   },
 ]
+
+// Context for onboarding state
+interface OnboardingContextType {
+  isActive: boolean
+  currentStep: number
+  steps: OnboardingStep[]
+  startOnboarding: () => void
+  endOnboarding: () => void
+  nextStep: () => void
+  prevStep: () => void
+  skipOnboarding: () => void
+}
+
+const OnboardingContext = createContext<OnboardingContextType | null>(null)
+
+export function useOnboarding() {
+  const context = useContext(OnboardingContext)
+  if (!context) {
+    throw new Error('useOnboarding must be used within OnboardingProvider')
+  }
+  return context
+}
 
 // Provider component
 export function OnboardingProvider({ 
@@ -273,3 +303,4 @@ export function StartOnboardingButton() {
     </Button>
   )
 }
+

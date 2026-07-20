@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { FeedActivity, PaginationMeta } from '@/types/api'
+import { FeedActivity, PaginationMeta } from '@/types/api'
 
 interface GetFeedResponse {
   data: FeedActivity[]
@@ -37,14 +37,13 @@ export const useLikeActivity = () => {
       await queryClient.cancelQueries({ queryKey: ['feed'] })
       const previousFeed = queryClient.getQueryData(['feed'])
 
-      queryClient.setQueryData<GetFeedResponse | undefined>(['feed'], (old) => {
+      queryClient.setQueryData(['feed'], (old: any) => {
         if (!old) return old
         
         // Optimistically update
-        return {
-          ...old,
-          data: old.data.map((activity) => {
-            if (activity.id !== activityId) return activity
+        const newData = { ...old }
+        newData.data = old.data.map((activity: FeedActivity) => {
+          if (activity.id === activityId) {
             const wasLiked = activity.user_interaction.has_liked
             return {
               ...activity,
@@ -57,8 +56,10 @@ export const useLikeActivity = () => {
                 has_liked: !wasLiked,
               },
             }
-          }),
-        }
+          }
+          return activity
+        })
+        return newData
       })
 
       return { previousFeed }

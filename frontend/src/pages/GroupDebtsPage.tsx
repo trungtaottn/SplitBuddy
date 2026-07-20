@@ -6,9 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Trophy, Calendar, Beer, Banknote, Crown, Skull, ArrowRight, Zap, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatCurrency'
-import { addMoney, compareMoney, divideMoney, sumMoney } from '@/utils/money'
 import type { GroupDebtSummary, SimplifiedDebtSummary, ApiResponse } from '@/types/api'
-import { useFeatureFlags } from '@/contexts/use-feature-flags'
+import { useFeatureFlags } from '@/contexts/FeatureFlagsContext'
 
 export default function GroupDebtsPage() {
   const { groupId } = useParams<{ groupId: string }>()
@@ -294,34 +293,31 @@ export default function GroupDebtsPage() {
         }
 
         // Calculate participation count for each member in filtered sessions
-        const participationCount: Record<string, { name: string; count: number; totalOwed: string }> = {}
+        const participationCount: Record<string, { name: string; count: number; totalOwed: number }> = {}
         summary.members.forEach((m) => {
-          participationCount[m.user_id] = { name: m.name, count: 0, totalOwed: '0' }
+          participationCount[m.user_id] = { name: m.name, count: 0, totalOwed: 0 }
         })
 
         filteredSessions.forEach((session) => {
           session.member_amounts.forEach((ma) => {
-            if (participationCount[ma.user_id] && compareMoney(ma.amount_owed, '0') > 0) {
+            if (participationCount[ma.user_id] && parseFloat(ma.amount_owed) > 0) {
               participationCount[ma.user_id].count += 1
-              participationCount[ma.user_id].totalOwed = addMoney(
-                participationCount[ma.user_id].totalOwed,
-                ma.amount_owed
-              )
+              participationCount[ma.user_id].totalOwed += parseFloat(ma.amount_owed)
             }
           })
         })
 
         const sortedByParticipation = Object.values(participationCount).sort((a, b) => {
           if (b.count !== a.count) return b.count - a.count
-          return compareMoney(b.totalOwed, a.totalOwed)
+          return b.totalOwed - a.totalOwed
         })
 
-        const totalAmount = sumMoney(filteredSessions.map((s) => s.total_amount))
+        const totalAmount = filteredSessions.reduce((sum, s) => sum + parseFloat(s.total_amount), 0)
 
         // Calculate additional stats
-        const avgPerSession = divideMoney(totalAmount, filteredSessions.length)
+        const avgPerSession = totalAmount / filteredSessions.length
         const activeMembers = sortedByParticipation.filter(m => m.count > 0)
-        const avgPerPerson = activeMembers.length > 0 ? divideMoney(totalAmount, activeMembers.length) : '0'
+        const avgPerPerson = activeMembers.length > 0 ? totalAmount / activeMembers.length : 0
 
         // Smart split into Top and Bottom
         // Logic: 
@@ -369,7 +365,7 @@ export default function GroupDebtsPage() {
                 <div className="flex-1 min-w-0">
                   <span className="font-medium truncate block">{member.name}</span>
                   <p className="text-xs text-muted-foreground">
-                    {formatCurrency(member.totalOwed)}
+                    {formatCurrency(member.totalOwed.toFixed(0))}
                   </p>
                 </div>
                 
@@ -404,7 +400,7 @@ export default function GroupDebtsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs text-muted-foreground font-medium">Tổng chi tiêu</p>
-                      <p className="text-2xl font-bold">{formatCurrency(totalAmount)}</p>
+                      <p className="text-2xl font-bold">{formatCurrency(totalAmount.toFixed(0))}</p>
                     </div>
                     <Banknote className="h-8 w-8 text-muted-foreground" />
                   </div>
@@ -413,11 +409,11 @@ export default function GroupDebtsPage() {
                 {/* Average Stats */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border p-3 text-center">
-                    <p className="text-lg font-bold">{formatCurrency(avgPerSession)}</p>
+                    <p className="text-lg font-bold">{formatCurrency(avgPerSession.toFixed(0))}</p>
                     <p className="text-xs text-muted-foreground">TB/cuộc</p>
                   </div>
                   <div className="rounded-lg border p-3 text-center">
-                    <p className="text-lg font-bold">{formatCurrency(avgPerPerson)}</p>
+                    <p className="text-lg font-bold">{formatCurrency(avgPerPerson.toFixed(0))}</p>
                     <p className="text-xs text-muted-foreground">TB/người</p>
                   </div>
                 </div>
@@ -496,9 +492,9 @@ export default function GroupDebtsPage() {
           : `${new Date(startDate).toLocaleDateString('vi-VN')} - ${new Date(endDate).toLocaleDateString('vi-VN')}`
         
         // Calculate member totals for this month only
-        const memberMonthTotals: Record<string, { owed: string }> = {}
+        const memberMonthTotals: Record<string, { paid: number; owed: number }> = {}
         summary.members.forEach((m) => {
-          memberMonthTotals[m.user_id] = { owed: '0' }
+          memberMonthTotals[m.user_id] = { paid: 0, owed: 0 }
         })
         
         // Note: We only have amount_owed per session, not amount_paid per session
@@ -506,7 +502,7 @@ export default function GroupDebtsPage() {
         filteredSessions.forEach((session) => {
           session.member_amounts.forEach((ma) => {
             if (memberMonthTotals[ma.user_id]) {
-              memberMonthTotals[ma.user_id].owed = addMoney(memberMonthTotals[ma.user_id].owed, ma.amount_owed)
+              memberMonthTotals[ma.user_id].owed += parseFloat(ma.amount_owed) || 0
             }
           })
         })
@@ -534,7 +530,7 @@ export default function GroupDebtsPage() {
             <CardContent>
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {summary.members.map((member) => {
-                  const monthData = memberMonthTotals[member.user_id] || { owed: '0' }
+                  const monthData = memberMonthTotals[member.user_id] || { paid: 0, owed: 0 }
                   return (
                     <div key={member.user_id} className="flex items-center justify-between rounded-lg border p-3">
                       <div>
@@ -542,7 +538,7 @@ export default function GroupDebtsPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-primary">
-                          {compareMoney(monthData.owed, '0') > 0 ? formatCurrency(monthData.owed) : '-'}
+                          {monthData.owed > 0 ? formatCurrency(monthData.owed.toFixed(0)) : '-'}
                         </p>
                       </div>
                     </div>
@@ -623,7 +619,7 @@ export default function GroupDebtsPage() {
                           (ma) => ma.user_id === member.user_id
                         )
                         const amount = memberAmount?.amount_owed || '0'
-                        const hasAmount = compareMoney(amount, '0') > 0
+                        const hasAmount = parseFloat(amount) > 0
                         return (
                           <td
                             key={member.user_id}
@@ -640,19 +636,21 @@ export default function GroupDebtsPage() {
                       <tr className="border-t-2 bg-gray-100 dark:bg-gray-800 font-bold">
                         <td className="py-3 px-2 sticky left-0 bg-gray-100 dark:bg-gray-800">Tổng tháng này</td>
                         <td className="py-3 px-2 text-right text-primary">
-                          {formatCurrency(sumMoney(filteredTableSessions.map((s) => s.total_amount)))}
+                          {formatCurrency(
+                            filteredTableSessions
+                              .reduce((sum, s) => sum + parseFloat(s.total_amount), 0)
+                              .toString()
+                          )}
                         </td>
                         {summary.members.map((member) => {
                           // Calculate total owed for this month only
-                          const monthTotal = sumMoney(
-                            filteredTableSessions.map((session) => {
-                              const ma = session.member_amounts.find(m => m.user_id === member.user_id)
-                              return ma?.amount_owed || '0'
-                            })
-                          )
+                          const monthTotal = filteredTableSessions.reduce((sum, session) => {
+                            const ma = session.member_amounts.find(m => m.user_id === member.user_id)
+                            return sum + (ma ? parseFloat(ma.amount_owed) : 0)
+                          }, 0)
                           return (
                             <td key={member.user_id} className="py-3 px-2 text-right">
-                              {compareMoney(monthTotal, '0') > 0 ? formatCurrency(monthTotal) : '-'}
+                              {monthTotal > 0 ? formatCurrency(monthTotal.toFixed(0)) : '-'}
                             </td>
                           )
                         })}

@@ -271,7 +271,7 @@ export default function WrappedModal({ isOpen, onClose, year = new Date().getFul
           </motion.div>
         )
 
-      case 'personality': {
+      case 'personality':
         const personality = getPersonality(wrapped)
         return (
           <motion.div
@@ -295,7 +295,6 @@ export default function WrappedModal({ isOpen, onClose, year = new Date().getFul
             <p className="text-gray-400 mt-2">{personality.desc}</p>
           </motion.div>
         )
-      }
 
       case 'achievements':
         return (

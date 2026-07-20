@@ -1,6 +1,6 @@
 import { AxiosError } from 'axios'
 import type { ApiError } from '@/types/api'
-import { toast } from '@/components/ui/toast'
+import { toast } from '@/components/ui/toaster'
 
 /**
  * Extract error message from API error response
@@ -32,18 +32,6 @@ export function getErrorCode(error: unknown): string | undefined {
     return axiosError.response?.data?.error?.code
   }
   return undefined
-}
-
-export function getErrorStatus(error: unknown): number | undefined {
-  if (error instanceof Error && 'response' in error) {
-    const axiosError = error as AxiosError
-    return axiosError.response?.status
-  }
-  return undefined
-}
-
-export function isRateLimitError(error: unknown): boolean {
-  return getErrorStatus(error) === 429
 }
 
 /**

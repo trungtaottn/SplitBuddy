@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Trophy, Sparkles, Crown } from 'lucide-react'
 import type { PersonaLeaderboardEntry } from '@/types/api'
-import { useAuth } from '@/contexts/use-auth'
+import { useAuth } from '@/contexts/AuthContext'
 
 export function Leaderboard() {
   const { user } = useAuth()
